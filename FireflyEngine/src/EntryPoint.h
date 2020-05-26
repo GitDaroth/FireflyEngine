@@ -1,7 +1,5 @@
 #pragma once
 
-#include "Game.h"
-
 namespace Firefly
 {
 	extern Game* InstantiateGame();
@@ -10,6 +8,8 @@ namespace Firefly
 #ifdef FIREFLY_WINDOWS
 	int main(int argc, char** argv)
 	{
+		Firefly::Logger::Init();
+
 		auto game = Firefly::InstantiateGame();
 		game->Run();
 		delete game;
