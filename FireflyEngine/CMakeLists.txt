@@ -1,0 +1,1 @@
+add_library(FireflyEngine SHARED src/test.cpp src/test.h)
