@@ -14,5 +14,6 @@ public:
 
 Firefly::Game* Firefly::InstantiateGame()
 {
+	Firefly::Logger::Critical("Sandbox", "Hello from Sandbox!");
 	return new SandboxGame();
 }

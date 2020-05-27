@@ -6,7 +6,7 @@ namespace Firefly
 
 	void Logger::Init()
 	{
-		spdlog::set_pattern("%^[%T] %n: %v%$");
+		spdlog::set_pattern("%^[%T] %-8l (%n): %v%$");
 	}
 
 	std::shared_ptr<spdlog::logger> Logger::GetLoggerByName(const std::string& name)
@@ -24,6 +24,7 @@ namespace Firefly
 		if (!newLogger)
 		{
 			newLogger = spdlog::stdout_color_mt(name);
+			newLogger->set_level(spdlog::level::trace);
 			s_loggers.push_back(newLogger);
 		}
 
