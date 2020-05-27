@@ -13,6 +13,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#include "Logger.h"
+
 #ifdef FIREFLY_WINDOWS
 	#include <Windows.h>
 #endif
