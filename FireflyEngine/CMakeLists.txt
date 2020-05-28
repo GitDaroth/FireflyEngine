@@ -1,5 +1,6 @@
 add_subdirectory(3rdParty/spdlog)
 add_subdirectory(3rdParty/GLFW)
+add_subdirectory(3rdParty/glad)
 
 set(coreFiles
 	include/FireflyEngine.h
@@ -35,8 +36,13 @@ source_group("\\Event" FILES ${eventFiles})
 target_link_libraries(FireflyEngine 
 	PUBLIC
 		spdlog::spdlog
-		glfw)
+		glfw
+		glad)
 
 target_include_directories(FireflyEngine PUBLIC "include")
-target_compile_definitions(FireflyEngine PRIVATE FIREFLY_ENGINE)
 target_precompile_headers(FireflyEngine PRIVATE "include/pch.h")
+
+target_compile_definitions(FireflyEngine 
+	PRIVATE 
+		FIREFLY_ENGINE 
+		GLFW_INCLUDE_NONE)

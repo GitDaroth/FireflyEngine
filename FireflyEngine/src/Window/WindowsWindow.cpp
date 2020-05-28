@@ -5,6 +5,8 @@
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
 
+#include <glad/glad.h>
+
 namespace Firefly
 {
 	bool WindowsWindow::s_isWindowInitialized = false;
@@ -30,6 +32,10 @@ namespace Firefly
 		m_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
 		s_windowCount++;
 		glfwMakeContextCurrent(m_window);
+
+		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+		FIREFLY_ASSERT(status, "Unable to initialize glad!");
+
 		glfwSetWindowUserPointer(m_window, this);
 		EnableVSync(true);
 
