@@ -15,6 +15,9 @@ namespace Firefly
 		virtual void OnEnableVSync(bool enabled) override;
 
 	private:
+		void SetupWindowEvents();
+		void SetupInputEvents();
+
 		GLFWwindow* m_window;
 		static bool s_isWindowInitialized;
 		static int s_windowCount;

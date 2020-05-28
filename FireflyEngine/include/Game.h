@@ -13,6 +13,8 @@ namespace Firefly
 
 		void Run();
 
+		void OnEvent(std::shared_ptr<Event> event);
+
 	private:
 		std::unique_ptr<Window> m_window;
 		bool m_isRunning = true;

@@ -15,6 +15,11 @@ namespace Firefly
 	{
 	}
 
+	void Window::SetEventCallback(const std::function<void(std::shared_ptr<Event>)>& eventCallback)
+	{
+		m_eventCallback = eventCallback;
+	}
+
 	void Window::SetTitle(const std::string& title)
 	{
 		m_title = title;
@@ -32,6 +37,11 @@ namespace Firefly
 	{
 		m_isVSyncEnabled = enabled;
 		OnEnableVSync(enabled);
+	}
+
+	const std::function<void(std::shared_ptr<Event>)>& Window::GetEventCallback()
+	{
+		return m_eventCallback;
 	}
 
 	const std::string& Window::GetTitle() const

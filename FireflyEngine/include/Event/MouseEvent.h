@@ -43,11 +43,11 @@ public:
 class FIREFLY_API MouseMoveEvent : public MouseEvent
 {
 public:
-	MouseMoveEvent(float xPos, float yPos) :
+	MouseMoveEvent(int xPos, int yPos) :
 		m_xPos(xPos), m_yPos(yPos) {}
 
-	inline float GetXPos() const { return m_xPos; }
-	inline float GetYPos() const { return m_yPos; }
+	inline int GetXPos() const { return m_xPos; }
+	inline int GetYPos() const { return m_yPos; }
 
 	virtual std::string ToString() const override
 	{
@@ -55,7 +55,7 @@ public:
 	}
 
 protected:
-	float m_xPos, m_yPos;
+	int m_xPos, m_yPos;
 };
 
 class FIREFLY_API MouseScrollEvent : public MouseEvent

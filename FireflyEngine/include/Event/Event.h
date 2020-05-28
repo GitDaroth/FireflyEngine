@@ -3,22 +3,22 @@
 #include "Core.h"
 #include "pch.h"
 
-class FIREFLY_API Event
+class FIREFLY_API Event : public std::enable_shared_from_this<Event>
 {
 public:
 	template<typename T>
 	bool IsType()
 	{
-		if (dynamic_cast<T*>(this) != nullptr)
+		if (std::dynamic_pointer_cast<T>(shared_from_this()) != nullptr)
 			return true;
 		else
 			return false;
 	}
 
 	template<typename T>
-	T* AsType()
+	std::shared_ptr<T> AsType()
 	{
-		return dynamic_cast<T*>(this);
+		return std::dynamic_pointer_cast<T>(shared_from_this());
 	}
 
 	virtual std::string ToString() const = 0;
