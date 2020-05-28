@@ -1,24 +1,34 @@
 add_subdirectory(3rdParty/spdlog)
 add_subdirectory(3rdParty/GLFW)
 
-set(headers 
-	include/Window/Window.h
-	include/Window/WindowsWindow.h
+set(coreFiles
 	include/FireflyEngine.h
 	include/EntryPoint.h
 	include/Core.h
 	include/Game.h
-	include/Logger.h
-	include/pch.h)
-
-set(sources 
-	src/Window/Window.cpp
-	src/Window/WindowsWindow.cpp
 	src/Game.cpp
+	include/Logger.h
 	src/Logger.cpp
+	include/pch.h
 	src/pch.cpp)
 
-add_library(FireflyEngine SHARED ${sources} ${headers})
+set(windowFiles
+	include/Window/Window.h
+	src/Window/Window.cpp
+	include/Window/WindowsWindow.h
+	src/Window/WindowsWindow.cpp)
+
+set(eventFiles
+	include/Event/Event.h
+	include/Event/MouseEvent.h
+	include/Event/KeyEvent.h
+	include/Event/WindowEvent.h)
+
+add_library(FireflyEngine SHARED ${coreFiles} ${windowFiles} ${eventFiles})
+
+source_group("" FILES ${coreFiles})
+source_group("\\Window" FILES ${windowFiles})
+source_group("\\Event" FILES ${eventFiles})
 
 target_link_libraries(FireflyEngine 
 	PUBLIC
