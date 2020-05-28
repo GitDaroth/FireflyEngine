@@ -5,8 +5,10 @@ set(coreFiles
 	include/FireflyEngine.h
 	include/EntryPoint.h
 	include/Core.h
-	include/Game.h
-	src/Game.cpp
+	include/Layer.h
+	src/Layer.cpp
+	include/Application.h
+	src/Application.cpp
 	include/Logger.h
 	src/Logger.cpp
 	include/pch.h

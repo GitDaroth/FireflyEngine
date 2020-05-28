@@ -2,7 +2,7 @@
 
 namespace Firefly
 {
-	extern Game* InstantiateGame();
+	extern Application* InstantiateApplication();
 }
 
 #ifdef FIREFLY_WINDOWS
@@ -10,9 +10,9 @@ namespace Firefly
 	{
 		Firefly::Logger::Init();
 
-		auto game = Firefly::InstantiateGame();
-		game->Run();
-		delete game;
+		auto app = Firefly::InstantiateApplication();
+		app->Run();
+		delete app;
 
 		return 0;
 	}

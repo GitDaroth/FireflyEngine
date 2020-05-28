@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Game.h"
+#include "Application.h"
 #include "Logger.h"
+#include "Layer.h"
 
 #include "EntryPoint.h"
