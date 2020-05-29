@@ -6,6 +6,7 @@ project(Firefly
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG_MODE")
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 if(WIN32)
     add_compile_definitions(FIREFLY_WINDOWS)

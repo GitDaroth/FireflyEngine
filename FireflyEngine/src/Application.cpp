@@ -4,8 +4,6 @@
 #include "Window/WindowsWindow.h"
 #include "Event/WindowEvent.h"
 
-#include <glad/glad.h>
-
 namespace Firefly
 {
 	Application::Application()

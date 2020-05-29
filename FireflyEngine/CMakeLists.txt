@@ -1,11 +1,17 @@
 add_subdirectory(3rdParty/spdlog)
 add_subdirectory(3rdParty/GLFW)
 add_subdirectory(3rdParty/glad)
+add_subdirectory(3rdParty/imgui)
+
+set_target_properties(spdlog glad imgui PROPERTIES FOLDER 3rdParty)
+set_target_properties(glfw uninstall PROPERTIES FOLDER 3rdParty/GLFW)
 
 set(coreFiles
 	include/FireflyEngine.h
 	include/EntryPoint.h
 	include/Core.h
+	include/ImGuiLayer.h
+	src/ImGuiLayer.cpp
 	include/Layer.h
 	src/Layer.cpp
 	include/Application.h
@@ -35,9 +41,10 @@ source_group("\\Event" FILES ${eventFiles})
 
 target_link_libraries(FireflyEngine 
 	PUBLIC
-		spdlog::spdlog
+		spdlog
 		glfw
-		glad)
+		glad
+		imgui)
 
 target_include_directories(FireflyEngine PUBLIC "include")
 target_precompile_headers(FireflyEngine PRIVATE "include/pch.h")
