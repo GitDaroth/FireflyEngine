@@ -33,11 +33,19 @@ set(eventFiles
 	include/Event/KeyEvent.h
 	include/Event/WindowEvent.h)
 
-add_library(FireflyEngine SHARED ${coreFiles} ${windowFiles} ${eventFiles})
+set(inputFiles
+	include/Input/Input.h
+	include/Input/KeyCodes.h
+	include/Input/MouseButtonCodes.h
+	src/Input/Input.cpp)
+
+add_library(FireflyEngine SHARED ${coreFiles} ${windowFiles} ${eventFiles} ${inputFiles})
 
 source_group("" FILES ${coreFiles})
 source_group("\\Window" FILES ${windowFiles})
 source_group("\\Event" FILES ${eventFiles})
+source_group("\\Input" FILES ${inputFiles})
+
 
 target_link_libraries(FireflyEngine 
 	PUBLIC

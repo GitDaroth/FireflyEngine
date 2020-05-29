@@ -34,13 +34,13 @@ class SandboxApp : public Firefly::Application
 public:
 	SandboxApp()
 	{
-		auto layer1 = std::make_shared<SandboxLayer>("Layer1", 0);
-		auto layer2 = std::make_shared<SandboxLayer>("Layer2", 1);
-		auto layer3 = std::make_shared<SandboxLayer>("Layer3", 2);
-		AddLayer(layer1);
-		AddLayer(layer2);
-		AddLayer(layer3);
-		layer2->SetOrderNumber(10);
+		//auto layer1 = std::make_shared<SandboxLayer>("Layer1", 0);
+		//auto layer2 = std::make_shared<SandboxLayer>("Layer2", 1);
+		//auto layer3 = std::make_shared<SandboxLayer>("Layer3", 2);
+		//AddLayer(layer1);
+		//AddLayer(layer2);
+		//AddLayer(layer3);
+		//layer2->SetOrderNumber(10);
 	}
 
 	~SandboxApp()

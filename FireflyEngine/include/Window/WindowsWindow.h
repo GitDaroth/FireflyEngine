@@ -14,6 +14,10 @@ namespace Firefly
 		virtual void OnSetSize(int width, int height) override;
 		virtual void OnEnableVSync(bool enabled) override;
 
+	protected:
+		virtual void SetupKeyCodeConversionMap() override;
+		virtual void SetupMouseButtonCodeConversionMap() override;
+
 	private:
 		void SetupWindowEvents();
 		void SetupInputEvents();

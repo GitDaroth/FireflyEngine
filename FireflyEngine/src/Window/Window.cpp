@@ -18,6 +18,8 @@ namespace Firefly
 	void Window::SetEventCallback(const std::function<void(std::shared_ptr<Event>)>& eventCallback)
 	{
 		m_eventCallback = eventCallback;
+		SetupKeyCodeConversionMap();
+		SetupMouseButtonCodeConversionMap();
 	}
 
 	void Window::SetTitle(const std::string& title)
@@ -62,5 +64,23 @@ namespace Firefly
 	bool Window::IsVSyncEnabled() const
 	{
 		return m_isVSyncEnabled;
+	}
+
+	int Window::ToFireflyKeyCode(int keyCode) const
+	{
+		auto iter = m_keyCodeConversionMap.find(keyCode);
+		if (iter != m_keyCodeConversionMap.end())
+			return iter->second;
+		else
+			return -1;
+	}
+
+	int Window::ToFireflyMouseButtonCode(int keyCode) const
+	{
+		auto iter = m_mouseButtonCodeConversionMap.find(keyCode);
+		if (iter != m_mouseButtonCodeConversionMap.end())
+			return iter->second;
+		else
+			return -1;
 	}
 }

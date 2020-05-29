@@ -3,6 +3,7 @@
 
 #include "Window/WindowsWindow.h"
 #include "Event/WindowEvent.h"
+#include "Input/Input.h"
 
 namespace Firefly
 {
@@ -17,6 +18,8 @@ namespace Firefly
 
 	Application::~Application()
 	{
+		for (auto layer : m_layers)
+			layer->OnDetach();
 	}
 
 	void Application::Run()
@@ -29,13 +32,15 @@ namespace Firefly
 				if(layer->IsEnabled())
 					layer->OnUpdate();
 			}
-
+				
 			m_window->OnUpdate();
 		}
 	}
 
 	void Application::OnEvent(std::shared_ptr<Event> event)
 	{
+		Input::OnEvent(event);
+
 		for (auto iter = m_layers.rbegin(); iter != m_layers.rend(); ++iter)
 		{
 			auto layer = (*iter);
