@@ -1,9 +1,12 @@
+set(BUILD_STATIC_LIBS ON)
+
 add_subdirectory(3rdParty/spdlog)
 add_subdirectory(3rdParty/GLFW)
 add_subdirectory(3rdParty/glad)
+add_subdirectory(3rdParty/glm)
 add_subdirectory(3rdParty/imgui)
 
-set_target_properties(spdlog glad imgui PROPERTIES FOLDER 3rdParty)
+set_target_properties(spdlog glad glm_static imgui PROPERTIES FOLDER 3rdParty)
 set_target_properties(glfw uninstall PROPERTIES FOLDER 3rdParty/GLFW)
 
 set(coreFiles
@@ -50,6 +53,8 @@ source_group("\\Input" FILES ${inputFiles})
 target_link_libraries(FireflyEngine 
 	PUBLIC
 		spdlog
+		glm_static
+	PRIVATE
 		glfw
 		glad
 		imgui)
