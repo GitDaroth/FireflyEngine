@@ -6,7 +6,7 @@
 
 namespace Firefly
 {
-	class FIREFLY_API Application
+	class Application
 	{
 	public:
 		Application();

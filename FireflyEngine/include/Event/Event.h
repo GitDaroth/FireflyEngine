@@ -3,7 +3,7 @@
 #include "Core.h"
 #include "pch.h"
 
-class FIREFLY_API Event : public std::enable_shared_from_this<Event>
+class Event : public std::enable_shared_from_this<Event>
 {
 public:
 	template<typename T>
@@ -29,4 +29,4 @@ protected:
 	bool m_hasBeenHandled = false;
 };
 
-class FIREFLY_API InputEvent : public Event {};
+class InputEvent : public Event {};

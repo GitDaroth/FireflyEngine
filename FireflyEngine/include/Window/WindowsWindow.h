@@ -3,7 +3,7 @@
 
 namespace Firefly
 {
-	class FIREFLY_API WindowsWindow : public Window
+	class WindowsWindow : public Window
 	{
 	public:
 		WindowsWindow(const std::string& title = "Firefly Engine", int width = 1280, int height = 720);

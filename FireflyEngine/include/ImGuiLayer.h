@@ -4,7 +4,7 @@
 
 namespace Firefly
 {
-	class FIREFLY_API ImGuiLayer : public Layer
+	class ImGuiLayer : public Layer
 	{
 	public:
 		ImGuiLayer(const std::string& name, int orderNumber = 0);

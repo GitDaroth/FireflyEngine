@@ -2,9 +2,9 @@
 
 #include "Event.h"
 
-class FIREFLY_API WindowEvent : public Event {};
+class WindowEvent : public Event {};
 
-class FIREFLY_API WindowResizeEvent : public WindowEvent
+class WindowResizeEvent : public WindowEvent
 {
 public:
 	WindowResizeEvent(int width, int height) :
@@ -22,7 +22,7 @@ protected:
 	int m_width, m_height;
 };
 
-class FIREFLY_API WindowCloseEvent : public WindowEvent
+class WindowCloseEvent : public WindowEvent
 {
 public:
 	virtual std::string ToString() const override
@@ -31,7 +31,7 @@ public:
 	}
 };
 
-class FIREFLY_API WindowMaximizeEvent : public WindowEvent
+class WindowMaximizeEvent : public WindowEvent
 {
 public:
 	virtual std::string ToString() const override
@@ -40,7 +40,7 @@ public:
 	}
 };
 
-class FIREFLY_API WindowMinimizeEvent : public WindowEvent
+class WindowMinimizeEvent : public WindowEvent
 {
 public:
 	virtual std::string ToString() const override
@@ -49,7 +49,7 @@ public:
 	}
 };
 
-class FIREFLY_API WindowRestoreEvent : public WindowEvent
+class WindowRestoreEvent : public WindowEvent
 {
 public:
 	virtual std::string ToString() const override
@@ -58,7 +58,7 @@ public:
 	}
 };
 
-class FIREFLY_API WindowMoveEvent : public WindowEvent
+class WindowMoveEvent : public WindowEvent
 {
 public:
 	WindowMoveEvent(int xPos, int yPos) :

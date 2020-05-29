@@ -2,7 +2,7 @@
 
 #include "Event.h"
 
-class FIREFLY_API KeyEvent : public InputEvent
+class KeyEvent : public InputEvent
 {
 public:
 	KeyEvent(int keyCode) :
@@ -14,7 +14,7 @@ protected:
 	int m_keyCode;
 };
 
-class FIREFLY_API KeyPressEvent : public KeyEvent
+class KeyPressEvent : public KeyEvent
 {
 public:
 	KeyPressEvent(int keyCode) :
@@ -26,7 +26,7 @@ public:
 	}
 };
 
-class FIREFLY_API KeyReleaseEvent : public KeyEvent
+class KeyReleaseEvent : public KeyEvent
 {
 public:
 	KeyReleaseEvent(int keyCode) :
@@ -38,7 +38,7 @@ public:
 	}
 };
 
-class FIREFLY_API KeyRepeatEvent : public KeyEvent
+class KeyRepeatEvent : public KeyEvent
 {
 public:
 	KeyRepeatEvent(int keyCode) :

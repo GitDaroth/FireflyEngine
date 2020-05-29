@@ -2,9 +2,9 @@
 
 #include "Event.h"
 
-class FIREFLY_API MouseEvent : public InputEvent {};
+class MouseEvent : public InputEvent {};
 
-class FIREFLY_API MouseButtonEvent : public MouseEvent
+class MouseButtonEvent : public MouseEvent
 {
 public:
 	MouseButtonEvent(int buttonCode) :
@@ -16,7 +16,7 @@ protected:
 	int m_buttonCode;
 };
 
-class FIREFLY_API MouseButtonPressEvent : public MouseButtonEvent
+class MouseButtonPressEvent : public MouseButtonEvent
 {
 public:
 	MouseButtonPressEvent(int buttonCode) :
@@ -28,7 +28,7 @@ public:
 	}
 };
 
-class FIREFLY_API MouseButtonReleaseEvent : public MouseButtonEvent
+class MouseButtonReleaseEvent : public MouseButtonEvent
 {
 public:
 	MouseButtonReleaseEvent(int buttonCode) :
@@ -40,7 +40,7 @@ public:
 	}
 };
 
-class FIREFLY_API MouseMoveEvent : public MouseEvent
+class MouseMoveEvent : public MouseEvent
 {
 public:
 	MouseMoveEvent(int xPos, int yPos) :
@@ -58,7 +58,7 @@ protected:
 	int m_xPos, m_yPos;
 };
 
-class FIREFLY_API MouseScrollEvent : public MouseEvent
+class MouseScrollEvent : public MouseEvent
 {
 public:
 	MouseScrollEvent(float xOffset, float yOffset) :

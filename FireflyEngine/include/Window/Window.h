@@ -1,12 +1,11 @@
 #pragma once
 
 #include "Core.h"
-#include "pch.h"
 #include "Event/Event.h"
 
 namespace Firefly
 {
-	class FIREFLY_API Window
+	class Window
 	{
 	public:
 		Window(const std::string& title = "Firefly Engine", int width = 1280, int height = 720);

@@ -42,7 +42,7 @@ set(inputFiles
 	include/Input/MouseButtonCodes.h
 	src/Input/Input.cpp)
 
-add_library(FireflyEngine SHARED ${coreFiles} ${windowFiles} ${eventFiles} ${inputFiles})
+add_library(FireflyEngine STATIC ${coreFiles} ${windowFiles} ${eventFiles} ${inputFiles})
 
 source_group("" FILES ${coreFiles})
 source_group("\\Window" FILES ${windowFiles})
@@ -61,8 +61,4 @@ target_link_libraries(FireflyEngine
 
 target_include_directories(FireflyEngine PUBLIC "include")
 target_precompile_headers(FireflyEngine PRIVATE "include/pch.h")
-
-target_compile_definitions(FireflyEngine 
-	PRIVATE 
-		FIREFLY_ENGINE 
-		GLFW_INCLUDE_NONE)
+target_compile_definitions(FireflyEngine PRIVATE GLFW_INCLUDE_NONE)

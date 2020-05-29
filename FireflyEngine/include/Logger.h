@@ -6,7 +6,7 @@
 
 namespace Firefly
 {
-	class FIREFLY_API Logger
+	class Logger
 	{
 	public:
 		static void Init();
