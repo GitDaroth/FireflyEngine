@@ -30,6 +30,11 @@ set(windowFiles
 	include/Window/WindowsWindow.h
 	src/Window/WindowsWindow.cpp)
 
+set(renderingFiles
+	include/Rendering/GraphicsContext.h
+	include/Rendering/OpenGLContext.h
+	src/Rendering/OpenGLContext.cpp)
+
 set(eventFiles
 	include/Event/Event.h
 	include/Event/MouseEvent.h
@@ -37,15 +42,16 @@ set(eventFiles
 	include/Event/WindowEvent.h)
 
 set(inputFiles
-	include/Input/Input.h
 	include/Input/KeyCodes.h
 	include/Input/MouseButtonCodes.h
+	include/Input/Input.h
 	src/Input/Input.cpp)
 
-add_library(FireflyEngine STATIC ${coreFiles} ${windowFiles} ${eventFiles} ${inputFiles})
+add_library(FireflyEngine STATIC ${coreFiles} ${windowFiles} ${renderingFiles} ${eventFiles} ${inputFiles})
 
 source_group("" FILES ${coreFiles})
 source_group("\\Window" FILES ${windowFiles})
+source_group("\\Rendering" FILES ${renderingFiles})
 source_group("\\Event" FILES ${eventFiles})
 source_group("\\Input" FILES ${inputFiles})
 

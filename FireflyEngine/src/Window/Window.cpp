@@ -7,12 +7,15 @@ namespace Firefly
 		m_title(title),
 		m_width(width),
 		m_height(height),
-		m_isVSyncEnabled(false)
+		m_isVSyncEnabled(false),
+		m_context(nullptr)
 	{
+		Logger::Info("Firefly Engine", "Creating a window: {0} ({1}x{2})", title, width, height);
 	}
 
 	Window::~Window()
 	{
+		delete m_context;
 	}
 
 	void Window::SetEventCallback(const std::function<void(std::shared_ptr<Event>)>& eventCallback)

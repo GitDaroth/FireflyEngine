@@ -1,10 +1,9 @@
 #include "pch.h"
 #include "Window/WindowsWindow.h"
 
+#include "Rendering/OpenGLContext.h"
 #include "Event/WindowEvent.h"
 #include "Input/Input.h"
-
-#include <glad/glad.h>
 
 namespace Firefly
 {
@@ -14,8 +13,6 @@ namespace Firefly
 	WindowsWindow::WindowsWindow(const std::string& title, int width, int height) :
 		Window(title, width, height)
 	{
-		Logger::Info("Firefly Engine", "Creating a Windows window: {0} ({1}x{2})", title, width, height);
-
 		if (!s_isWindowInitialized)
 		{
 			int success = glfwInit();
@@ -29,11 +26,11 @@ namespace Firefly
 		}
 
 		m_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+		FIREFLY_ASSERT(m_window, "Unable to create window with GLFW!");
 		s_windowCount++;
-		glfwMakeContextCurrent(m_window);
 
-		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-		FIREFLY_ASSERT(status, "Unable to initialize glad!");
+		m_context = new OpenGLContext(m_window);
+		m_context->Init();
 
 		glfwSetWindowUserPointer(m_window, this);
 		EnableVSync(true);
@@ -53,7 +50,7 @@ namespace Firefly
 	void WindowsWindow::OnUpdate()
 	{
 		glfwPollEvents();
-		glfwSwapBuffers(m_window);
+		m_context->SwapBuffers();
 	}
 
 	void WindowsWindow::OnSetTitle(const std::string& title)

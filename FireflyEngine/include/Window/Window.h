@@ -2,6 +2,7 @@
 
 #include "Core.h"
 #include "Event/Event.h"
+#include "Rendering/GraphicsContext.h"
 
 namespace Firefly
 {
@@ -35,6 +36,7 @@ namespace Firefly
 		virtual void SetupMouseButtonCodeConversionMap() = 0;
 
 		std::function<void(std::shared_ptr<Event>)> m_eventCallback;
+		GraphicsContext* m_context;
 		std::string m_title;
 		int m_width;
 		int m_height;

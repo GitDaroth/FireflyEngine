@@ -5,6 +5,8 @@
 #include "Event/WindowEvent.h"
 #include "Input/Input.h"
 
+#include <glad/glad.h>
+
 namespace Firefly
 {
 	Application::Application()
@@ -26,6 +28,9 @@ namespace Firefly
 	{
 		while (m_isRunning)
 		{
+			glClearColor(0.1f, 0.1f, 0.1f, 1.f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
 			SortLayers();
 			for (auto layer : m_layers)
 			{
