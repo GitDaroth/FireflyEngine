@@ -5,8 +5,8 @@ namespace Firefly
 	class IndexBuffer
 	{
 	public:
-		IndexBuffer() {};
-		virtual ~IndexBuffer() {};
+		IndexBuffer() {}
+		virtual ~IndexBuffer() {}
 
 		virtual void Init(uint32_t* indices, uint32_t size) = 0;
 		virtual void Bind() const = 0;

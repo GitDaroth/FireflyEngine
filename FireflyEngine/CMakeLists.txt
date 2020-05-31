@@ -37,6 +37,7 @@ set(renderingFiles
 	src/Rendering/Renderer.cpp
 	include/Rendering/GraphicsContext.h
 	include/Rendering/Shader.h
+	include/Rendering/VertexArray.h
 	include/Rendering/VertexBuffer.h
 	include/Rendering/IndexBuffer.h)
 
@@ -45,6 +46,8 @@ set(renderingOpenGLFiles
 	src/Rendering/OpenGL/OpenGLContext.cpp
 	include/Rendering/OpenGL/OpenGLShader.h
 	src/Rendering/OpenGL/OpenGLShader.cpp
+	include/Rendering/OpenGL/OpenGLVertexArray.h
+	src/Rendering/OpenGL/OpenGLVertexArray.cpp
 	include/Rendering/OpenGL/OpenGLVertexBuffer.h
 	src/Rendering/OpenGL/OpenGLVertexBuffer.cpp
 	include/Rendering/OpenGL/OpenGLIndexBuffer.h

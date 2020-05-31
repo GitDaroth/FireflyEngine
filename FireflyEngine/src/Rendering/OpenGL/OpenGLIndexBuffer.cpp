@@ -18,7 +18,7 @@ namespace Firefly
 	{
 		m_count = size / sizeof(uint32_t);
 		glGenBuffers(1, &m_id);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_id);
+		Bind();
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, indices, GL_STATIC_DRAW);
 	}
 
