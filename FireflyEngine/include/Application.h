@@ -29,6 +29,7 @@ namespace Firefly
 		std::vector<std::shared_ptr<Layer>> m_layers;	// front is background, back is foreground
 
 		std::unique_ptr<Renderer> m_renderer;
+		std::shared_ptr<Camera> m_camera;
 		std::shared_ptr<Shader> m_shader;
 		std::shared_ptr<VertexArray> m_vertexArray;
 	};

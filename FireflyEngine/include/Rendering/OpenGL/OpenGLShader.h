@@ -14,6 +14,8 @@ namespace Firefly
 		virtual void Bind() override;
 		virtual void Unbind() override;
 
+		virtual void SetUniformMatrix4(const std::string& name, const glm::mat4& matrix) override;
+
 	private:
 		void CompileShaders(const std::string& vertexShaderSource, const std::string& fragmentShaderSource);
 		void LinkShaders();

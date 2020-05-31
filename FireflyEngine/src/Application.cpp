@@ -16,6 +16,9 @@ namespace Firefly
 
 		m_window->SetEventCallback(std::bind(&Application::OnEvent, this, std::placeholders::_1));
 
+		m_camera = std::make_shared<Camera>(m_window->GetWidth(), m_window->GetHeight());
+		m_camera->SetPosition(glm::vec3(0.f, 0.f, 2.f));
+
 		m_renderer = std::make_unique<Renderer>();
 		
 		float vertices[3 * 7] = {
@@ -46,6 +49,8 @@ namespace Firefly
 			layout(location = 0) in vec3 position;
 			layout(location = 1) in vec4 color;
 
+			uniform mat4 viewProjectionMat;
+
 			out vec3 pos;
 			out vec4 col;
 
@@ -53,7 +58,7 @@ namespace Firefly
 			{
 				pos = position;
 				col = color;
-				gl_Position = vec4(position, 1.0);
+				gl_Position = viewProjectionMat * vec4(position, 1.0);
 			}
 		)";
 
@@ -85,12 +90,11 @@ namespace Firefly
 	{
 		while (m_isRunning)
 		{
-			RenderingAPI::GetRenderFunctions()->SetClearColor({ 0.1f, 0.1f, 0.1f, 1.f });
+			RenderingAPI::GetRenderFunctions()->SetClearColor(glm::vec4(0.1f, 0.1f, 0.1f, 1.f));
 			RenderingAPI::GetRenderFunctions()->Clear();
 
-			m_renderer->BeginScene();
-			m_shader->Bind();
-			m_renderer->SubmitDraw(m_vertexArray);
+			m_renderer->BeginScene(m_camera);
+			m_renderer->SubmitDraw(m_shader, m_vertexArray);
 			m_renderer->EndScene();
 
 			SortLayers();

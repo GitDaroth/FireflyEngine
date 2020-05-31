@@ -13,9 +13,9 @@ namespace Firefly
 	{
 	}
 
-	void Renderer::BeginScene()
+	void Renderer::BeginScene(std::shared_ptr<Camera> camera)
 	{
-
+		m_viewProjectionMatrix = camera->GetProjectionMatrix() * camera->GetViewMatrix();
 	}
 
 	void Renderer::EndScene()
@@ -23,8 +23,11 @@ namespace Firefly
 
 	}
 
-	void Renderer::SubmitDraw(std::shared_ptr<VertexArray> vertexArray)
+	void Renderer::SubmitDraw(std::shared_ptr<Shader> shader, std::shared_ptr<VertexArray> vertexArray)
 	{
+		shader->Bind();
+		shader->SetUniformMatrix4("viewProjectionMat", m_viewProjectionMatrix);
+
 		vertexArray->Bind();
 		RenderingAPI::GetRenderFunctions()->DrawIndexed(vertexArray);
 	}

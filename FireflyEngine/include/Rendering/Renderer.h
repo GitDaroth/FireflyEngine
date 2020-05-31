@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Rendering/VertexArray.h"
+#include "Rendering/Shader.h"
+#include "Rendering/Camera.h"
 
 namespace Firefly
 {
@@ -10,8 +12,11 @@ namespace Firefly
 		Renderer();
 		~Renderer();
 
-		void BeginScene();
+		void BeginScene(std::shared_ptr<Camera> camera);
 		void EndScene();
-		void SubmitDraw(std::shared_ptr<VertexArray> vertexArray);
+		void SubmitDraw(std::shared_ptr<Shader> shader, std::shared_ptr<VertexArray> vertexArray);
+
+	private:
+		glm::mat4 m_viewProjectionMatrix;
 	};
 }

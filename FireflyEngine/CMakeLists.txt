@@ -31,6 +31,8 @@ set(windowFiles
 	src/Window/WindowsWindow.cpp)
 
 set(renderingFiles
+	include/Rendering/Camera.h
+	src/Rendering/Camera.cpp
 	include/Rendering/RenderingAPI.h
 	src/Rendering/RenderingAPI.cpp
 	include/Rendering/Renderer.h
