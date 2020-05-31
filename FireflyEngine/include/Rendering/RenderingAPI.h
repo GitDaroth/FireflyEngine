@@ -5,6 +5,7 @@
 #include "Rendering/VertexArray.h"
 #include "Rendering/VertexBuffer.h"
 #include "Rendering/IndexBuffer.h"
+#include "Rendering/RenderFunctions.h"
 
 namespace Firefly
 {
@@ -25,6 +26,7 @@ namespace Firefly
 		static std::shared_ptr<VertexArray> CreateVertexArray();
 		static std::shared_ptr<VertexBuffer> CreateVertexBuffer();
 		static std::shared_ptr<IndexBuffer> CreateIndexBuffer();
+		static std::shared_ptr<RenderFunctions> GetRenderFunctions();
 
 		static void SetType(Type type);
 		static Type GetType();

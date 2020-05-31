@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rendering/RenderingAPI.h"
+#include "Rendering/VertexArray.h"
 
 namespace Firefly
 {
@@ -10,11 +10,8 @@ namespace Firefly
 		Renderer();
 		~Renderer();
 
-		void Init();
-		void Draw();
-
-	private:
-		std::shared_ptr<Shader> m_shader;
-		std::shared_ptr<VertexArray> m_vertexArray;
+		void BeginScene();
+		void EndScene();
+		void SubmitDraw(std::shared_ptr<VertexArray> vertexArray);
 	};
 }

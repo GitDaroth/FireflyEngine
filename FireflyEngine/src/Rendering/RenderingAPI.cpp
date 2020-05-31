@@ -6,6 +6,7 @@
 #include "Rendering/OpenGL/OpenGLVertexArray.h"
 #include "Rendering/OpenGL/OpenGLVertexBuffer.h"
 #include "Rendering/OpenGL/OpenGLIndexBuffer.h"
+#include "Rendering/OpenGL/OpenGLRenderFunctions.h"
 
 namespace Firefly
 {
@@ -85,6 +86,23 @@ namespace Firefly
 		{
 		case RenderingAPI::Type::OpenGL:
 			return std::make_shared<OpenGLIndexBuffer>();
+			break;
+		case RenderingAPI::Type::Vulkan:
+		case RenderingAPI::Type::DirectX12:
+		case RenderingAPI::Type::Metal:
+		case RenderingAPI::Type::None:
+		default:
+			return nullptr;
+			break;
+		}
+	}
+
+	std::shared_ptr<RenderFunctions> RenderingAPI::GetRenderFunctions()
+	{
+		switch (s_type)
+		{
+		case RenderingAPI::Type::OpenGL:
+			return std::make_shared<OpenGLRenderFunctions>();
 			break;
 		case RenderingAPI::Type::Vulkan:
 		case RenderingAPI::Type::DirectX12:
