@@ -12,11 +12,11 @@ namespace Firefly
 		virtual ~WindowsWindow();
 
 		virtual void OnUpdate() override;
+
+	protected:
 		virtual void OnSetTitle(const std::string& title) override;
 		virtual void OnSetSize(int width, int height) override;
 		virtual void OnEnableVSync(bool enabled) override;
-
-	protected:
 		virtual void SetupKeyCodeConversionMap() override;
 		virtual void SetupMouseButtonCodeConversionMap() override;
 

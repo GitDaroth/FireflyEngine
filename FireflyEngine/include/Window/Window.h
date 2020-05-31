@@ -27,16 +27,16 @@ namespace Firefly
 		int ToFireflyMouseButtonCode(int keyCode) const;
 
 		virtual void OnUpdate() = 0;
+
+	protected:
 		virtual void OnSetTitle(const std::string& title) = 0;
 		virtual void OnSetSize(int width, int height) = 0;
 		virtual void OnEnableVSync(bool enabled) = 0;
-
-	protected:
 		virtual void SetupKeyCodeConversionMap() = 0;
 		virtual void SetupMouseButtonCodeConversionMap() = 0;
 
 		std::function<void(std::shared_ptr<Event>)> m_eventCallback;
-		GraphicsContext* m_context;
+		std::shared_ptr<GraphicsContext> m_context;
 		std::string m_title;
 		int m_width;
 		int m_height;

@@ -15,7 +15,6 @@ namespace Firefly
 
 	Window::~Window()
 	{
-		delete m_context;
 	}
 
 	void Window::SetEventCallback(const std::function<void(std::shared_ptr<Event>)>& eventCallback)

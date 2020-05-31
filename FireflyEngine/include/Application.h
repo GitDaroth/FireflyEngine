@@ -3,6 +3,7 @@
 #include "Core.h"
 #include "Window/Window.h"
 #include "Layer.h"
+#include "Rendering/Renderer.h"
 
 namespace Firefly
 {
@@ -25,5 +26,6 @@ namespace Firefly
 		std::unique_ptr<Window> m_window;
 		bool m_isRunning = true;
 		std::vector<std::shared_ptr<Layer>> m_layers;	// front is background, back is foreground
+		std::unique_ptr<Renderer> m_renderer;
 	};
 }

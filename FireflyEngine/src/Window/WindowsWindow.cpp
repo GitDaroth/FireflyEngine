@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Window/WindowsWindow.h"
 
-#include "Rendering/OpenGLContext.h"
+#include "Rendering/RenderingAPI.h"
 #include "Event/WindowEvent.h"
 #include "Input/Input.h"
 
@@ -29,8 +29,8 @@ namespace Firefly
 		FIREFLY_ASSERT(m_window, "Unable to create window with GLFW!");
 		s_windowCount++;
 
-		m_context = new OpenGLContext(m_window);
-		m_context->Init();
+		m_context = RenderingAPI::CreateContext();
+		m_context->Init(m_window);
 
 		glfwSetWindowUserPointer(m_window, this);
 		EnableVSync(true);

@@ -5,8 +5,6 @@
 #include "Event/WindowEvent.h"
 #include "Input/Input.h"
 
-#include <glad/glad.h>
-
 namespace Firefly
 {
 	Application::Application()
@@ -16,6 +14,9 @@ namespace Firefly
 		#endif
 
 		m_window->SetEventCallback(std::bind(&Application::OnEvent, this, std::placeholders::_1));
+
+		m_renderer = std::make_unique<Renderer>();
+		m_renderer->Init();
 	}
 
 	Application::~Application()
@@ -28,8 +29,7 @@ namespace Firefly
 	{
 		while (m_isRunning)
 		{
-			glClearColor(0.1f, 0.1f, 0.1f, 1.f);
-			glClear(GL_COLOR_BUFFER_BIT);
+			m_renderer->Draw();
 
 			SortLayers();
 			for (auto layer : m_layers)

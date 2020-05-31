@@ -31,9 +31,24 @@ set(windowFiles
 	src/Window/WindowsWindow.cpp)
 
 set(renderingFiles
+	include/Rendering/RenderingAPI.h
+	src/Rendering/RenderingAPI.cpp
+	include/Rendering/Renderer.h
+	src/Rendering/Renderer.cpp
 	include/Rendering/GraphicsContext.h
-	include/Rendering/OpenGLContext.h
-	src/Rendering/OpenGLContext.cpp)
+	include/Rendering/Shader.h
+	include/Rendering/VertexBuffer.h
+	include/Rendering/IndexBuffer.h)
+
+set(renderingOpenGLFiles
+	include/Rendering/OpenGL/OpenGLContext.h
+	src/Rendering/OpenGL/OpenGLContext.cpp
+	include/Rendering/OpenGL/OpenGLShader.h
+	src/Rendering/OpenGL/OpenGLShader.cpp
+	include/Rendering/OpenGL/OpenGLVertexBuffer.h
+	src/Rendering/OpenGL/OpenGLVertexBuffer.cpp
+	include/Rendering/OpenGL/OpenGLIndexBuffer.h
+	src/Rendering/OpenGL/OpenGLIndexBuffer.cpp)
 
 set(eventFiles
 	include/Event/Event.h
@@ -47,11 +62,18 @@ set(inputFiles
 	include/Input/Input.h
 	src/Input/Input.cpp)
 
-add_library(FireflyEngine STATIC ${coreFiles} ${windowFiles} ${renderingFiles} ${eventFiles} ${inputFiles})
+add_library(FireflyEngine STATIC 
+	${coreFiles} 
+	${windowFiles} 
+	${renderingFiles} 
+	${renderingOpenGLFiles} 
+	${eventFiles} 
+	${inputFiles})
 
 source_group("" FILES ${coreFiles})
 source_group("\\Window" FILES ${windowFiles})
 source_group("\\Rendering" FILES ${renderingFiles})
+source_group("\\Rendering\\OpenGL" FILES ${renderingOpenGLFiles})
 source_group("\\Event" FILES ${eventFiles})
 source_group("\\Input" FILES ${inputFiles})
 
