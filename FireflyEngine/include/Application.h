@@ -22,11 +22,13 @@ namespace Firefly
 		void RemoveLayer(const std::string& layerName);
 
 	private:
+		void UpdateLayers(float deltaTime);
 		void SortLayers();
 
 		std::unique_ptr<Window> m_window;
 		bool m_isRunning = true;
 		std::vector<std::shared_ptr<Layer>> m_layers;	// front is background, back is foreground
+		float m_lastFrameTime;
 
 		std::unique_ptr<Renderer> m_renderer;
 		std::shared_ptr<Camera> m_camera;

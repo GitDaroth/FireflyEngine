@@ -21,7 +21,7 @@ namespace Firefly
 
 		virtual void OnAttach() = 0;
 		virtual void OnDetach() = 0;
-		virtual void OnUpdate() = 0;
+		virtual void OnUpdate(float deltaTime) = 0;
 		virtual void OnEvent(std::shared_ptr<Event> event) = 0;
 
 	protected:

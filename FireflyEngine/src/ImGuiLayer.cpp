@@ -22,7 +22,7 @@ namespace Firefly
 
 	}
 
-	void ImGuiLayer::OnUpdate()
+	void ImGuiLayer::OnUpdate(float deltaTime)
 	{
 
 	}

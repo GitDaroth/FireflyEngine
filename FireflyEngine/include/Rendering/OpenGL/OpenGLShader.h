@@ -14,6 +14,11 @@ namespace Firefly
 		virtual void Bind() override;
 		virtual void Unbind() override;
 
+		virtual void SetUniformFloat(const std::string& name, const float value) override;
+		virtual void SetUniformFloat2(const std::string& name, const glm::vec2& value) override;
+		virtual void SetUniformFloat3(const std::string& name, const glm::vec3& value) override;
+		virtual void SetUniformFloat4(const std::string& name, const glm::vec4& value) override;
+		virtual void SetUniformMatrix3(const std::string& name, const glm::mat3& matrix) override;
 		virtual void SetUniformMatrix4(const std::string& name, const glm::mat4& matrix) override;
 
 	private:

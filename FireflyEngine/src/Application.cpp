@@ -6,9 +6,13 @@
 #include "Input/Input.h"
 #include "Rendering/RenderingAPI.h"
 
+#include <GLFW/glfw3.h>
+#include <glm/gtc/matrix_transform.hpp>
+
 namespace Firefly
 {
-	Application::Application()
+	Application::Application() : 
+		m_lastFrameTime(0.f)
 	{
 		#ifdef FIREFLY_WINDOWS
 			m_window = std::make_unique<WindowsWindow>();
@@ -50,6 +54,7 @@ namespace Firefly
 			layout(location = 1) in vec4 color;
 
 			uniform mat4 viewProjectionMat;
+			uniform mat4 modelMat;
 
 			out vec3 pos;
 			out vec4 col;
@@ -58,7 +63,7 @@ namespace Firefly
 			{
 				pos = position;
 				col = color;
-				gl_Position = viewProjectionMat * vec4(position, 1.0);
+				gl_Position = viewProjectionMat * modelMat * vec4(position, 1.0);
 			}
 		)";
 
@@ -88,22 +93,25 @@ namespace Firefly
 
 	void Application::Run()
 	{
+		m_lastFrameTime = (float)glfwGetTime();
 		while (m_isRunning)
 		{
+			float time = (float)glfwGetTime();
+			float deltaTime = time - m_lastFrameTime;
+			m_lastFrameTime = time;
+
+			//Logger::Debug("FireflyEngine", "{0} FPS ({1} ms)", 1.f / deltaTime, deltaTime * 1000.f);
+
 			RenderingAPI::GetRenderFunctions()->SetClearColor(glm::vec4(0.1f, 0.1f, 0.1f, 1.f));
 			RenderingAPI::GetRenderFunctions()->Clear();
 
 			m_renderer->BeginScene(m_camera);
-			m_renderer->SubmitDraw(m_shader, m_vertexArray);
+			m_renderer->SubmitDraw(m_shader, m_vertexArray, glm::translate(glm::mat4(1.f), glm::vec3(1.f, 0.f, 0.f)));
+			m_renderer->SubmitDraw(m_shader, m_vertexArray, glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.f)));
+			m_renderer->SubmitDraw(m_shader, m_vertexArray, glm::translate(glm::mat4(1.f), glm::vec3(-1.f, 0.f, 0.f)));
 			m_renderer->EndScene();
 
-			SortLayers();
-			for (auto layer : m_layers)
-			{
-				if(layer->IsEnabled())
-					layer->OnUpdate();
-			}
-				
+			UpdateLayers(deltaTime);
 			m_window->OnUpdate();
 		}
 	}
@@ -156,6 +164,16 @@ namespace Firefly
 				m_layers.erase(iter);
 				break;
 			}
+		}
+	}
+
+	void Application::UpdateLayers(float deltaTime)
+	{
+		SortLayers();
+		for (auto layer : m_layers)
+		{
+			if (layer->IsEnabled())
+				layer->OnUpdate(deltaTime);
 		}
 	}
 
