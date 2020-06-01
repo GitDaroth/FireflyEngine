@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core.h"
+#include "Core/Core.h"
 #include "pch.h"
 
 class Event : public std::enable_shared_from_this<Event>

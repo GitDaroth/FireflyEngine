@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core.h"
+#include "Core/Core.h"
 #include "Event/KeyEvent.h"
 #include "Event/MouseEvent.h"
 #include "Input/KeyCodes.h"

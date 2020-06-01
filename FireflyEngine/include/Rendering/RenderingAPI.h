@@ -6,6 +6,7 @@
 #include "Rendering/VertexBuffer.h"
 #include "Rendering/IndexBuffer.h"
 #include "Rendering/RenderFunctions.h"
+#include "Rendering/Texture.h"
 
 namespace Firefly
 {
@@ -23,6 +24,7 @@ namespace Firefly
 
 		static std::shared_ptr<GraphicsContext> CreateContext();
 		static std::shared_ptr<Shader> CreateShader();
+		static std::shared_ptr<Texture2D> CreateTexture2D();
 		static std::shared_ptr<VertexArray> CreateVertexArray();
 		static std::shared_ptr<VertexBuffer> CreateVertexBuffer();
 		static std::shared_ptr<IndexBuffer> CreateIndexBuffer();

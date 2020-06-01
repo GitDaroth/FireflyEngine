@@ -33,6 +33,12 @@ namespace Firefly
 		glUseProgram(0);
 	}
 
+	void OpenGLShader::SetUniformInt(const std::string& name, const int value)
+	{
+		GLint location = glGetUniformLocation(m_program, name.c_str());
+		glUniform1i(location, value);
+	}
+
 	void OpenGLShader::SetUniformFloat(const std::string& name, const float value)
 	{
 		GLint location = glGetUniformLocation(m_program, name.c_str());

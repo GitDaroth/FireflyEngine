@@ -5,6 +5,7 @@
 #include "Layer.h"
 #include "Rendering/Renderer.h"
 #include "Rendering/Shader.h"
+#include "Rendering/Texture.h"
 
 namespace Firefly
 {
@@ -33,6 +34,7 @@ namespace Firefly
 		std::unique_ptr<Renderer> m_renderer;
 		std::shared_ptr<Camera> m_camera;
 		std::shared_ptr<Shader> m_shader;
+		std::shared_ptr<Texture2D> m_texture;
 		std::shared_ptr<VertexArray> m_vertexArray;
 	};
 }

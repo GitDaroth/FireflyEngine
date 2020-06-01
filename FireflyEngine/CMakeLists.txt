@@ -5,24 +5,27 @@ add_subdirectory(3rdParty/GLFW)
 add_subdirectory(3rdParty/glad)
 add_subdirectory(3rdParty/glm)
 add_subdirectory(3rdParty/imgui)
+add_subdirectory(3rdParty/stb_image)
 
-set_target_properties(spdlog glad glm_static imgui PROPERTIES FOLDER 3rdParty)
+set_target_properties(spdlog glad glm_static imgui stb_image PROPERTIES FOLDER 3rdParty)
 set_target_properties(glfw uninstall PROPERTIES FOLDER 3rdParty/GLFW)
 
-set(coreFiles
+set(miscFiles
 	include/FireflyEngine.h
-	include/EntryPoint.h
-	include/Core.h
-	include/ImGuiLayer.h
-	src/ImGuiLayer.cpp
-	include/Layer.h
-	src/Layer.cpp
-	include/Application.h
-	src/Application.cpp
-	include/Logger.h
-	src/Logger.cpp
 	include/pch.h
 	src/pch.cpp)
+
+set(coreFiles
+	include/Core/EntryPoint.h
+	include/Core/Core.h
+	include/Core/ImGuiLayer.h
+	src/Core/ImGuiLayer.cpp
+	include/Core/Layer.h
+	src/Core/Layer.cpp
+	include/Core/Application.h
+	src/Core/Application.cpp
+	include/Core/Logger.h
+	src/Core/Logger.cpp)
 
 set(windowFiles
 	include/Window/Window.h
@@ -39,6 +42,7 @@ set(renderingFiles
 	src/Rendering/Renderer.cpp
 	include/Rendering/GraphicsContext.h
 	include/Rendering/Shader.h
+	include/Rendering/Texture.h
 	include/Rendering/VertexArray.h
 	include/Rendering/VertexBuffer.h
 	include/Rendering/IndexBuffer.h
@@ -49,6 +53,8 @@ set(renderingOpenGLFiles
 	src/Rendering/OpenGL/OpenGLContext.cpp
 	include/Rendering/OpenGL/OpenGLShader.h
 	src/Rendering/OpenGL/OpenGLShader.cpp
+	include/Rendering/OpenGL/OpenGLTexture.h
+	src/Rendering/OpenGL/OpenGLTexture.cpp
 	include/Rendering/OpenGL/OpenGLVertexArray.h
 	src/Rendering/OpenGL/OpenGLVertexArray.cpp
 	include/Rendering/OpenGL/OpenGLVertexBuffer.h
@@ -71,6 +77,7 @@ set(inputFiles
 	src/Input/Input.cpp)
 
 add_library(FireflyEngine STATIC 
+	${miscFiles}
 	${coreFiles} 
 	${windowFiles} 
 	${renderingFiles} 
@@ -78,13 +85,13 @@ add_library(FireflyEngine STATIC
 	${eventFiles} 
 	${inputFiles})
 
-source_group("" FILES ${coreFiles})
+source_group("" FILES ${miscFiles})
+source_group("\\Core" FILES ${coreFiles})
 source_group("\\Window" FILES ${windowFiles})
 source_group("\\Rendering" FILES ${renderingFiles})
 source_group("\\Rendering\\OpenGL" FILES ${renderingOpenGLFiles})
 source_group("\\Event" FILES ${eventFiles})
 source_group("\\Input" FILES ${inputFiles})
-
 
 target_link_libraries(FireflyEngine 
 	PUBLIC
@@ -93,7 +100,8 @@ target_link_libraries(FireflyEngine
 	PRIVATE
 		glfw
 		glad
-		imgui)
+		imgui
+		stb_image)
 
 target_include_directories(FireflyEngine PUBLIC "include")
 target_precompile_headers(FireflyEngine PRIVATE "include/pch.h")

@@ -1,5 +1,5 @@
 #include "pch.h"
-#include "Application.h"
+#include "Core/Application.h"
 
 #include "Window/WindowsWindow.h"
 #include "Event/WindowEvent.h"
@@ -25,20 +25,20 @@ namespace Firefly
 
 		m_renderer = std::make_unique<Renderer>();
 		
-		float vertices[3 * 7] = {
-			// position		   color
-			-0.5f, -0.5f, 0.f, 0.8f, 0.f,  0.f,  1.f,
-			 0.5f, -0.5f, 0.f, 0.8f, 0.8f, 0.f,  1.f,
-			 0.f,   0.4f, 0.f, 0.8f, 0.f,  0.8f, 1.f
+		float vertices[5 * 4] = {
+			-0.5f, -0.5f, 0.f, 0.f, 0.f,
+			 0.5f, -0.5f, 0.f, 1.f, 0.f,
+			 0.5f,  0.5f, 0.f, 1.f, 1.f,
+			-0.5f,  0.5f, 0.f, 0.f, 1.f
 		};
 		std::shared_ptr<VertexBuffer> vertexBuffer = RenderingAPI::CreateVertexBuffer();
 		vertexBuffer->Init(vertices, sizeof(vertices));
 		vertexBuffer->SetLayout({
 			{ ShaderDataType::Float3, "position" },
-			{ ShaderDataType::Float4, "color" }
+			{ ShaderDataType::Float2, "texCoord" }
 		});
 
-		uint32_t indices[3] = { 0, 1, 2 };
+		uint32_t indices[6] = { 0, 1, 2, 2, 3, 0 };
 		std::shared_ptr<IndexBuffer> indexBuffer = RenderingAPI::CreateIndexBuffer();
 		indexBuffer->Init(indices, sizeof(indices));
 
@@ -51,18 +51,16 @@ namespace Firefly
 			#version 330 core
 			
 			layout(location = 0) in vec3 position;
-			layout(location = 1) in vec4 color;
+			layout(location = 1) in vec2 texCoord;
 
 			uniform mat4 viewProjectionMat;
 			uniform mat4 modelMat;
 
-			out vec3 pos;
-			out vec4 col;
+			out vec2 v_texCoord;
 
 			void main()
 			{
-				pos = position;
-				col = color;
+				v_texCoord = texCoord;
 				gl_Position = viewProjectionMat * modelMat * vec4(position, 1.0);
 			}
 		)";
@@ -72,17 +70,24 @@ namespace Firefly
 			
 			layout(location = 0) out vec4 color;
 
-			in vec3 pos;
-			in vec4 col;
+			in vec2 v_texCoord;
+
+			uniform sampler2D textureSampler;
 
 			void main()
 			{
-				color = col;
+				color = texture(textureSampler, v_texCoord);
 			}
 		)";
 
 		m_shader = RenderingAPI::CreateShader();
 		m_shader->Init(vertexShaderSource, fragmentShaderSource);
+
+		m_texture = RenderingAPI::CreateTexture2D();
+		m_texture->Init("assets/textures/test.jpg");
+
+		m_shader->Bind();
+		m_shader->SetUniformInt("textureSampler", 0);
 	}
 
 	Application::~Application()
@@ -106,9 +111,10 @@ namespace Firefly
 			RenderingAPI::GetRenderFunctions()->Clear();
 
 			m_renderer->BeginScene(m_camera);
-			m_renderer->SubmitDraw(m_shader, m_vertexArray, glm::translate(glm::mat4(1.f), glm::vec3(1.f, 0.f, 0.f)));
+			m_texture->Bind(0);
+			m_renderer->SubmitDraw(m_shader, m_vertexArray, glm::translate(glm::mat4(1.f), glm::vec3(1.1f, 0.f, 0.f)));
 			m_renderer->SubmitDraw(m_shader, m_vertexArray, glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.f)));
-			m_renderer->SubmitDraw(m_shader, m_vertexArray, glm::translate(glm::mat4(1.f), glm::vec3(-1.f, 0.f, 0.f)));
+			m_renderer->SubmitDraw(m_shader, m_vertexArray, glm::translate(glm::mat4(1.f), glm::vec3(-1.1f, 0.f, 0.f)));
 			m_renderer->EndScene();
 
 			UpdateLayers(deltaTime);
