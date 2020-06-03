@@ -11,6 +11,7 @@ namespace Firefly
 		virtual ~OpenGLShader() override;
 
 		virtual void Init(const std::string& vertexShaderSource, const std::string& fragmentShaderSource) override;
+		virtual void Init(const std::string& path) override;
 		virtual void Bind() override;
 		virtual void Unbind() override;
 
@@ -23,11 +24,10 @@ namespace Firefly
 		virtual void SetUniformMatrix4(const std::string& name, const glm::mat4& matrix) override;
 
 	private:
-		void CompileShaders(const std::string& vertexShaderSource, const std::string& fragmentShaderSource);
+		void CompileShaders(const std::unordered_map<uint32_t, std::string>& shaderSources);
 		void LinkShaders();
 
-		uint32_t m_vertexShader;
-		uint32_t m_fragmentShader;
+		std::vector<uint32_t> m_shaders;
 		uint32_t m_program;
 	};
 }

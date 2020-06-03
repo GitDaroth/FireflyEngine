@@ -7,6 +7,7 @@ namespace Firefly
 {
 	Renderer::Renderer()
 	{
+		RenderingAPI::GetRenderFunctions()->Init();
 	}
 
 	Renderer::~Renderer()

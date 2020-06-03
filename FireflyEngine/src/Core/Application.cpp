@@ -138,7 +138,22 @@ namespace Firefly
 		}
 
 		if (event->IsType<WindowCloseEvent>())
+		{
 			m_isRunning = false;
+		}
+		else if (event->IsType<WindowResizeEvent>())
+		{
+			auto resizeEvent = event->AsType<WindowResizeEvent>();
+			int width = resizeEvent->GetWidth();
+			int height = resizeEvent->GetHeight();
+
+			if (width != 0 && height != 0)
+			{
+				RenderingAPI::GetRenderFunctions()->SetViewport(0, 0, width, height);
+				m_camera->SetWidth(width);
+				m_camera->SetHeight(height);
+			}
+		}
 	}
 
 	void Application::AddLayer(std::shared_ptr<Layer> layer)

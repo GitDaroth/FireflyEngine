@@ -1,11 +1,34 @@
 #include "pch.h"
 #include "Rendering/OpenGL/OpenGLShader.h"
 
+#include <fstream>
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
 namespace Firefly
 {
+	static GLenum ShaderTypeFromString(const std::string& type)
+	{
+		if (type == "vertex")
+			return GL_VERTEX_SHADER;
+		if (type == "fragment")
+			return GL_FRAGMENT_SHADER;
+
+		Logger::Error("FireflyEngine", "Unknown shader type:{0}", type);
+		return 0;
+	}
+
+	static const std::string& StringFromShaderType(GLenum shaderType)
+	{
+		if (shaderType == GL_VERTEX_SHADER)
+			return "vertex";
+		if (shaderType == GL_FRAGMENT_SHADER)
+			return "fragment";
+
+		Logger::Error("FireflyEngine", "Unknown shader type:{0}", shaderType);
+		return 0;
+	}
+
 	OpenGLShader::OpenGLShader()
 	{
 	}
@@ -13,13 +36,55 @@ namespace Firefly
 	OpenGLShader::~OpenGLShader()
 	{
 		glDeleteProgram(m_program);
-		glDeleteShader(m_vertexShader);
-		glDeleteShader(m_fragmentShader);
+		for (auto shader : m_shaders)
+			glDeleteShader(shader);
 	}
 
 	void OpenGLShader::Init(const std::string& vertexShaderSource, const std::string& fragmentShaderSource)
 	{
-		CompileShaders(vertexShaderSource, fragmentShaderSource);
+		std::unordered_map<uint32_t, std::string> shaderSources;
+		shaderSources[GL_VERTEX_SHADER] = vertexShaderSource;
+		shaderSources[GL_FRAGMENT_SHADER] = fragmentShaderSource;
+
+		CompileShaders(shaderSources);
+		LinkShaders();
+	}
+
+	void OpenGLShader::Init(const std::string& path)
+	{
+		std::string shaderSource;
+
+		std::ifstream in(path, std::ios::in, std::ios::binary);
+		if (in)
+		{
+			in.seekg(0, std::ios::end);
+			shaderSource.resize(in.tellg());
+			in.seekg(0, std::ios::beg);
+			in.read(&shaderSource[0], shaderSource.size());
+			in.close();
+		}
+		else
+			Logger::Error("FireflyEngine", "Unable to open shader file: {0}", path);
+
+
+		std::unordered_map<uint32_t, std::string> shaderSources;
+
+		const char* typeKeyword = "#type";
+		size_t typeKeywordLength = strlen(typeKeyword);
+		size_t pos = shaderSource.find(typeKeyword, 0);
+		while (pos != std::string::npos)
+		{
+			size_t eol = shaderSource.find_first_of("\r\n", pos);
+			size_t begin = pos + typeKeywordLength + 1;
+			std::string type = shaderSource.substr(begin, eol - begin);
+
+			size_t nextLinePos = shaderSource.find_first_not_of("\r\n", eol);
+			pos = shaderSource.find(typeKeyword, nextLinePos);
+			shaderSources[ShaderTypeFromString(type)] = 
+				shaderSource.substr(nextLinePos, pos - (nextLinePos == std::string::npos ? shaderSource.size() - 1 : nextLinePos));
+		}
+
+		CompileShaders(shaderSources);
 		LinkShaders();
 	}
 
@@ -75,58 +140,39 @@ namespace Firefly
 		glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
 	}
 
-	void OpenGLShader::CompileShaders(const std::string& vertexShaderSource, const std::string& fragmentShaderSource)
+	void OpenGLShader::CompileShaders(const std::unordered_map<uint32_t, std::string>& shaderSources)
 	{
-		m_vertexShader = glCreateShader(GL_VERTEX_SHADER);
-
-		const GLchar* vertexSource = vertexShaderSource.c_str();
-		glShaderSource(m_vertexShader, 1, &vertexSource, 0);
-
-		glCompileShader(m_vertexShader);
-
-		GLint hasBeenCompiled = 0;
-		glGetShaderiv(m_vertexShader, GL_COMPILE_STATUS, &hasBeenCompiled);
-		if (hasBeenCompiled = GL_FALSE)
+		for (auto& shaderSource : shaderSources)
 		{
-			GLint logLength = 0;
-			glGetShaderiv(m_vertexShader, GL_INFO_LOG_LENGTH, &logLength);
+			GLenum type = shaderSource.first;
+			const std::string& source = shaderSource.second;
 
-			std::vector<GLchar> infoLog(logLength);
-			glGetShaderInfoLog(m_vertexShader, logLength, &logLength, &infoLog[0]);
+			GLuint shader = glCreateShader(type);
 
-			Logger::Error("FireflyEngine", "Failed to compile vertex shader:");
-			Logger::Error("FireflyEngine", "  -> {0}", infoLog.data());
+			const GLchar* src = source.c_str();
+			glShaderSource(shader, 1, &src, 0);
 
-			glDeleteShader(m_vertexShader);
+			glCompileShader(shader);
 
-			return;
-		}
+			GLint hasBeenCompiled = 0;
+			glGetShaderiv(shader, GL_COMPILE_STATUS, &hasBeenCompiled);
+			if (hasBeenCompiled = GL_FALSE)
+			{
+				GLint logLength = 0;
+				glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
 
+				std::vector<GLchar> infoLog(logLength);
+				glGetShaderInfoLog(shader, logLength, &logLength, &infoLog[0]);
 
-		m_fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+				Logger::Error("FireflyEngine", "Failed to compile {0} shader:", StringFromShaderType(type));
+				Logger::Error("FireflyEngine", "  -> {0}", infoLog.data());
 
-		const GLchar* fragmentSource = fragmentShaderSource.c_str();
-		glShaderSource(m_fragmentShader, 1, &fragmentSource, 0);
+				glDeleteShader(shader);
 
-		glCompileShader(m_fragmentShader);
+				break;
+			}
 
-		hasBeenCompiled = 0;
-		glGetShaderiv(m_fragmentShader, GL_COMPILE_STATUS, &hasBeenCompiled);
-		if (hasBeenCompiled = GL_FALSE)
-		{
-			GLint logLength = 0;
-			glGetShaderiv(m_fragmentShader, GL_INFO_LOG_LENGTH, &logLength);
-
-			std::vector<GLchar> infoLog(logLength);
-			glGetShaderInfoLog(m_fragmentShader, logLength, &logLength, &infoLog[0]);
-
-			Logger::Error("FireflyEngine", "Failed to compile fragment shader:");
-			Logger::Error("FireflyEngine", "  -> {0}", infoLog.data());
-
-			glDeleteShader(m_vertexShader);
-			glDeleteShader(m_fragmentShader);
-
-			return;
+			m_shaders.push_back(shader);
 		}
 	}
 
@@ -134,8 +180,8 @@ namespace Firefly
 	{
 		m_program = glCreateProgram();
 
-		glAttachShader(m_program, m_vertexShader);
-		glAttachShader(m_program, m_fragmentShader);
+		for(auto shader : m_shaders)
+			glAttachShader(m_program, shader);
 
 		glLinkProgram(m_program);
 
@@ -153,13 +199,13 @@ namespace Firefly
 			Logger::Error("FireflyEngine", "  -> {0}", infoLog.data());
 
 			glDeleteProgram(m_program);
-			glDeleteShader(m_vertexShader);
-			glDeleteShader(m_fragmentShader);
+			for (auto shader : m_shaders)
+				glDeleteShader(shader);
 
 			return;
 		}
 
-		glDetachShader(m_program, m_vertexShader);
-		glDetachShader(m_program, m_fragmentShader);
+		for (auto shader : m_shaders)
+			glDetachShader(m_program, shader);
 	}
 }

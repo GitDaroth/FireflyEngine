@@ -11,6 +11,7 @@ namespace Firefly
 		virtual ~Shader() {}
 
 		virtual void Init(const std::string& vertexShaderSource, const std::string& fragmentShaderSource) = 0;
+		virtual void Init(const std::string& path) = 0;
 		virtual void Bind() = 0;
 		virtual void Unbind() = 0;
 
