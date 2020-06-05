@@ -6,9 +6,11 @@ add_subdirectory(3rdParty/glad)
 add_subdirectory(3rdParty/glm)
 add_subdirectory(3rdParty/imgui)
 add_subdirectory(3rdParty/stb_image)
+add_subdirectory(3rdParty/assimp)
 
 set_target_properties(spdlog glad glm_static imgui stb_image PROPERTIES FOLDER 3rdParty)
 set_target_properties(glfw uninstall PROPERTIES FOLDER 3rdParty/GLFW)
+set_target_properties(assimp assimp_cmd IrrXML UpdateAssimpLibsDebugSymbolsAndDLLs zlib zlibstatic PROPERTIES FOLDER 3rdParty/assimp)
 
 set(miscFiles
 	include/FireflyEngine.h
@@ -97,7 +99,8 @@ target_link_libraries(FireflyEngine
 		glfw
 		glad
 		imgui
-		stb_image)
+		stb_image
+		assimp)
 
 target_include_directories(FireflyEngine PUBLIC "include")
 target_precompile_headers(FireflyEngine PRIVATE "include/pch.h")
