@@ -18,7 +18,7 @@ namespace Firefly
 		return 0;
 	}
 
-	static const std::string& StringFromShaderType(GLenum shaderType)
+	static std::string StringFromShaderType(GLenum shaderType)
 	{
 		if (shaderType == GL_VERTEX_SHADER)
 			return "vertex";
@@ -26,7 +26,7 @@ namespace Firefly
 			return "fragment";
 
 		Logger::Error("FireflyEngine", "Unknown shader type:{0}", shaderType);
-		return 0;
+		return "";
 	}
 
 	OpenGLShader::OpenGLShader()

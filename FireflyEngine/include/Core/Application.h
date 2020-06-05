@@ -2,10 +2,9 @@
 
 #include "Core.h"
 #include "Window/Window.h"
-#include "Layer.h"
-#include "Rendering/Renderer.h"
-#include "Rendering/Shader.h"
-#include "Rendering/Texture.h"
+#include "Event/WindowEvent.h"
+#include "Event/KeyEvent.h"
+#include "Event/MouseEvent.h"
 
 namespace Firefly
 {
@@ -18,23 +17,14 @@ namespace Firefly
 		void Run();
 		void OnEvent(std::shared_ptr<Event> event);
 
-		void AddLayer(std::shared_ptr<Layer> layer);
-		void RemoveLayer(std::shared_ptr<Layer> layer);
-		void RemoveLayer(const std::string& layerName);
-
-	private:
-		void UpdateLayers(float deltaTime);
-		void SortLayers();
+	protected:
+		virtual void OnUpdate(float deltaTime) = 0;
+		virtual void OnWindowEvent(std::shared_ptr<WindowEvent> event) = 0;
+		virtual void OnKeyEvent(std::shared_ptr<KeyEvent> event) = 0;
+		virtual void OnMouseEvent(std::shared_ptr<MouseEvent> event) = 0;
 
 		std::unique_ptr<Window> m_window;
 		bool m_isRunning = true;
-		std::vector<std::shared_ptr<Layer>> m_layers;	// front is background, back is foreground
 		float m_lastFrameTime;
-
-		std::unique_ptr<Renderer> m_renderer;
-		std::shared_ptr<Camera> m_camera;
-		std::shared_ptr<Shader> m_shader;
-		std::shared_ptr<Texture2D> m_texture;
-		std::shared_ptr<VertexArray> m_vertexArray;
 	};
 }

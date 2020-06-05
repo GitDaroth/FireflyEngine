@@ -18,10 +18,6 @@ set(miscFiles
 set(coreFiles
 	include/Core/EntryPoint.h
 	include/Core/Core.h
-	include/Core/ImGuiLayer.h
-	src/Core/ImGuiLayer.cpp
-	include/Core/Layer.h
-	src/Core/Layer.cpp
 	include/Core/Application.h
 	src/Core/Application.cpp
 	include/Core/Logger.h
