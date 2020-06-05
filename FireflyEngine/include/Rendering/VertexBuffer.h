@@ -1,13 +1,12 @@
 #pragma once
 
+#include <glm/glm.hpp>
+
 namespace Firefly
 {
 	enum class ShaderDataType
 	{
-		Float, Float2, Float3, Float4,
-		Int, Int2, Int3, Int4,
-		Mat3, Mat4,
-		Bool
+		Float, Float2, Float3, Float4, Mat3, Mat4
 	};
 
 	class VertexBuffer
@@ -23,47 +22,27 @@ namespace Firefly
 				{
 				case ShaderDataType::Float:
 					m_count = 1;
-					m_size = 4 * m_count;
+					m_size = sizeof(glm::vec1);
 					break;
 				case ShaderDataType::Float2:
 					m_count = 2;
-					m_size = 4 * m_count;
+					m_size = sizeof(glm::vec2);
 					break;
 				case ShaderDataType::Float3:
 					m_count = 3;
-					m_size = 4 * m_count;
+					m_size = sizeof(glm::vec3);
 					break;
 				case ShaderDataType::Float4:
 					m_count = 4;
-					m_size = 4 * m_count;
-					break;
-				case ShaderDataType::Int:
-					m_count = 1;
-					m_size = 4 * m_count;
-					break;
-				case ShaderDataType::Int2:
-					m_count = 2;
-					m_size = 4 * m_count;
-					break;
-				case ShaderDataType::Int3:
-					m_count = 3;
-					m_size = 4 * m_count;
-					break;
-				case ShaderDataType::Int4:
-					m_count = 4;
-					m_size = 4 * m_count;
+					m_size = sizeof(glm::vec4);
 					break;
 				case ShaderDataType::Mat3:
 					m_count = 3 * 3;
-					m_size = 4 * m_count;
+					m_size = sizeof(glm::mat3x3);
 					break;
 				case ShaderDataType::Mat4:
 					m_count = 4 * 4;
-					m_size = 4 * m_count;
-					break;
-				case ShaderDataType::Bool:
-					m_count = 1;
-					m_size = 1 * m_count;
+					m_size = sizeof(glm::mat4x4);
 					break;
 				}
 			}

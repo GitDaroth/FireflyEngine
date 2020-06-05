@@ -24,8 +24,8 @@ namespace Firefly
 		virtual void SetUniformMatrix4(const std::string& name, const glm::mat4& matrix) override;
 
 	private:
-		void CompileShaders(const std::unordered_map<uint32_t, std::string>& shaderSources);
-		void LinkShaders();
+		bool CompileShaders(const std::unordered_map<uint32_t, std::string>& shaderSources);
+		bool LinkShaders();
 
 		std::vector<uint32_t> m_shaders;
 		uint32_t m_program;

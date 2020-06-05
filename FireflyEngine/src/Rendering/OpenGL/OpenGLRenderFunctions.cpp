@@ -5,8 +5,19 @@
 
 namespace Firefly
 {
+	void GLAPIENTRY OpenGLDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+	{
+		if(type == GL_DEBUG_TYPE_ERROR)
+			Logger::Error("FireflyEngine", "OpenGL error: {0}", message);
+	}
+
 	void OpenGLRenderFunctions::Init()
 	{
+		#ifdef DEBUG_MODE
+			glEnable(GL_DEBUG_OUTPUT);
+			glDebugMessageCallback(OpenGLDebugCallback, 0);
+		#endif
+
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	}
@@ -26,8 +37,8 @@ namespace Firefly
 		glViewport(x, y, width, height);
 	}
 
-	void OpenGLRenderFunctions::DrawIndexed(std::shared_ptr<VertexArray> vertexArray)
+	void OpenGLRenderFunctions::DrawIndexed(uint32_t indexCount)
 	{
-		glDrawElements(GL_TRIANGLES, vertexArray->GetIndexBuffer()->GetCount(), GL_UNSIGNED_INT, nullptr);
+		glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, nullptr);
 	}
 }

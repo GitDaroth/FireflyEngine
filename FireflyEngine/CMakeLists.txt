@@ -32,6 +32,12 @@ set(windowFiles
 	src/Window/WindowsWindow.cpp)
 
 set(renderingFiles
+	include/Rendering/Material.h
+	src/Rendering/Material.cpp
+	include/Rendering/Mesh.h
+	src/Rendering/Mesh.cpp
+	include/Rendering/Model.h
+	src/Rendering/Model.cpp
 	include/Rendering/Camera.h
 	src/Rendering/Camera.cpp
 	include/Rendering/RenderingAPI.h

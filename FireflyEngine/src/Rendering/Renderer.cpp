@@ -24,13 +24,13 @@ namespace Firefly
 
 	}
 
-	void Renderer::SubmitDraw(std::shared_ptr<Shader> shader, std::shared_ptr<VertexArray> vertexArray, const glm::mat4& modelMatrix)
+	void Renderer::SubmitDraw(std::shared_ptr<Shader> shader, std::shared_ptr<Mesh> mesh, const glm::mat4& modelMatrix)
 	{
 		shader->Bind();
 		shader->SetUniformMatrix4("viewProjectionMat", m_viewProjectionMatrix);
 		shader->SetUniformMatrix4("modelMat", modelMatrix);
 
-		vertexArray->Bind();
-		RenderingAPI::GetRenderFunctions()->DrawIndexed(vertexArray);
+		mesh->Bind();
+		RenderingAPI::GetRenderFunctions()->DrawIndexed(mesh->GetIndexCount());
 	}
 }

@@ -46,8 +46,8 @@ namespace Firefly
 		shaderSources[GL_VERTEX_SHADER] = vertexShaderSource;
 		shaderSources[GL_FRAGMENT_SHADER] = fragmentShaderSource;
 
-		CompileShaders(shaderSources);
-		LinkShaders();
+		if (CompileShaders(shaderSources))
+			LinkShaders();
 	}
 
 	void OpenGLShader::Init(const std::string& path)
@@ -84,8 +84,8 @@ namespace Firefly
 				shaderSource.substr(nextLinePos, pos - (nextLinePos == std::string::npos ? shaderSource.size() - 1 : nextLinePos));
 		}
 
-		CompileShaders(shaderSources);
-		LinkShaders();
+		if(CompileShaders(shaderSources))
+			LinkShaders();
 	}
 
 	void OpenGLShader::Bind()
@@ -140,7 +140,7 @@ namespace Firefly
 		glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(matrix));
 	}
 
-	void OpenGLShader::CompileShaders(const std::unordered_map<uint32_t, std::string>& shaderSources)
+	bool OpenGLShader::CompileShaders(const std::unordered_map<uint32_t, std::string>& shaderSources)
 	{
 		for (auto& shaderSource : shaderSources)
 		{
@@ -156,7 +156,7 @@ namespace Firefly
 
 			GLint hasBeenCompiled = 0;
 			glGetShaderiv(shader, GL_COMPILE_STATUS, &hasBeenCompiled);
-			if (hasBeenCompiled = GL_FALSE)
+			if (hasBeenCompiled == GL_FALSE)
 			{
 				GLint logLength = 0;
 				glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
@@ -169,14 +169,15 @@ namespace Firefly
 
 				glDeleteShader(shader);
 
-				break;
+				return false;
 			}
 
 			m_shaders.push_back(shader);
 		}
+		return true;
 	}
 
-	void OpenGLShader::LinkShaders()
+	bool OpenGLShader::LinkShaders()
 	{
 		m_program = glCreateProgram();
 
@@ -186,11 +187,11 @@ namespace Firefly
 		glLinkProgram(m_program);
 
 		GLint hasBeenLinked = 0;
-		glGetShaderiv(m_program, GL_LINK_STATUS, &hasBeenLinked);
-		if (hasBeenLinked = GL_FALSE)
+		glGetProgramiv(m_program, GL_LINK_STATUS, &hasBeenLinked);
+		if (hasBeenLinked == GL_FALSE)
 		{
 			GLint logLength = 0;
-			glGetShaderiv(m_program, GL_INFO_LOG_LENGTH, &logLength);
+			glGetProgramiv(m_program, GL_INFO_LOG_LENGTH, &logLength);
 
 			std::vector<GLchar> infoLog(logLength);
 			glGetShaderInfoLog(m_program, logLength, &logLength, &infoLog[0]);
@@ -202,10 +203,12 @@ namespace Firefly
 			for (auto shader : m_shaders)
 				glDeleteShader(shader);
 
-			return;
+			return false;
 		}
 
 		for (auto shader : m_shaders)
 			glDetachShader(m_program, shader);
+
+		return true;
 	}
 }
