@@ -25,16 +25,18 @@ public:
 			{ {-0.5f,  0.5f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 1.f} }
 		};
 
-		m_mesh = std::make_shared<Firefly::Mesh>(vertices, indices);
+		std::shared_ptr<Firefly::Mesh> mesh = std::make_shared<Firefly::Mesh>(vertices, indices);
 
-		m_shader = Firefly::RenderingAPI::CreateShader();
-		m_shader->Init("assets/shaders/test.glsl");
+		std::shared_ptr<Firefly::Shader> shader = Firefly::RenderingAPI::CreateShader();
+		shader->Init("assets/shaders/test.glsl");
 
-		m_texture = Firefly::RenderingAPI::CreateTexture2D();
-		m_texture->Init("assets/textures/test.jpg");
+		std::shared_ptr<Firefly::Texture2D> texture = Firefly::RenderingAPI::CreateTexture2D();
+		texture->Init("assets/textures/test.jpg");
 
-		m_shader->Bind();
-		m_shader->SetUniformInt("textureSampler", 0);
+		std::shared_ptr<Firefly::Material> material = std::make_shared<Firefly::Material>(shader);
+		material->SetDiffuseTexture(texture);
+
+		m_model = std::make_shared<Firefly::Model>(mesh, material);
 	}
 
 	~SandboxApp()
@@ -50,10 +52,12 @@ protected:
 		Firefly::RenderingAPI::GetRenderFunctions()->Clear();
 
 		m_renderer->BeginScene(m_camera);
-		m_texture->Bind(0);
-		m_renderer->SubmitDraw(m_shader, m_mesh, glm::translate(glm::mat4(1.f), glm::vec3(1.1f, 0.f, 0.f)));
-		m_renderer->SubmitDraw(m_shader, m_mesh, glm::translate(glm::mat4(1.f), glm::vec3(0.f, 0.f, 0.f)));
-		m_renderer->SubmitDraw(m_shader, m_mesh, glm::translate(glm::mat4(1.f), glm::vec3(-1.1f, 0.f, 0.f)));
+		m_model->SetModelMatrix(glm::translate(glm::mat4(1), glm::vec3(-1.1f, 0.f, 0.f)));
+		m_renderer->SubmitDraw(m_model);
+		m_model->SetModelMatrix(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.f, 0.f)));
+		m_renderer->SubmitDraw(m_model);
+		m_model->SetModelMatrix(glm::translate(glm::mat4(1), glm::vec3(1.1f, 0.f, 0.f)));
+		m_renderer->SubmitDraw(m_model);
 		m_renderer->EndScene();
 	}
 
@@ -85,9 +89,7 @@ protected:
 	std::unique_ptr<Firefly::Renderer> m_renderer;
 	std::shared_ptr<Firefly::Camera> m_camera;
 	std::shared_ptr<CameraController> m_cameraController;
-	std::shared_ptr<Firefly::Shader> m_shader;
-	std::shared_ptr<Firefly::Texture2D> m_texture;
-	std::shared_ptr<Firefly::Mesh> m_mesh;
+	std::shared_ptr<Firefly::Model> m_model;
 };
 
 Firefly::Application* Firefly::InstantiateApplication()

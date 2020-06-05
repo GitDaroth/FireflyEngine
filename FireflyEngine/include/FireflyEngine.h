@@ -5,7 +5,7 @@
 #include "Input/Input.h"
 
 #include "Rendering/RenderingAPI.h"
-#include "Rendering/Mesh.h"
+#include "Rendering/Model.h"
 #include "Rendering/Renderer.h"
 
 #include "Core/EntryPoint.h"

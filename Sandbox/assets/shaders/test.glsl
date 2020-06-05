@@ -23,9 +23,14 @@
 
 	in vec2 v_texCoord;
 
-	uniform sampler2D textureSampler;
+	uniform vec4 diffuseColor;
+	uniform int hasDiffuseTexture;
+	uniform sampler2D diffuseTexture;
 
 	void main()
 	{
-		color = texture(textureSampler, v_texCoord);
+		if(hasDiffuseTexture != 0)
+			color = texture(diffuseTexture, v_texCoord);
+		else
+			color = diffuseColor;
 	}
