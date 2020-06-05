@@ -1,5 +1,7 @@
 set(sources 
-	src/SandboxApp.cpp)
+	src/SandboxApp.cpp
+	include/CameraController.h
+	src/CameraController.cpp)
 
 set(shaders 
 	assets/shaders/test.glsl)
@@ -16,6 +18,7 @@ add_executable(Sandbox
 	${shaders}
 	${textures})
  
+ target_include_directories(Sandbox PUBLIC "include")
 target_link_libraries(Sandbox PRIVATE FireflyEngine)
 
 

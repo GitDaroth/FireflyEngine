@@ -2,76 +2,79 @@
 
 #include "Event.h"
 
-class WindowEvent : public Event {};
-
-class WindowResizeEvent : public WindowEvent
+namespace Firefly
 {
-public:
-	WindowResizeEvent(int width, int height) :
-		m_width(width), m_height(height) {}
+	class WindowEvent : public Event {};
 
-	inline int GetWidth() const { return m_width; }
-	inline int GetHeight() const { return m_height; }
-
-	virtual std::string ToString() const override
+	class WindowResizeEvent : public WindowEvent
 	{
-		return "WindowResizeEvent: " + std::to_string(m_width) + ", " + std::to_string(m_height);
-	}
+	public:
+		WindowResizeEvent(int width, int height) :
+			m_width(width), m_height(height) {}
 
-protected:
-	int m_width, m_height;
-};
+		inline int GetWidth() const { return m_width; }
+		inline int GetHeight() const { return m_height; }
 
-class WindowCloseEvent : public WindowEvent
-{
-public:
-	virtual std::string ToString() const override
+		virtual std::string ToString() const override
+		{
+			return "WindowResizeEvent: " + std::to_string(m_width) + ", " + std::to_string(m_height);
+		}
+
+	protected:
+		int m_width, m_height;
+	};
+
+	class WindowCloseEvent : public WindowEvent
 	{
-		return "WindowCloseEvent";
-	}
-};
+	public:
+		virtual std::string ToString() const override
+		{
+			return "WindowCloseEvent";
+		}
+	};
 
-class WindowMaximizeEvent : public WindowEvent
-{
-public:
-	virtual std::string ToString() const override
+	class WindowMaximizeEvent : public WindowEvent
 	{
-		return "WindowMaximizeEvent";
-	}
-};
+	public:
+		virtual std::string ToString() const override
+		{
+			return "WindowMaximizeEvent";
+		}
+	};
 
-class WindowMinimizeEvent : public WindowEvent
-{
-public:
-	virtual std::string ToString() const override
+	class WindowMinimizeEvent : public WindowEvent
 	{
-		return "WindowMinimizeEvent";
-	}
-};
+	public:
+		virtual std::string ToString() const override
+		{
+			return "WindowMinimizeEvent";
+		}
+	};
 
-class WindowRestoreEvent : public WindowEvent
-{
-public:
-	virtual std::string ToString() const override
+	class WindowRestoreEvent : public WindowEvent
 	{
-		return "WindowRestoreEvent";
-	}
-};
+	public:
+		virtual std::string ToString() const override
+		{
+			return "WindowRestoreEvent";
+		}
+	};
 
-class WindowMoveEvent : public WindowEvent
-{
-public:
-	WindowMoveEvent(int xPos, int yPos) :
-		m_xPos(xPos), m_yPos(yPos) {}
-
-	inline int GetXPos() const { return m_xPos; }
-	inline int GetYPos() const { return m_yPos; }
-
-	virtual std::string ToString() const override
+	class WindowMoveEvent : public WindowEvent
 	{
-		return "WindowMoveEvent: " + std::to_string(m_xPos) + ", " + std::to_string(m_yPos);
-	}
+	public:
+		WindowMoveEvent(int xPos, int yPos) :
+			m_xPos(xPos), m_yPos(yPos) {}
 
-protected:
-	int m_xPos, m_yPos;
-};
+		inline int GetXPos() const { return m_xPos; }
+		inline int GetYPos() const { return m_yPos; }
+
+		virtual std::string ToString() const override
+		{
+			return "WindowMoveEvent: " + std::to_string(m_xPos) + ", " + std::to_string(m_yPos);
+		}
+
+	protected:
+		int m_xPos, m_yPos;
+	};
+}

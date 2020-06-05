@@ -2,50 +2,53 @@
 
 #include "Event.h"
 
-class KeyEvent : public InputEvent
+namespace Firefly
 {
-public:
-	KeyEvent(int keyCode) :
-		m_keyCode(keyCode) {}
-
-	inline int GetKeyCode() const { return m_keyCode; }
-
-protected:
-	int m_keyCode;
-};
-
-class KeyPressEvent : public KeyEvent
-{
-public:
-	KeyPressEvent(int keyCode) :
-		KeyEvent(keyCode) {}
-
-	virtual std::string ToString() const override
+	class KeyEvent : public InputEvent
 	{
-		return "KeyPressEvent: " + std::to_string(m_keyCode);
-	}
-};
+	public:
+		KeyEvent(int keyCode) :
+			m_keyCode(keyCode) {}
 
-class KeyReleaseEvent : public KeyEvent
-{
-public:
-	KeyReleaseEvent(int keyCode) :
-		KeyEvent(keyCode) {}
+		inline int GetKeyCode() const { return m_keyCode; }
 
-	virtual std::string ToString() const override
+	protected:
+		int m_keyCode;
+	};
+
+	class KeyPressEvent : public KeyEvent
 	{
-		return "KeyReleaseEvent: " + std::to_string(m_keyCode);
-	}
-};
+	public:
+		KeyPressEvent(int keyCode) :
+			KeyEvent(keyCode) {}
 
-class KeyRepeatEvent : public KeyEvent
-{
-public:
-	KeyRepeatEvent(int keyCode) :
-		KeyEvent(keyCode) {}
+		virtual std::string ToString() const override
+		{
+			return "KeyPressEvent: " + std::to_string(m_keyCode);
+		}
+	};
 
-	virtual std::string ToString() const override
+	class KeyReleaseEvent : public KeyEvent
 	{
-		return "KeyRepeatEvent: " + std::to_string(m_keyCode);
-	}
-};
+	public:
+		KeyReleaseEvent(int keyCode) :
+			KeyEvent(keyCode) {}
+
+		virtual std::string ToString() const override
+		{
+			return "KeyReleaseEvent: " + std::to_string(m_keyCode);
+		}
+	};
+
+	class KeyRepeatEvent : public KeyEvent
+	{
+	public:
+		KeyRepeatEvent(int keyCode) :
+			KeyEvent(keyCode) {}
+
+		virtual std::string ToString() const override
+		{
+			return "KeyRepeatEvent: " + std::to_string(m_keyCode);
+		}
+	};
+}

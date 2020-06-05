@@ -1,10 +1,8 @@
 #include <FireflyEngine.h>
 
-#include "Rendering/Renderer.h"
-#include "Rendering/Shader.h"
-#include "Rendering/Texture.h"
-
 #include <glm/gtc/matrix_transform.hpp>
+
+#include "CameraController.h"
 
 using namespace Firefly;
 
@@ -15,6 +13,8 @@ public:
 	{
 		m_camera = std::make_shared<Camera>(m_window->GetWidth(), m_window->GetHeight());
 		m_camera->SetPosition(glm::vec3(0.f, 0.f, 2.f));
+
+		m_cameraController = std::make_shared<CameraController>(m_camera);
 
 		m_renderer = std::make_unique<Renderer>();
 
@@ -57,6 +57,8 @@ public:
 protected:
 	virtual void OnUpdate(float deltaTime) override
 	{
+		m_cameraController->OnUpdate(deltaTime);
+
 		RenderingAPI::GetRenderFunctions()->SetClearColor(glm::vec4(0.1f, 0.1f, 0.1f, 1.f));
 		RenderingAPI::GetRenderFunctions()->Clear();
 
@@ -90,11 +92,12 @@ protected:
 
 	virtual void OnMouseEvent(std::shared_ptr<MouseEvent> event) override
 	{
-
+		m_cameraController->OnMouseEvent(event);
 	}
 
 	std::unique_ptr<Renderer> m_renderer;
 	std::shared_ptr<Camera> m_camera;
+	std::shared_ptr<CameraController> m_cameraController;
 	std::shared_ptr<Shader> m_shader;
 	std::shared_ptr<Texture2D> m_texture;
 	std::shared_ptr<VertexArray> m_vertexArray;
