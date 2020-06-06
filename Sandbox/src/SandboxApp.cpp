@@ -9,34 +9,25 @@ class SandboxApp : public Firefly::Application
 public:
 	SandboxApp()
 	{
+		m_renderer = std::make_shared<Firefly::Renderer>();
+
 		m_camera = std::make_shared<Firefly::Camera>(m_window->GetWidth(), m_window->GetHeight());
 		m_camera->SetPosition(glm::vec3(0.f, 0.f, 2.f));
-
 		m_cameraController = std::make_shared<CameraController>(m_camera);
-
-		m_renderer = std::make_unique<Firefly::Renderer>();
-
-		std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
-		std::vector<Firefly::Mesh::Vertex> vertices = {
-			// position, normal, texCoords
-			{ {-0.5f, -0.5f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 0.f} },
-			{ {0.5f, -0.5f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 0.f} },
-			{ {0.5f,  0.5f, 0.f}, {0.f, 0.f, 0.f}, {1.f, 1.f} },
-			{ {-0.5f,  0.5f, 0.f}, {0.f, 0.f, 0.f}, {0.f, 1.f} }
-		};
-
-		std::shared_ptr<Firefly::Mesh> mesh = std::make_shared<Firefly::Mesh>(vertices, indices);
 
 		std::shared_ptr<Firefly::Shader> shader = Firefly::RenderingAPI::CreateShader();
 		shader->Init("assets/shaders/test.glsl");
 
-		std::shared_ptr<Firefly::Texture2D> texture = Firefly::RenderingAPI::CreateTexture2D();
-		texture->Init("assets/textures/test.jpg");
+		std::shared_ptr<Firefly::Mesh> pistolMesh = std::make_shared<Firefly::Mesh>("assets/meshes/pistol.fbx");
 
-		std::shared_ptr<Firefly::Material> material = std::make_shared<Firefly::Material>(shader);
-		material->SetDiffuseTexture(texture);
+		std::shared_ptr<Firefly::Texture2D> pistolTexture = Firefly::RenderingAPI::CreateTexture2D();
+		pistolTexture->Init("assets/textures/pistol_albedo.jpg");
 
-		m_model = std::make_shared<Firefly::Model>(mesh, material);
+		std::shared_ptr<Firefly::Material> pistolMaterial = std::make_shared<Firefly::Material>(shader);
+		pistolMaterial->SetAlbedo(pistolTexture);
+
+		m_pistolModel = std::make_shared<Firefly::Model>(pistolMesh, pistolMaterial);
+		m_pistolModel->SetModelMatrix(glm::rotate(glm::scale(glm::mat4(1), glm::vec3(0.01f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
 	}
 
 	~SandboxApp()
@@ -52,12 +43,7 @@ protected:
 		Firefly::RenderingAPI::GetRenderFunctions()->Clear();
 
 		m_renderer->BeginScene(m_camera);
-		m_model->SetModelMatrix(glm::translate(glm::mat4(1), glm::vec3(-1.1f, 0.f, 0.f)));
-		m_renderer->SubmitDraw(m_model);
-		m_model->SetModelMatrix(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.f, 0.f)));
-		m_renderer->SubmitDraw(m_model);
-		m_model->SetModelMatrix(glm::translate(glm::mat4(1), glm::vec3(1.1f, 0.f, 0.f)));
-		m_renderer->SubmitDraw(m_model);
+		m_renderer->SubmitDraw(m_pistolModel);
 		m_renderer->EndScene();
 	}
 
@@ -86,10 +72,10 @@ protected:
 		m_cameraController->OnMouseEvent(event);
 	}
 
-	std::unique_ptr<Firefly::Renderer> m_renderer;
+	std::shared_ptr<Firefly::Renderer> m_renderer;
 	std::shared_ptr<Firefly::Camera> m_camera;
 	std::shared_ptr<CameraController> m_cameraController;
-	std::shared_ptr<Firefly::Model> m_model;
+	std::shared_ptr<Firefly::Model> m_pistolModel;
 };
 
 Firefly::Application* Firefly::InstantiateApplication()

@@ -19,7 +19,6 @@ namespace Firefly
 		glGenBuffers(1, &m_id);
 		Bind();
 		glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
-
 	}
 
 	void OpenGLVertexBuffer::Bind() const

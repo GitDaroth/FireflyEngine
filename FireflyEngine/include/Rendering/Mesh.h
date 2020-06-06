@@ -15,6 +15,7 @@ namespace Firefly
 			glm::vec2 texCoords;
 		};
 
+		Mesh(const std::string& path);
 		Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices);
 		~Mesh();
 
@@ -23,6 +24,9 @@ namespace Firefly
 		uint32_t GetIndexCount() const;
 
 	private:
+		void Init(std::vector<Vertex> vertices, std::vector<uint32_t> indices);
+		void Load(const std::string& path);
+
 		std::shared_ptr<VertexArray> m_vertexArray;
 	};
 }

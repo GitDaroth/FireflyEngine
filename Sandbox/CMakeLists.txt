@@ -6,16 +6,22 @@ set(sources
 set(shaders 
 	assets/shaders/test.glsl)
 
+set(meshes
+	assets/meshes/pistol.fbx)
+
 set(textures 
+	assets/textures/pistol_albedo.jpg
 	assets/textures/test.jpg)
 
 source_group("" FILES ${sources})
 source_group("\\assets\\shaders" FILES ${shaders})
+source_group("\\assets\\meshes" FILES ${meshes})
 source_group("\\assets\\textures" FILES ${textures})
 
 add_executable(Sandbox 
 	${sources}
 	${shaders}
+	${meshes}
 	${textures})
  
  target_include_directories(Sandbox PUBLIC "include")

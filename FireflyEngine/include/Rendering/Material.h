@@ -13,16 +13,16 @@ namespace Firefly
 
 		void Bind();
 
-		void SetDiffuseColor(const glm::vec4& color);
-		void SetDiffuseTexture(std::shared_ptr<Texture2D> texture);
+		void SetAlbedo(const glm::vec4& color);
+		void SetAlbedo(std::shared_ptr<Texture2D> texture);
 
 		std::shared_ptr<Shader> GetShader();
 	private:
 		std::shared_ptr<Shader> m_shader;
 
-		glm::vec4 m_diffuseColor;
+		glm::vec4 m_albedoColor;
 
-		bool m_hasDiffuseTexture;
-		std::shared_ptr<Texture2D> m_diffuseTexture;
+		bool m_hasAlbedoTexture;
+		std::shared_ptr<Texture2D> m_albedoTexture;
 	};
 }

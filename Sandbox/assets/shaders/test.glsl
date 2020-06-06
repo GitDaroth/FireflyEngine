@@ -23,14 +23,14 @@
 
 	in vec2 v_texCoord;
 
-	uniform vec4 diffuseColor;
-	uniform int hasDiffuseTexture;
-	uniform sampler2D diffuseTexture;
+	uniform vec4 albedoColor;
+	uniform int hasAlbedoTexture;
+	uniform sampler2D albedoTexture;
 
 	void main()
 	{
-		if(hasDiffuseTexture != 0)
-			color = texture(diffuseTexture, v_texCoord);
+		if(hasAlbedoTexture != 0)
+			color = texture(albedoTexture, v_texCoord);
 		else
-			color = diffuseColor;
+			color = albedoColor;
 	}
