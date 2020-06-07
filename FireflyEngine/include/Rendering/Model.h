@@ -13,6 +13,7 @@ namespace Firefly
 
 		void Bind();
 
+		void SetMaterial(std::shared_ptr<Material> material);
 		void SetModelMatrix(const glm::mat4& modelMatrix);
 
 		std::shared_ptr<Shader> GetShader();

@@ -33,6 +33,8 @@ namespace Firefly
 			float deltaTime = time - m_lastFrameTime;
 			m_lastFrameTime = time;
 
+			m_window->SetTitle(std::to_string(1.f / deltaTime));
+
 			OnUpdate(deltaTime);
 			m_window->OnUpdate();
 		}

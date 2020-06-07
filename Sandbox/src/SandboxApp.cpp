@@ -31,14 +31,14 @@ public:
 		std::shared_ptr<Firefly::Texture2D> pistolOcclusionTexture = Firefly::RenderingAPI::CreateTexture2D();
 		pistolOcclusionTexture->Init("assets/textures/pistol_occlusion.jpg");
 
-		std::shared_ptr<Firefly::Material> pistolMaterial = std::make_shared<Firefly::Material>(shader);
-		pistolMaterial->SetAlbedo(pistolAlbedoTexture);
-		pistolMaterial->SetNormal(pistolRoughnessTexture);
-		pistolMaterial->SetRoughness(pistolRoughnessTexture);
-		pistolMaterial->SetMetalness(pistolMetalnessTexture);
-		pistolMaterial->SetOcclusion(pistolOcclusionTexture);
+		m_pistolMaterial = std::make_shared<Firefly::Material>(shader);
+		m_pistolMaterial->SetAlbedoMap(pistolAlbedoTexture);
+		m_pistolMaterial->SetNormalMap(pistolNormalTexture);
+		m_pistolMaterial->SetRoughnessMap(pistolRoughnessTexture);
+		m_pistolMaterial->SetMetalnessMap(pistolMetalnessTexture);
+		m_pistolMaterial->SetOcclusionMap(pistolOcclusionTexture);
 
-		m_pistolModel = std::make_shared<Firefly::Model>(pistolMesh, pistolMaterial);
+		m_pistolModel = std::make_shared<Firefly::Model>(pistolMesh, m_pistolMaterial);
 		m_pistolModel->SetModelMatrix(glm::rotate(glm::scale(glm::mat4(1), glm::vec3(0.01f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
 	}
 
@@ -76,7 +76,32 @@ protected:
 
 	virtual void OnKeyEvent(std::shared_ptr<Firefly::KeyEvent> event) override
 	{
-
+		if (event->IsType<Firefly::KeyPressEvent>())
+		{
+			switch (event->GetKeyCode())
+			{
+			case FIREFLY_KEY_1:
+				m_pistolMaterial->EnableAlbedoMap(!m_pistolMaterial->IsAlbedoMapEnabled());
+				break;
+			case FIREFLY_KEY_2:
+				m_pistolMaterial->EnableNormalMap(!m_pistolMaterial->IsNormalMapEnabled());
+				break;
+			case FIREFLY_KEY_3:
+				m_pistolMaterial->EnableRoughnessMap(!m_pistolMaterial->IsRoughnessMapEnabled());
+				break;
+			case FIREFLY_KEY_4:
+				m_pistolMaterial->EnableMetalnessMap(!m_pistolMaterial->IsMetalnessMapEnabled());
+				break;
+			case FIREFLY_KEY_5:
+				m_pistolMaterial->EnableOcclusionMap(!m_pistolMaterial->IsOcclusionMapEnabled());
+				break;
+			case FIREFLY_KEY_6:
+				m_pistolMaterial->EnableHeightMap(!m_pistolMaterial->IsHeightMapEnabled());
+				break;
+			default:
+				break;
+			}
+		}
 	}
 
 	virtual void OnMouseEvent(std::shared_ptr<Firefly::MouseEvent> event) override
@@ -88,6 +113,7 @@ protected:
 	std::shared_ptr<Firefly::Camera> m_camera;
 	std::shared_ptr<CameraController> m_cameraController;
 	std::shared_ptr<Firefly::Model> m_pistolModel;
+	std::shared_ptr<Firefly::Material> m_pistolMaterial;
 };
 
 Firefly::Application* Firefly::InstantiateApplication()

@@ -33,7 +33,6 @@ namespace Firefly
 		m_context->Init(m_window);
 
 		glfwSetWindowUserPointer(m_window, this);
-		EnableVSync(true);
 
 		SetupWindowEvents();
 		SetupInputEvents();

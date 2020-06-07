@@ -8,18 +8,18 @@ namespace Firefly
 		m_albedoColor({0.f, 0.f, 0.f, 1.f}),
 		m_roughness(0.f),
 		m_metalness(0.f),
-		m_hasAlbedoTexture(false),
-		m_hasNormalTexture(false),
-		m_hasRoughnessTexture(false),
-		m_hasMetalnessTexture(false),
-		m_hasOcclusionTexture(false),
-		m_hasHeightTexture(false),
-		m_albedoTexture(nullptr),
-		m_normalTexture(nullptr),
-		m_roughnessTexture(nullptr),
-		m_metalnessTexture(nullptr),
-		m_occlusionTexture(nullptr),
-		m_heightTexture(nullptr)
+		m_useAlbedoMap(false),
+		m_useNormalMap(false),
+		m_useRoughnessMap(false),
+		m_useMetalnessMap(false),
+		m_useOcclusionMap(false),
+		m_useHeightMap(false),
+		m_albedoMap(nullptr),
+		m_normalMap(nullptr),
+		m_roughnessMap(nullptr),
+		m_metalnessMap(nullptr),
+		m_occlusionMap(nullptr),
+		m_heightMap(nullptr)
 	{
 	}
 
@@ -30,73 +30,73 @@ namespace Firefly
 	void Material::Bind()
 	{
 		m_shader->Bind();
-		if (m_hasAlbedoTexture)
+		if (m_useAlbedoMap)
 		{
-			m_shader->SetUniformInt("u_albedoTexture", 0);
-			m_shader->SetUniformInt("u_hasAlbedoTexture", 1);
-			m_albedoTexture->Bind(0);
+			m_shader->SetUniformInt("u_albedoMap", 0);
+			m_shader->SetUniformInt("u_useAlbedoMap", 1);
+			m_albedoMap->Bind(0);
 		}
 		else
 		{
-			m_shader->SetUniformInt("u_hasAlbedoTexture", 0);
+			m_shader->SetUniformInt("u_useAlbedoMap", 0);
 			m_shader->SetUniformFloat4("u_albedoColor", m_albedoColor);
 		}
 
-		if (m_hasNormalTexture)
+		if (m_useNormalMap)
 		{
-			m_shader->SetUniformInt("u_normalTexture", 1);
-			m_shader->SetUniformInt("u_hasNormalTexture", 1);
-			m_normalTexture->Bind(1);
+			m_shader->SetUniformInt("u_normalMap", 1);
+			m_shader->SetUniformInt("u_useNormalMap", 1);
+			m_normalMap->Bind(1);
 		}
 		else
 		{
-			m_shader->SetUniformInt("u_hasNormalTexture", 0);
+			m_shader->SetUniformInt("u_useNormalMap", 0);
 		}
 
-		if (m_hasRoughnessTexture)
+		if (m_useRoughnessMap)
 		{
-			m_shader->SetUniformInt("u_roughnessTexture", 2);
-			m_shader->SetUniformInt("u_hasRoughnessTexture", 1);
-			m_albedoTexture->Bind(2);
+			m_shader->SetUniformInt("u_roughnessMap", 2);
+			m_shader->SetUniformInt("u_useRoughnessMap", 1);
+			m_roughnessMap->Bind(2);
 		}
 		else
 		{
-			m_shader->SetUniformInt("u_hasRoughnessTexture", 0);
+			m_shader->SetUniformInt("u_useRoughnessMap", 0);
 			m_shader->SetUniformFloat("u_roughness", m_roughness);
 		}
 
-		if (m_hasMetalnessTexture)
+		if (m_useMetalnessMap)
 		{
-			m_shader->SetUniformInt("u_metalnessTexture", 3);
-			m_shader->SetUniformInt("u_hasMetalnessTexture", 1);
-			m_albedoTexture->Bind(3);
+			m_shader->SetUniformInt("u_metalnessMap", 3);
+			m_shader->SetUniformInt("u_useMetalnessMap", 1);
+			m_metalnessMap->Bind(3);
 		}
 		else
 		{
-			m_shader->SetUniformInt("u_hasMetalnessTexture", 0);
+			m_shader->SetUniformInt("u_useMetalnessMap", 0);
 			m_shader->SetUniformFloat("u_metalness", m_metalness);
 		}
 
-		if (m_hasOcclusionTexture)
+		if (m_useOcclusionMap)
 		{
-			m_shader->SetUniformInt("u_occlusionTexture", 4);
-			m_shader->SetUniformInt("u_hasOcclusionTexture", 1);
-			m_normalTexture->Bind(4);
+			m_shader->SetUniformInt("u_occlusionMap", 4);
+			m_shader->SetUniformInt("u_useOcclusionMap", 1);
+			m_occlusionMap->Bind(4);
 		}
 		else
 		{
-			m_shader->SetUniformInt("u_hasOcclusionTexture", 0);
+			m_shader->SetUniformInt("u_useOcclusionMap", 0);
 		}
 
-		if (m_hasHeightTexture)
+		if (m_useHeightMap)
 		{
-			m_shader->SetUniformInt("u_heightTexture", 5);
-			m_shader->SetUniformInt("u_hasHeightTexture", 1);
-			m_normalTexture->Bind(5);
+			m_shader->SetUniformInt("u_heightMap", 5);
+			m_shader->SetUniformInt("u_useHeightMap", 1);
+			m_heightMap->Bind(5);
 		}
 		else
 		{
-			m_shader->SetUniformInt("u_hasHeightTexture", 0);
+			m_shader->SetUniformInt("u_useHeightMap", 0);
 		}
 	}
 
@@ -105,21 +105,21 @@ namespace Firefly
 		m_albedoColor = color;
 	}
 
-	void Material::SetAlbedo(std::shared_ptr<Texture2D> texture)
+	void Material::SetAlbedoMap(std::shared_ptr<Texture2D> texture)
 	{
 		if (texture)
 		{
-			m_albedoTexture = texture;
-			m_hasAlbedoTexture = true;
+			m_albedoMap = texture;
+			m_useAlbedoMap = true;
 		}
 	}
 
-	void Material::SetNormal(std::shared_ptr<Texture2D> texture)
+	void Material::SetNormalMap(std::shared_ptr<Texture2D> texture)
 	{
 		if (texture)
 		{
-			m_normalTexture = texture;
-			m_hasNormalTexture = true;
+			m_normalMap = texture;
+			m_useNormalMap = true;
 		}
 	}
 
@@ -128,12 +128,12 @@ namespace Firefly
 		m_roughness = factor;
 	}
 
-	void Material::SetRoughness(std::shared_ptr<Texture2D> texture)
+	void Material::SetRoughnessMap(std::shared_ptr<Texture2D> texture)
 	{
 		if (texture)
 		{
-			m_roughnessTexture = texture;
-			m_hasRoughnessTexture = true;
+			m_roughnessMap = texture;
+			m_useRoughnessMap = true;
 		}
 	}
 
@@ -142,31 +142,97 @@ namespace Firefly
 		m_metalness = factor;
 	}
 
-	void Material::SetMetalness(std::shared_ptr<Texture2D> texture)
+	void Material::SetMetalnessMap(std::shared_ptr<Texture2D> texture)
 	{
 		if (texture)
 		{
-			m_metalnessTexture = texture;
-			m_hasMetalnessTexture = true;
+			m_metalnessMap = texture;
+			m_useMetalnessMap = true;
 		}
 	}
 
-	void Material::SetOcclusion(std::shared_ptr<Texture2D> texture)
+	void Material::SetOcclusionMap(std::shared_ptr<Texture2D> texture)
 	{
 		if (texture)
 		{
-			m_occlusionTexture = texture;
-			m_hasOcclusionTexture = true;
+			m_occlusionMap = texture;
+			m_useOcclusionMap = true;
 		}
 	}
 
-	void Material::SetHeight(std::shared_ptr<Texture2D> texture)
+	void Material::SetHeightMap(std::shared_ptr<Texture2D> texture)
 	{
 		if (texture)
 		{
-			m_heightTexture = texture;
-			m_hasHeightTexture = true;
+			m_heightMap = texture;
+			m_useHeightMap = true;
 		}
+	}
+
+	void Material::EnableAlbedoMap(bool enabled)
+	{
+		if (m_albedoMap)
+			m_useAlbedoMap = enabled;
+	}
+
+	void Material::EnableNormalMap(bool enabled)
+	{
+		if (m_normalMap)
+			m_useNormalMap = enabled;
+	}
+
+	void Material::EnableRoughnessMap(bool enabled)
+	{
+		if (m_roughnessMap)
+			m_useRoughnessMap = enabled;
+	}
+
+	void Material::EnableMetalnessMap(bool enabled)
+	{
+		if (m_metalnessMap)
+			m_useMetalnessMap = enabled;
+	}
+
+	void Material::EnableOcclusionMap(bool enabled)
+	{
+		if (m_occlusionMap)
+			m_useOcclusionMap = enabled;
+	}
+
+	void Material::EnableHeightMap(bool enabled)
+	{
+		if (m_heightMap)
+			m_useHeightMap = enabled;
+	}
+
+	bool Material::IsAlbedoMapEnabled() const
+	{
+		return m_useAlbedoMap;
+	}
+
+	bool Material::IsNormalMapEnabled() const
+	{
+		return m_useNormalMap;
+	}
+
+	bool Material::IsRoughnessMapEnabled() const
+	{
+		return m_useRoughnessMap;
+	}
+
+	bool Material::IsMetalnessMapEnabled() const
+	{
+		return m_useMetalnessMap;
+	}
+
+	bool Material::IsOcclusionMapEnabled() const
+	{
+		return m_useOcclusionMap;
+	}
+
+	bool Material::IsHeightMapEnabled() const
+	{
+		return m_useHeightMap;
 	}
 
 	std::shared_ptr<Shader> Material::GetShader()

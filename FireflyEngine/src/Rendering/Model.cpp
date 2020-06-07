@@ -18,7 +18,13 @@ namespace Firefly
 	{
 		m_material->Bind();
 		GetShader()->SetUniformMatrix4("u_modelMat", m_modelMatrix);
+		GetShader()->SetUniformMatrix3("u_normalMat", glm::transpose(glm::inverse(glm::mat3(m_modelMatrix))));
 		m_mesh->Bind();
+	}
+
+	void Model::SetMaterial(std::shared_ptr<Material> material)
+	{
+		m_material = material;
 	}
 
 	void Model::SetModelMatrix(const glm::mat4& modelMatrix)

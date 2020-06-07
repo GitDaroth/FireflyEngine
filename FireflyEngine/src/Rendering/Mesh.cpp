@@ -33,9 +33,11 @@ namespace Firefly
 		vertexBuffer->Init((float*)vertices.data(), vertices.size() * sizeof(Vertex));
 
 		VertexBuffer::Layout layout = {
-			{ ShaderDataType::Float3, "position" },
-			{ ShaderDataType::Float3, "normal" },
-			{ ShaderDataType::Float2, "texCoords" }
+			{ ShaderDataType::Float3, "a_position" },
+			{ ShaderDataType::Float3, "a_normal" },
+			{ ShaderDataType::Float3, "a_tangent" },
+			{ ShaderDataType::Float3, "a_bitangent" },
+			{ ShaderDataType::Float2, "a_texCoords" }
 		};
 		vertexBuffer->SetLayout(layout);
 
@@ -49,7 +51,7 @@ namespace Firefly
 	void Mesh::Load(const std::string& path)
 	{
 		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
+		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_CalcTangentSpace);
 
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 		{
@@ -73,11 +75,23 @@ namespace Firefly
 					vertex.normal.z = mesh->mNormals[i].z;
 					if (mesh->mTextureCoords[0])
 					{
+						vertex.tangent.x = mesh->mTangents[i].x;
+						vertex.tangent.y = mesh->mTangents[i].y;
+						vertex.tangent.z = mesh->mTangents[i].z;
+						vertex.bitangent.x = mesh->mBitangents[i].x;
+						vertex.bitangent.y = mesh->mBitangents[i].y;
+						vertex.bitangent.z = mesh->mBitangents[i].z;
 						vertex.texCoords.x = mesh->mTextureCoords[0][i].x;
 						vertex.texCoords.y = mesh->mTextureCoords[0][i].y;
 					}
 					else
 					{
+						vertex.tangent.x = 1.f;
+						vertex.tangent.y = 0.f;
+						vertex.tangent.z = 0.f;
+						vertex.bitangent.x = 0.f;
+						vertex.bitangent.y = 1.f;
+						vertex.bitangent.z = 0.f;
 						vertex.texCoords.x = 0.f;
 						vertex.texCoords.y = 0.f;
 					}
@@ -88,7 +102,7 @@ namespace Firefly
 				for (int i = 0; i < mesh->mNumFaces; i++)
 				{
 					aiFace face = mesh->mFaces[i];
-					for (int j = 0; j < face.mNumIndices; j++)
+					for (int j = 0; j < 3; j++)
 						indices.push_back(face.mIndices[j]);
 				}
 
