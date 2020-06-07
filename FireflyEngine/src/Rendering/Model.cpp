@@ -17,7 +17,7 @@ namespace Firefly
 	void Model::Bind()
 	{
 		m_material->Bind();
-		GetShader()->SetUniformMatrix4("modelMat", m_modelMatrix);
+		GetShader()->SetUniformMatrix4("u_modelMat", m_modelMatrix);
 		m_mesh->Bind();
 	}
 

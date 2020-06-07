@@ -4,14 +4,17 @@ set(sources
 	src/CameraController.cpp)
 
 set(shaders 
-	assets/shaders/test.glsl)
+	assets/shaders/pbr.glsl)
 
 set(meshes
 	assets/meshes/pistol.fbx)
 
 set(textures 
 	assets/textures/pistol_albedo.jpg
-	assets/textures/test.jpg)
+	assets/textures/pistol_normal.jpg
+	assets/textures/pistol_roughness.jpg
+	assets/textures/pistol_metalness.jpg
+	assets/textures/pistol_occlusion.jpg)
 
 source_group("" FILES ${sources})
 source_group("\\assets\\shaders" FILES ${shaders})

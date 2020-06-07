@@ -28,12 +28,18 @@ namespace Firefly
 
 		GLenum internalFormat = 0;
 		GLenum dataFormat = 0;
-		if (channels = 3)
+
+		if (channels == 1)
+		{
+			internalFormat = GL_R8;
+			dataFormat = GL_RED;
+		}
+		else if (channels == 3)
 		{
 			internalFormat = GL_RGB8;
 			dataFormat = GL_RGB;
 		}
-		else if (channels = 4)
+		else if (channels == 4)
 		{
 			internalFormat = GL_RGBA8;
 			dataFormat = GL_RGBA;
@@ -45,9 +51,13 @@ namespace Firefly
 
 		glCreateTextures(GL_TEXTURE_2D, 1, &m_texture);
 		glTextureStorage2D(m_texture, 1, internalFormat, m_width, m_height);
-		glTexParameteri(m_texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(m_texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTextureSubImage2D(m_texture, 0, 0, 0, m_width, m_height, dataFormat, GL_UNSIGNED_BYTE, data);
+		glGenerateMipmap(GL_TEXTURE_2D);
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(m_texture, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+		glTexParameteri(m_texture, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 		stbi_image_free(data);
 	}

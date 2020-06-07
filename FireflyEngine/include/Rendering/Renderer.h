@@ -16,6 +16,7 @@ namespace Firefly
 		void SubmitDraw(std::shared_ptr<Model> model);
 
 	private:
+		std::shared_ptr<Camera> m_camera;
 		glm::mat4 m_viewProjectionMatrix;
 	};
 }

@@ -16,15 +16,27 @@ public:
 		m_cameraController = std::make_shared<CameraController>(m_camera);
 
 		std::shared_ptr<Firefly::Shader> shader = Firefly::RenderingAPI::CreateShader();
-		shader->Init("assets/shaders/test.glsl");
+		shader->Init("assets/shaders/pbr.glsl");
 
 		std::shared_ptr<Firefly::Mesh> pistolMesh = std::make_shared<Firefly::Mesh>("assets/meshes/pistol.fbx");
 
-		std::shared_ptr<Firefly::Texture2D> pistolTexture = Firefly::RenderingAPI::CreateTexture2D();
-		pistolTexture->Init("assets/textures/pistol_albedo.jpg");
+		std::shared_ptr<Firefly::Texture2D> pistolAlbedoTexture = Firefly::RenderingAPI::CreateTexture2D();
+		pistolAlbedoTexture->Init("assets/textures/pistol_albedo.jpg");
+		std::shared_ptr<Firefly::Texture2D> pistolNormalTexture = Firefly::RenderingAPI::CreateTexture2D();
+		pistolNormalTexture->Init("assets/textures/pistol_normal.jpg");
+		std::shared_ptr<Firefly::Texture2D> pistolRoughnessTexture = Firefly::RenderingAPI::CreateTexture2D();
+		pistolRoughnessTexture->Init("assets/textures/pistol_roughness.jpg");
+		std::shared_ptr<Firefly::Texture2D> pistolMetalnessTexture = Firefly::RenderingAPI::CreateTexture2D();
+		pistolMetalnessTexture->Init("assets/textures/pistol_metalness.jpg");
+		std::shared_ptr<Firefly::Texture2D> pistolOcclusionTexture = Firefly::RenderingAPI::CreateTexture2D();
+		pistolOcclusionTexture->Init("assets/textures/pistol_occlusion.jpg");
 
 		std::shared_ptr<Firefly::Material> pistolMaterial = std::make_shared<Firefly::Material>(shader);
-		pistolMaterial->SetAlbedo(pistolTexture);
+		pistolMaterial->SetAlbedo(pistolAlbedoTexture);
+		pistolMaterial->SetNormal(pistolRoughnessTexture);
+		pistolMaterial->SetRoughness(pistolRoughnessTexture);
+		pistolMaterial->SetMetalness(pistolMetalnessTexture);
+		pistolMaterial->SetOcclusion(pistolOcclusionTexture);
 
 		m_pistolModel = std::make_shared<Firefly::Model>(pistolMesh, pistolMaterial);
 		m_pistolModel->SetModelMatrix(glm::rotate(glm::scale(glm::mat4(1), glm::vec3(0.01f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
