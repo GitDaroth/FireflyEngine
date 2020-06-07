@@ -20,6 +20,9 @@
 
 	void main()
 	{	
+		vec3 worldPosition = (u_modelMat * vec4(a_position, 1.0)).xyz;
+		gl_Position = u_viewProjectionMat * vec4(worldPosition, 1.0);
+
 		vec3 N = normalize(u_normalMat * a_normal); 
 		vec3 T = normalize(u_normalMat * a_tangent);
 		vec3 B = normalize(u_normalMat * a_bitangent);
@@ -27,13 +30,10 @@
 
 		v_texCoords = a_texCoords;
 		v_normal = invTBN * N;
-		vec3 worldPosition = (u_modelMat * vec4(a_position, 1.0)).xyz;
 		v_position = invTBN * worldPosition;
 		v_cameraPosition = invTBN * u_cameraPosition;
-		v_lightPosition[0] = invTBN * vec3(7.0, -1.0, 0.0);
-		v_lightPosition[1] = invTBN * vec3(-7.0, -1.0, 0.0);
-
-		gl_Position = u_viewProjectionMat * vec4(worldPosition, 1.0);
+		v_lightPosition[0] = invTBN * vec3(7.0, 0.0, 0.0);
+		v_lightPosition[1] = invTBN * vec3(-7.0, 0.0, 0.0);
 	}
 
 #type fragment
@@ -62,88 +62,59 @@
 	uniform sampler2D u_metalnessMap;
 	uniform sampler2D u_occlusionMap;
 	uniform sampler2D u_heightMap;
+	uniform float u_heightScale;
 
 	const float PI = 3.14159265359;
 
-	float DistributionGGX(vec3 N, vec3 H, float roughness)
-	{
-		float a = roughness * roughness;
-		float a2 = a * a;
-		float NdotH = max(dot(N, H), 0.0);
-		float NdotH2 = NdotH * NdotH;
-
-		float nom   = a2;
-		float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-		denom = PI * denom * denom;
-
-		return nom / denom;
-	}
-
-	float GeometrySchlickGGX(float NdotV, float roughness)
-	{
-		float r = (roughness + 1.0);
-		float k = (r * r) / 8.0;
-
-		float nom   = NdotV;
-		float denom = NdotV * (1.0 - k) + k;
-
-		return nom / denom;
-	}
-
-	float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
-	{
-		float NdotV = max(dot(N, V), 0.0);
-		float NdotL = max(dot(N, L), 0.0);
-		float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-		float ggx1 = GeometrySchlickGGX(NdotL, roughness);
-
-		return ggx1 * ggx2;
-	}
-
-	vec3 fresnelSchlick(float cosTheta, vec3 F0)
-	{
-		return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-	}
+	float DistributionGGX(vec3 N, vec3 H, float roughness);
+	float GeometrySchlickGGX(float NdotV, float roughness);
+	float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
+	vec3 FresnelSchlick(float cosTheta, vec3 F0);
+	vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir);
 
 	void main()
 	{
+		vec3 V = normalize(v_cameraPosition - v_position);
+
+		vec2 texCoords;
+		if(u_useHeightMap != 0)
+			texCoords = ParallaxMapping(v_texCoords, V);
+		else
+			texCoords = v_texCoords;
+
 		vec3 albedo;
 		if(u_useAlbedoMap != 0)
-			albedo = pow(texture(u_albedoMap, v_texCoords).rgb, vec3(2.2));
+			albedo = pow(texture(u_albedoMap, texCoords).rgb, vec3(2.2));
 		else
 			albedo = u_albedoColor.rgb;
 
 		vec3 normal;
 		if(u_useNormalMap != 0)
-			normal = normalize(texture(u_normalMap, v_texCoords).xyz * 2.0 - 1.0);
+			normal = normalize(texture(u_normalMap, texCoords).xyz * 2.0 - 1.0);
 		else
 			normal = normalize(v_normal);
 
 		float roughness;
 		if(u_useRoughnessMap != 0)
-			roughness = texture(u_roughnessMap, v_texCoords).r;
+			roughness = texture(u_roughnessMap, texCoords).r;
 		else
 			roughness = u_roughness;
 
 		float metalness;
 		if(u_useMetalnessMap != 0)
-			metalness = texture(u_metalnessMap, v_texCoords).r;
+			metalness = texture(u_metalnessMap, texCoords).r;
 		else
 			metalness = u_metalness;
 
 		float occlusion = 1.0;
 		if(u_useOcclusionMap != 0)
-			occlusion = texture(u_occlusionMap, v_texCoords).r;
-
-		vec3 V = normalize(v_cameraPosition - v_position);
+			occlusion = texture(u_occlusionMap, texCoords).r;
 
 		vec3 F0 = vec3(0.04); 
 		F0 = mix(F0, albedo, metalness);
 
 		// reflectance equation
 		vec3 Lo = vec3(0.0);
-
-
 
 		vec3 lightColor[2];
 		lightColor[0] = vec3(150.0, 100.0, 50.0);
@@ -161,7 +132,7 @@
 			// Cook-Torrance BRDF
 			float NDF = DistributionGGX(normal, H, roughness);   
 			float G = GeometrySmith(normal, V, L, roughness);      
-			vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
+			vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
            
 			vec3 nominator = NDF * G * F; 
 			float denominator = 4.0 * max(dot(normal, V), 0.0) * max(dot(normal, L), 0.0) + 0.001; // 0.001 to prevent divide by zero.
@@ -198,3 +169,85 @@
 
 		f_color = vec4(color, 1.0);
 	}
+
+	float DistributionGGX(vec3 N, vec3 H, float roughness)
+	{
+		float a = roughness * roughness;
+		float a2 = a * a;
+		float NdotH = max(dot(N, H), 0.0);
+		float NdotH2 = NdotH * NdotH;
+
+		float nom   = a2;
+		float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+		denom = PI * denom * denom;
+
+		return nom / denom;
+	}
+
+	float GeometrySchlickGGX(float NdotV, float roughness)
+	{
+		float r = (roughness + 1.0);
+		float k = (r * r) / 8.0;
+
+		float nom   = NdotV;
+		float denom = NdotV * (1.0 - k) + k;
+
+		return nom / denom;
+	}
+
+	float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
+	{
+		float NdotV = max(dot(N, V), 0.0);
+		float NdotL = max(dot(N, L), 0.0);
+		float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+		float ggx1 = GeometrySchlickGGX(NdotL, roughness);
+
+		return ggx1 * ggx2;
+	}
+
+	vec3 FresnelSchlick(float cosTheta, vec3 F0)
+	{
+		return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+	}
+
+	vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
+	{ 
+		// number of depth layers
+		const float minLayers = 8.0;
+		const float maxLayers = 32.0;
+		float numLayers = mix(maxLayers, minLayers, max(dot(vec3(0.0, 0.0, 1.0), viewDir), 0.0));  
+		// calculate the size of each layer
+		float layerDepth = 1.0 / numLayers;
+		// depth of current layer
+		float currentLayerDepth = 0.0;
+		// the amount to shift the texture coordinates per layer (from vector P)
+		vec2 P = viewDir.xy * u_heightScale; 
+		vec2 deltaTexCoords = P / numLayers;
+
+		// get initial values
+		vec2  currentTexCoords = texCoords;
+		float currentDepthMapValue = -(texture(u_heightMap, currentTexCoords).r - 1.0);
+  
+		while(currentLayerDepth < currentDepthMapValue)
+		{
+			// shift texture coordinates along direction of P
+			currentTexCoords -= deltaTexCoords;
+			// get depthmap value at current texture coordinates
+			currentDepthMapValue = -(texture(u_heightMap, currentTexCoords).r - 1.0);  
+			// get depth of next layer
+			currentLayerDepth += layerDepth;  
+		}
+
+		// get texture coordinates before collision (reverse operations)
+		vec2 prevTexCoords = currentTexCoords + deltaTexCoords;
+
+		// get depth after and before collision for linear interpolation
+		float afterDepth  = currentDepthMapValue - currentLayerDepth;
+		float beforeDepth = -(texture(u_heightMap, prevTexCoords).r - 1.0) - currentLayerDepth + layerDepth;
+ 
+		// interpolation of texture coordinates
+		float t = afterDepth / (afterDepth - beforeDepth);
+		vec2 finalTexCoords = (1.0 - t) * currentTexCoords + t * prevTexCoords;
+
+		return finalTexCoords;  
+	} 

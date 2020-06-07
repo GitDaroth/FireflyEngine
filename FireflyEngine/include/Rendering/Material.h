@@ -22,6 +22,7 @@ namespace Firefly
 		void SetMetalnessMap(std::shared_ptr<Texture2D> texture);
 		void SetOcclusionMap(std::shared_ptr<Texture2D> texture);
 		void SetHeightMap(std::shared_ptr<Texture2D> texture);
+		void SetHeightScale(float scale);
 
 		void EnableAlbedoMap(bool enabled);
 		void EnableNormalMap(bool enabled);
@@ -57,5 +58,6 @@ namespace Firefly
 		std::shared_ptr<Texture2D> m_metalnessMap;
 		std::shared_ptr<Texture2D> m_occlusionMap;
 		std::shared_ptr<Texture2D> m_heightMap;
+		float m_heightScale;
 	};
 }

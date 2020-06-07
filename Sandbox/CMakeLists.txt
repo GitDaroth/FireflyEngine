@@ -10,6 +10,11 @@ set(meshes
 	assets/meshes/pistol.fbx)
 
 set(textures 
+	assets/textures/floor_albedo.jpg
+	assets/textures/floor_normal.jpg
+	assets/textures/floor_roughness.jpg
+	assets/textures/floor_height.jpg
+	assets/textures/floor_occlusion.jpg
 	assets/textures/pistol_albedo.jpg
 	assets/textures/pistol_normal.jpg
 	assets/textures/pistol_roughness.jpg

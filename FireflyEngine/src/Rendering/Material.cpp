@@ -5,7 +5,7 @@ namespace Firefly
 {
 	Material::Material(std::shared_ptr<Shader> shader) :
 		m_shader(shader),
-		m_albedoColor({0.f, 0.f, 0.f, 1.f}),
+		m_albedoColor({ 0.f, 0.f, 0.f, 1.f }),
 		m_roughness(0.f),
 		m_metalness(0.f),
 		m_useAlbedoMap(false),
@@ -19,7 +19,8 @@ namespace Firefly
 		m_roughnessMap(nullptr),
 		m_metalnessMap(nullptr),
 		m_occlusionMap(nullptr),
-		m_heightMap(nullptr)
+		m_heightMap(nullptr),
+		m_heightScale(0.1f)
 	{
 	}
 
@@ -92,6 +93,7 @@ namespace Firefly
 		{
 			m_shader->SetUniformInt("u_heightMap", 5);
 			m_shader->SetUniformInt("u_useHeightMap", 1);
+			m_shader->SetUniformFloat("u_heightScale", m_heightScale);
 			m_heightMap->Bind(5);
 		}
 		else
@@ -167,6 +169,11 @@ namespace Firefly
 			m_heightMap = texture;
 			m_useHeightMap = true;
 		}
+	}
+
+	void Material::SetHeightScale(float scale)
+	{
+		m_heightScale = scale;
 	}
 
 	void Material::EnableAlbedoMap(bool enabled)
