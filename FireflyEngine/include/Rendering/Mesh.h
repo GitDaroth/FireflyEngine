@@ -17,7 +17,7 @@ namespace Firefly
 			glm::vec2 texCoords;
 		};
 
-		Mesh(const std::string& path);
+		Mesh(const std::string& path, bool flipTexCoords = false);
 		Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices);
 		~Mesh();
 
@@ -27,7 +27,7 @@ namespace Firefly
 
 	private:
 		void Init(std::vector<Vertex> vertices, std::vector<uint32_t> indices);
-		void Load(const std::string& path);
+		void Load(const std::string& path, bool flipTexCoords);
 
 		std::shared_ptr<VertexArray> m_vertexArray;
 	};

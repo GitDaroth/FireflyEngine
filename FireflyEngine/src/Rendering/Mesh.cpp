@@ -9,9 +9,9 @@
 
 namespace Firefly
 {
-	Mesh::Mesh(const std::string& path)
+	Mesh::Mesh(const std::string& path, bool flipTexCoords)
 	{
-		Load(path);
+		Load(path, flipTexCoords);
 	}
 
 	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices)
@@ -48,10 +48,13 @@ namespace Firefly
 		m_vertexArray->SetIndexBuffer(indexBuffer);
 	}
 
-	void Mesh::Load(const std::string& path)
+	void Mesh::Load(const std::string& path, bool flipTexCoords)
 	{
 		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_CalcTangentSpace);
+		auto importFlags = aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace;
+		if (flipTexCoords)
+			importFlags |= aiProcess_FlipUVs;
+		const aiScene* scene = importer.ReadFile(path, importFlags);
 
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 		{

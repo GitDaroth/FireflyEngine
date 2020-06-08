@@ -118,7 +118,7 @@
 
 		vec3 lightColor[2];
 		lightColor[0] = vec3(150.0, 100.0, 50.0);
-		lightColor[1] = vec3(50.0, 150.0, 100.0);
+		lightColor[1] = vec3(150.0, 100.0, 50.0);
 
 		for(int i = 0; i < 2; ++i) 
 		{
@@ -158,7 +158,7 @@
 
 		// ambient lighting (note that the next IBL tutorial will replace 
 		// this ambient lighting with environment lighting).
-		vec3 ambient = vec3(0.03) * albedo * occlusion;
+		vec3 ambient = vec3(0.1) * albedo * occlusion;
     
 		vec3 color = ambient + Lo;
 
