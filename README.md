@@ -2,9 +2,9 @@
 
 The FireflyEngine is an ambitious project of developing a game engine from scratch for learning purposes. This early-stage engine is currently solely developed by me.
 
-![scene1](/media/scene1.gif)
-![scene1_close](/media/scene1_close.gif)
-![scene2](/media/scene2.gif)
+![scene1](/showcase/scene1.gif)
+![scene1_close](/showcase/scene1_close.gif)
+![scene2](/showcase/scene2.gif)
 
 **Engine Features:**
 - simple graphics API abstraction layer
