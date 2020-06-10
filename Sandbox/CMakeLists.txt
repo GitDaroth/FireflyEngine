@@ -29,7 +29,6 @@ set(textures
 	assets/textures/floor/2_normal.jpg
 	assets/textures/floor/2_roughness.jpg
 	assets/textures/floor/2_height.jpg
-	assets/textures/floor/2_metalness.jpg
 	assets/textures/pistol/albedo.jpg
 	assets/textures/pistol/normal.jpg
 	assets/textures/pistol/roughness.jpg
