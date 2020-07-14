@@ -113,7 +113,6 @@
 		vec3 F0 = vec3(0.04); 
 		F0 = mix(F0, albedo, metalness);
 
-		// reflectance equation
 		vec3 Lo = vec3(0.0);
 
 		vec3 lightColor[2];
@@ -135,31 +134,19 @@
 			vec3 F = FresnelSchlick(max(dot(H, V), 0.0), F0);
            
 			vec3 nominator = NDF * G * F; 
-			float denominator = 4.0 * max(dot(normal, V), 0.0) * max(dot(normal, L), 0.0) + 0.001; // 0.001 to prevent divide by zero.
+			float denominator = 4.0 * max(dot(normal, V), 0.0) * max(dot(normal, L), 0.0) + 0.001;
 			vec3 specular = nominator / denominator;
         
-			// kS is equal to Fresnel
 			vec3 kS = F;
-			// for energy conservation, the diffuse and specular light can't
-			// be above 1.0 (unless the surface emits light); to preserve this
-			// relationship the diffuse component (kD) should equal 1.0 - kS.
 			vec3 kD = vec3(1.0) - kS;
-			// multiply kD by the inverse metalness such that only non-metals 
-			// have diffuse lighting, or a linear blend if partly metal (pure metals
-			// have no diffuse light).
 			kD *= 1.0 - metalness;	  
 
-			// scale light by NdotL
 			float NdotL = max(dot(normal, L), 0.0);        
 
-			// add to outgoing radiance Lo
-			Lo += (kD * albedo / PI + specular) * radiance * NdotL;  // note that we already multiplied the BRDF by the Fresnel (kS) so we won't multiply by kS again
+			Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 		}
 
-		// ambient lighting (note that the next IBL tutorial will replace 
-		// this ambient lighting with environment lighting).
 		vec3 ambient = vec3(0.1) * albedo * occlusion;
-    
 		vec3 color = ambient + Lo;
 
 		// HDR tonemapping

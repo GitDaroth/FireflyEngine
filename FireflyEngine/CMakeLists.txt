@@ -7,6 +7,7 @@ add_subdirectory(3rdParty/glm)
 add_subdirectory(3rdParty/imgui)
 add_subdirectory(3rdParty/stb_image)
 add_subdirectory(3rdParty/assimp)
+add_subdirectory(3rdParty/EnTT)
 
 set_target_properties(spdlog glad glm_static imgui stb_image PROPERTIES FOLDER 3rdParty)
 set_target_properties(glfw uninstall PROPERTIES FOLDER 3rdParty/GLFW)
@@ -101,6 +102,7 @@ target_link_libraries(FireflyEngine
 	PUBLIC
 		spdlog
 		glm_static
+		entt
 	PRIVATE
 		glfw
 		glad

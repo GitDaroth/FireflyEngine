@@ -3,6 +3,7 @@
 #include "CameraController.h"
 
 #include <glm/gtc/matrix_transform.hpp>
+#include <entt.hpp>
 
 class SandboxApp : public Firefly::Application
 {
@@ -241,6 +242,7 @@ protected:
 		m_cameraController->OnMouseEvent(event);
 	}
 
+private:
 	std::shared_ptr<Firefly::Renderer> m_renderer;
 	std::shared_ptr<Firefly::Camera> m_camera;
 	std::shared_ptr<CameraController> m_cameraController;
