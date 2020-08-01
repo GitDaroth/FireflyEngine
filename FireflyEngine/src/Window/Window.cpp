@@ -22,6 +22,7 @@ namespace Firefly
 		m_eventCallback = eventCallback;
 		SetupKeyCodeConversionMap();
 		SetupMouseButtonCodeConversionMap();
+		SetupGamepadButtonCodeConversionMap();
 	}
 
 	void Window::SetTitle(const std::string& title)
@@ -81,6 +82,15 @@ namespace Firefly
 	{
 		auto iter = m_mouseButtonCodeConversionMap.find(keyCode);
 		if (iter != m_mouseButtonCodeConversionMap.end())
+			return iter->second;
+		else
+			return -1;
+	}
+
+	int Window::ToFireflyGamepadButtonCode(int keyCode) const
+	{
+		auto iter = m_gamepadButtonCodeConversionMap.find(keyCode);
+		if (iter != m_gamepadButtonCodeConversionMap.end())
 			return iter->second;
 		else
 			return -1;

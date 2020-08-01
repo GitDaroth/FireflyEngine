@@ -19,10 +19,13 @@ namespace Firefly
 		virtual void OnEnableVSync(bool enabled) override;
 		virtual void SetupKeyCodeConversionMap() override;
 		virtual void SetupMouseButtonCodeConversionMap() override;
+		virtual void SetupGamepadButtonCodeConversionMap() override;
 
 	private:
 		void SetupWindowEvents();
 		void SetupInputEvents();
+		void PollGamepadEvents();
+		float ApplyGamepadAxisDeadZone(float axisValue);
 
 		GLFWwindow* m_window;
 		static bool s_isWindowInitialized;

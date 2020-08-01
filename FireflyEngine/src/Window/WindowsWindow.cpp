@@ -32,8 +32,6 @@ namespace Firefly
 		m_context = RenderingAPI::CreateContext();
 		m_context->Init(m_window);
 
-		glfwSetWindowUserPointer(m_window, this);
-
 		SetupWindowEvents();
 		SetupInputEvents();
 	}
@@ -49,6 +47,7 @@ namespace Firefly
 	void WindowsWindow::OnUpdate()
 	{
 		glfwPollEvents();
+		PollGamepadEvents();
 		m_context->SwapBuffers();
 	}
 
@@ -75,6 +74,8 @@ namespace Firefly
 
 	void WindowsWindow::SetupWindowEvents()
 	{
+		glfwSetWindowUserPointer(m_window, this);
+
 		glfwSetWindowSizeCallback(m_window, [](GLFWwindow* glfwWindow, int width, int height)
 		{
 			Window* window = (WindowsWindow*)glfwGetWindowUserPointer(glfwWindow);
@@ -190,6 +191,103 @@ namespace Firefly
 			std::shared_ptr<Event> event = std::make_shared<MouseMoveEvent>((int)xPos, (int)yPos);
 			eventCallback(event);
 		});
+	}
+
+	void WindowsWindow::PollGamepadEvents()
+	{
+		for (int gamepadNumber = 0; gamepadNumber < 16; gamepadNumber++)
+		{
+			if (glfwJoystickIsGamepad(gamepadNumber) && !Input::IsGamepadConnected(gamepadNumber))
+			{
+				std::string gamepadName = glfwGetGamepadName(gamepadNumber);
+				std::shared_ptr<Event> event = std::make_shared<GamepadConnectedEvent>(gamepadNumber, gamepadName);
+				m_eventCallback(event);
+			}
+			else if (!glfwJoystickIsGamepad(gamepadNumber) && Input::IsGamepadConnected(gamepadNumber))
+			{
+				std::shared_ptr<Event> event = std::make_shared<GamepadDisconnectedEvent>(gamepadNumber, Input::GetGamepadName(gamepadNumber));
+				m_eventCallback(event);
+			}
+
+			if (!glfwJoystickIsGamepad(gamepadNumber))
+				continue;
+
+			std::string gamepadName = glfwGetGamepadName(gamepadNumber);
+			GLFWgamepadstate state;
+			if (glfwGetGamepadState(gamepadNumber, &state))
+			{
+				for (int button = 0; button < 15; button++) // there are 15 buttons
+				{
+					auto action = state.buttons[button];
+					int buttonCode = ToFireflyGamepadButtonCode(button);
+					switch (action)
+					{
+					case GLFW_PRESS:
+						if (!Input::IsGamepadButtonPressed(gamepadNumber, buttonCode))
+						{
+							std::shared_ptr<Event> event = std::make_shared<GamepadButtonPressEvent>(gamepadNumber, gamepadName, buttonCode);
+							m_eventCallback(event);
+						}
+						break;
+					case GLFW_RELEASE:
+						if (Input::IsGamepadButtonPressed(gamepadNumber, buttonCode))
+						{
+							std::shared_ptr<Event> event = std::make_shared<GamepadButtonReleaseEvent>(gamepadNumber, gamepadName, buttonCode);
+							m_eventCallback(event);
+						}
+						break;
+					}
+				}
+
+				float epsilon = 0.01f;
+				float axisLeftX = ApplyGamepadAxisDeadZone(state.axes[GLFW_GAMEPAD_AXIS_LEFT_X]);
+				float axisLeftY = ApplyGamepadAxisDeadZone(state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y]);
+				bool hasChangedAxisLeftX = fabsf(axisLeftX - Input::GetGamepadAxisLeftX(gamepadNumber)) >= epsilon;
+				bool hasChangedAxisLeftY = fabsf(axisLeftY - Input::GetGamepadAxisLeftY(gamepadNumber)) >= epsilon;
+				if (hasChangedAxisLeftX || hasChangedAxisLeftY)
+				{
+					std::shared_ptr<Event> event = std::make_shared<GamepadAxisLeftMoveEvent>(gamepadNumber, gamepadName, axisLeftX, axisLeftY);
+					m_eventCallback(event);
+				}
+
+				float axisRightX = ApplyGamepadAxisDeadZone(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X]);
+				float axisRightY = ApplyGamepadAxisDeadZone(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]);
+				bool hasChangedAxisRightX = fabsf(axisRightX - Input::GetGamepadAxisRightX(gamepadNumber)) >= epsilon;
+				bool hasChangedAxisRightY = fabsf(axisRightY - Input::GetGamepadAxisRightY(gamepadNumber)) >= epsilon;
+				if (hasChangedAxisRightX || hasChangedAxisRightY)
+				{
+					std::shared_ptr<Event> event = std::make_shared<GamepadAxisRightMoveEvent>(gamepadNumber, gamepadName, axisRightX, axisRightY);
+					m_eventCallback(event);
+				}
+
+				float triggerLeft = state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER];
+				bool hasChangedTriggerLeft = fabsf(triggerLeft - Input::GetGamepadTriggerLeft(gamepadNumber)) >= epsilon;
+				if (hasChangedTriggerLeft)
+				{
+					std::shared_ptr<Event> event = std::make_shared<GamepadTriggerLeftMoveEvent>(gamepadNumber, gamepadName, triggerLeft);
+					m_eventCallback(event);
+				}
+
+				float triggerRight = state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER];
+				bool hasChangedTriggerRight = fabsf(triggerRight - Input::GetGamepadTriggerRight(gamepadNumber)) >= epsilon;
+				if (hasChangedTriggerRight)
+				{
+					std::shared_ptr<Event> event = std::make_shared<GamepadTriggerRightMoveEvent>(gamepadNumber, gamepadName, triggerRight);
+					m_eventCallback(event);
+				}
+			}
+		}
+	}
+
+	float WindowsWindow::ApplyGamepadAxisDeadZone(float axisValue)
+	{
+		float deadZone = 0.15f;
+
+		float signAxis = axisValue < 0.f ? -1.f : 1.f;
+		axisValue = std::max(fabsf(axisValue), deadZone);
+		// map [deadZone,1] to [0,1] and [-1,-deadZone] to [-1,0]
+		axisValue = (axisValue - deadZone) / (1.f - deadZone);
+		return axisValue < 0.01f ? 0.f : signAxis * axisValue;
 	}
 
 	void WindowsWindow::SetupKeyCodeConversionMap()
@@ -330,5 +428,28 @@ namespace Firefly
 		m_mouseButtonCodeConversionMap.insert(std::pair<int,int>(GLFW_MOUSE_BUTTON_LEFT, FIREFLY_MOUSE_BUTTON_LEFT));
 		m_mouseButtonCodeConversionMap.insert(std::pair<int,int>(GLFW_MOUSE_BUTTON_RIGHT, FIREFLY_MOUSE_BUTTON_RIGHT));
 		m_mouseButtonCodeConversionMap.insert(std::pair<int,int>(GLFW_MOUSE_BUTTON_MIDDLE, FIREFLY_MOUSE_BUTTON_MIDDLE));
+	}
+
+	void WindowsWindow::SetupGamepadButtonCodeConversionMap()
+	{
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_A, FIREFLY_GAMEPAD_BUTTON_A));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_B, FIREFLY_GAMEPAD_BUTTON_B));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_X, FIREFLY_GAMEPAD_BUTTON_X));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_Y, FIREFLY_GAMEPAD_BUTTON_Y));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_LEFT_BUMPER, FIREFLY_GAMEPAD_BUTTON_LEFT_BUMPER));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER, FIREFLY_GAMEPAD_BUTTON_RIGHT_BUMPER));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_BACK, FIREFLY_GAMEPAD_BUTTON_BACK));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_START, FIREFLY_GAMEPAD_BUTTON_START));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_GUIDE, FIREFLY_GAMEPAD_BUTTON_GUIDE));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_LEFT_THUMB, FIREFLY_GAMEPAD_BUTTON_LEFT_THUMB));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_RIGHT_THUMB, FIREFLY_GAMEPAD_BUTTON_RIGHT_THUMB));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_DPAD_UP, FIREFLY_GAMEPAD_BUTTON_DPAD_UP));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_DPAD_RIGHT, FIREFLY_GAMEPAD_BUTTON_DPAD_RIGHT));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_DPAD_DOWN, FIREFLY_GAMEPAD_BUTTON_DPAD_DOWN));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_DPAD_LEFT, FIREFLY_GAMEPAD_BUTTON_DPAD_LEFT));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_CROSS, FIREFLY_GAMEPAD_BUTTON_CROSS));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_CIRCLE, FIREFLY_GAMEPAD_BUTTON_CIRCLE));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_SQUARE, FIREFLY_GAMEPAD_BUTTON_SQUARE));
+		m_gamepadButtonCodeConversionMap.insert(std::pair<int, int>(GLFW_GAMEPAD_BUTTON_TRIANGLE, FIREFLY_GAMEPAD_BUTTON_TRIANGLE));
 	}
 }

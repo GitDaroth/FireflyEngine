@@ -77,11 +77,15 @@ set(eventFiles
 	include/Event/Event.h
 	include/Event/MouseEvent.h
 	include/Event/KeyEvent.h
+	include/Event/GamepadEvent.h
 	include/Event/WindowEvent.h)
 
 set(inputFiles
 	include/Input/KeyCodes.h
 	include/Input/MouseButtonCodes.h
+	include/Input/GamepadButtonCodes.h
+	include/Input/Gamepad.h
+	src/Input/Gamepad.cpp
 	include/Input/Input.h
 	src/Input/Input.cpp)
 

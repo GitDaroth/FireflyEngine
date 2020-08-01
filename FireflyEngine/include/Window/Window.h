@@ -25,6 +25,7 @@ namespace Firefly
 
 		int ToFireflyKeyCode(int keyCode) const;
 		int ToFireflyMouseButtonCode(int keyCode) const;
+		int ToFireflyGamepadButtonCode(int keyCode) const;
 
 		virtual void OnUpdate() = 0;
 
@@ -34,6 +35,7 @@ namespace Firefly
 		virtual void OnEnableVSync(bool enabled) = 0;
 		virtual void SetupKeyCodeConversionMap() = 0;
 		virtual void SetupMouseButtonCodeConversionMap() = 0;
+		virtual void SetupGamepadButtonCodeConversionMap() = 0;
 
 		std::function<void(std::shared_ptr<Event>)> m_eventCallback;
 		std::shared_ptr<GraphicsContext> m_context;
@@ -43,5 +45,6 @@ namespace Firefly
 		bool m_isVSyncEnabled;
 		std::unordered_map<int, int> m_keyCodeConversionMap; // SpecificKeyCode, FireflyKeyCode
 		std::unordered_map<int, int> m_mouseButtonCodeConversionMap; // SpecificMouseButtonCode, FireflyMouseButtonCode
+		std::unordered_map<int, int> m_gamepadButtonCodeConversionMap; // SpecificGamepadButtonCode, FireflyGamepadButtonCode
 	};
 }

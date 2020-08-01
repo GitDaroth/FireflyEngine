@@ -56,3 +56,4 @@ Open the generated Visual Studio solution in the "build" folder and build the "S
 - [assimp](https://github.com/assimp/assimp)
 - [spdlog](https://github.com/gabime/spdlog)
 - [ImGui](https://github.com/ocornut/imgui)
+- [EnTT](https://github.com/skypjack/entt)

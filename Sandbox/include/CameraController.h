@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Rendering/Camera.h>
-#include <Event/MouseEvent.h>
+#include <Input/Input.h>
 #include <memory.h>
 
 class CameraController
@@ -17,8 +17,10 @@ private:
 	std::shared_ptr<Firefly::Camera> m_camera;
 	float m_linearSpeed;
 	float m_linearSpeedBoost;
-	float m_rotationalSpeed;
-	float m_zoomSpeed;
+	float m_gamepadAxisSensitivity;
+	float m_gamepadTriggerSensitivity;
+	float m_mouseMoveSensitivity;
+	float m_mouseWheelSensitivity;
 	float m_yaw;
 	float m_pitch;
 	float m_oldMouseXPos;

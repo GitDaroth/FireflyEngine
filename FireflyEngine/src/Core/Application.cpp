@@ -3,7 +3,6 @@
 
 #include "Window/WindowsWindow.h"
 #include "Event/WindowEvent.h"
-#include "Input/Input.h"
 #include "Rendering/RenderingAPI.h"
 
 #include <GLFW/glfw3.h>
@@ -48,11 +47,11 @@ namespace Firefly
 		{
 			OnWindowEvent(windowEvent);
 
-			if (auto closeEvent = event->AsType<WindowCloseEvent>())
+			if (auto closeEvent = windowEvent->AsType<WindowCloseEvent>())
 			{
 				m_isRunning = false;
 			}
-			else if (auto resizeEvent = event->AsType<WindowResizeEvent>())
+			else if (auto resizeEvent = windowEvent->AsType<WindowResizeEvent>())
 			{
 				int width = resizeEvent->GetWidth();
 				int height = resizeEvent->GetHeight();
@@ -68,6 +67,10 @@ namespace Firefly
 		else if (auto mouseEvent = event->AsType<MouseEvent>())
 		{
 			OnMouseEvent(mouseEvent);
+		}
+		else if (auto gamepadEvent = event->AsType<GamepadEvent>())
+		{
+			OnGamepadEvent(gamepadEvent);
 		}
 	}
 }

@@ -242,6 +242,10 @@ protected:
 		m_cameraController->OnMouseEvent(event);
 	}
 
+	virtual void OnGamepadEvent(std::shared_ptr<Firefly::GamepadEvent> event) override
+	{
+	}
+
 private:
 	std::shared_ptr<Firefly::Renderer> m_renderer;
 	std::shared_ptr<Firefly::Camera> m_camera;

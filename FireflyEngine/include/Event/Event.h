@@ -23,12 +23,7 @@ namespace Firefly
 			return std::dynamic_pointer_cast<T>(shared_from_this());
 		}
 
-		inline bool HasBeenHandled() const { return m_hasBeenHandled; }
-
 		virtual std::string ToString() const = 0;
-
-	protected:
-		bool m_hasBeenHandled = false;
 	};
 
 	class InputEvent : public Event {};
