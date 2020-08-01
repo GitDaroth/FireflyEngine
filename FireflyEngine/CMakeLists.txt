@@ -69,6 +69,10 @@ set(renderingOpenGLFiles
 	include/Rendering/OpenGL/OpenGLRenderFunctions.h
 	src/Rendering/OpenGL/OpenGLRenderFunctions.cpp)
 
+set(sceneFiles
+	include/Scene/Scene.h
+	src/Scene/Scene.cpp)
+
 set(eventFiles
 	include/Event/Event.h
 	include/Event/MouseEvent.h
@@ -87,6 +91,7 @@ add_library(FireflyEngine STATIC
 	${windowFiles} 
 	${renderingFiles} 
 	${renderingOpenGLFiles} 
+	${sceneFiles} 
 	${eventFiles} 
 	${inputFiles})
 
@@ -95,6 +100,7 @@ source_group("\\Core" FILES ${coreFiles})
 source_group("\\Window" FILES ${windowFiles})
 source_group("\\Rendering" FILES ${renderingFiles})
 source_group("\\Rendering\\OpenGL" FILES ${renderingOpenGLFiles})
+source_group("\\Scene" FILES ${sceneFiles})
 source_group("\\Event" FILES ${eventFiles})
 source_group("\\Input" FILES ${inputFiles})
 
@@ -112,4 +118,10 @@ target_link_libraries(FireflyEngine
 
 target_include_directories(FireflyEngine PUBLIC "include")
 target_precompile_headers(FireflyEngine PRIVATE "include/pch.h")
-target_compile_definitions(FireflyEngine PRIVATE GLFW_INCLUDE_NONE)
+
+target_compile_features(FireflyEngine PUBLIC cxx_std_17)
+
+target_compile_definitions(FireflyEngine PUBLIC GLFW_INCLUDE_NONE "$<$<CONFIG:DEBUG>:DEBUG>")
+if(WIN32)
+    target_compile_definitions(FireflyEngine PUBLIC FIREFLY_WINDOWS)
+endif()

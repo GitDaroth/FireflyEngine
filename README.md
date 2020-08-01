@@ -40,13 +40,13 @@ The FireflyEngine is an ambitious project of developing a game engine from scrat
 ## Build Instructions
 The FireflyEngine only supports Windows at the moment!
 
-For Visual Studio 2017:
+For Visual Studio 2019:
 ```
 git clone --recursive https://github.com/GitDaroth/FireflyEngine
 cd FireflyEngine
-cmake_generate_VS2017.bat
+cmake_generate_VS2019.bat
 ```
-Open the generated Visual Studio solution and build the "Sandbox" target.
+Open the generated Visual Studio solution in the "build" folder and build the "Sandbox" target.
 
 ## Dependencies
 - [GLFW](https://github.com/glfw/glfw)
