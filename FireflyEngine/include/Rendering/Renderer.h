@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rendering/Model.h"
+#include "Scene/Scene.h"
 #include "Rendering/Camera.h"
 
 namespace Firefly
@@ -11,12 +11,6 @@ namespace Firefly
 		Renderer();
 		~Renderer();
 
-		void BeginScene(std::shared_ptr<Camera> camera);
-		void EndScene();
-		void SubmitDraw(std::shared_ptr<Model> model);
-
-	private:
-		std::shared_ptr<Camera> m_camera;
-		glm::mat4 m_viewProjectionMatrix;
+		void DrawScene(std::shared_ptr<Scene> scene, std::shared_ptr<Camera> camera);
 	};
 }

@@ -30,6 +30,8 @@ namespace Firefly
 		static float GetGamepadTriggerRight(int gamepadNumber);
 
 		static void OnEvent(std::shared_ptr<Event> event);
+
+	private:
 		static void OnKeyEvent(std::shared_ptr<KeyEvent> keyEvent);
 		static void OnMouseEvent(std::shared_ptr<MouseEvent> mouseEvent);
 		static void OnMouseMoveEvent(std::shared_ptr<MouseMoveEvent> mouseMoveEvent);
@@ -39,7 +41,6 @@ namespace Firefly
 		static void OnGamepadAxisMoveEvent(std::shared_ptr<GamepadAxisMoveEvent> gamepadAxisModeEvent);
 		static void OnGamepadTriggerMoveEvent(std::shared_ptr<GamepadTriggerMoveEvent> gamepadTriggerModeEvent);
 
-	private:
 		static std::unordered_map<int, bool> m_isKeyPressedMap;
 		static std::unordered_map<int, Gamepad> m_gamepadMap;
 		static std::unordered_map<int, bool> m_isMouseButtonPressedMap;

@@ -2,6 +2,9 @@
 #include "Rendering/Renderer.h"
 
 #include "Rendering/RenderingAPI.h"
+#include "Scene/Components/MeshComponent.h"
+#include "Scene/Components/MaterialComponent.h"
+#include "Scene/Components/TransformComponent.h"
 
 namespace Firefly
 {
@@ -14,23 +17,24 @@ namespace Firefly
 	{
 	}
 
-	void Renderer::BeginScene(std::shared_ptr<Camera> camera)
+	void Renderer::DrawScene(std::shared_ptr<Scene> scene, std::shared_ptr<Camera> camera)
 	{
-		m_camera = camera;
-		m_viewProjectionMatrix = camera->GetProjectionMatrix() * camera->GetViewMatrix();
-	}
+		glm::mat4 viewProjectionMatrix = camera->GetProjectionMatrix() * camera->GetViewMatrix();
 
-	void Renderer::EndScene()
-	{
+		auto view = scene->m_entityRegistry.view<Firefly::MeshComponent, Firefly::MaterialComponent, Firefly::TransformComponent>();
+		for (auto entity : view)
+		{
+			auto mesh = view.get<Firefly::MeshComponent>(entity).m_mesh;
+			auto material = view.get<Firefly::MaterialComponent>(entity).m_material;
+			auto transform = view.get<Firefly::TransformComponent>(entity).m_transform;
+			material->Bind();
+			material->GetShader()->SetUniformMatrix4("u_modelMat", transform);
+			material->GetShader()->SetUniformMatrix3("u_normalMat", glm::transpose(glm::inverse(glm::mat3(transform))));
+			material->GetShader()->SetUniformMatrix4("u_viewProjectionMat", viewProjectionMatrix);
+			material->GetShader()->SetUniformFloat3("u_cameraPosition", camera->GetPosition());
+			mesh->Bind();
 
-	}
-
-	void Renderer::SubmitDraw(std::shared_ptr<Model> model)
-	{
-		model->Bind();
-		model->GetShader()->SetUniformMatrix4("u_viewProjectionMat", m_viewProjectionMatrix);
-		model->GetShader()->SetUniformFloat3("u_cameraPosition", m_camera->GetPosition());
-
-		RenderingAPI::GetRenderFunctions()->DrawIndexed(model->GetMesh()->GetIndexCount());
+			RenderingAPI::GetRenderFunctions()->DrawIndexed(mesh->GetIndexCount());
+		}
 	}
 }

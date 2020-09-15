@@ -1,5 +1,7 @@
 #pragma once
 
+#include <entt.hpp>
+
 namespace Firefly
 {
 	class Scene
@@ -7,5 +9,8 @@ namespace Firefly
 	public:
 		Scene();
 		~Scene();
+
+	public:
+		entt::registry m_entityRegistry;
 	};
 }

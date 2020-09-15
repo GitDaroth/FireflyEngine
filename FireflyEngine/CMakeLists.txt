@@ -37,8 +37,6 @@ set(renderingFiles
 	src/Rendering/Material.cpp
 	include/Rendering/Mesh.h
 	src/Rendering/Mesh.cpp
-	include/Rendering/Model.h
-	src/Rendering/Model.cpp
 	include/Rendering/Camera.h
 	src/Rendering/Camera.cpp
 	include/Rendering/RenderingAPI.h
@@ -73,6 +71,12 @@ set(sceneFiles
 	include/Scene/Scene.h
 	src/Scene/Scene.cpp)
 
+set(entityComponentFiles
+	include/Scene/Components/TransformComponent.h
+	include/Scene/Components/MeshComponent.h
+	include/Scene/Components/MaterialComponent.h
+	include/Scene/Components/TagComponent.h)
+
 set(eventFiles
 	include/Event/Event.h
 	include/Event/MouseEvent.h
@@ -96,6 +100,7 @@ add_library(FireflyEngine STATIC
 	${renderingFiles} 
 	${renderingOpenGLFiles} 
 	${sceneFiles} 
+	${entityComponentFiles}
 	${eventFiles} 
 	${inputFiles})
 
@@ -105,6 +110,7 @@ source_group("\\Window" FILES ${windowFiles})
 source_group("\\Rendering" FILES ${renderingFiles})
 source_group("\\Rendering\\OpenGL" FILES ${renderingOpenGLFiles})
 source_group("\\Scene" FILES ${sceneFiles})
+source_group("\\Scene\\Components" FILES ${entityComponentFiles})
 source_group("\\Event" FILES ${eventFiles})
 source_group("\\Input" FILES ${inputFiles})
 

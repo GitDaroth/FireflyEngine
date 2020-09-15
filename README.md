@@ -9,7 +9,7 @@ The FireflyEngine is an ambitious project of developing a game engine from scrat
 **Engine Features:**
 - simple graphics API abstraction layer
 - OpenGL forward rendering
-- input (mouse + keyboard) and window events
+- input (mouse + keyboard + gamepad) and window events
 - normal mapping
 - parallax mapping
 - basic real-time PBR shader and material
