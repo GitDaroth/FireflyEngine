@@ -20,38 +20,32 @@ namespace Firefly
 		int width, height, channels;
 		stbi_set_flip_vertically_on_load(1);
 		stbi_uc* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
-		if (stbi_failure_reason())
-			Logger::Error("FireflyEngine", "Failed to load image({0}): {1}", path, stbi_failure_reason());
+		if (!data)
+			Logger::Error("FireflyEngine", "Failed to load image({0}): {1}", path);
 
 		m_width = width;
 		m_height = height;
 
-		GLenum internalFormat = 0;
 		GLenum dataFormat = 0;
-
-		if (channels == 1)
+		switch (channels)
 		{
-			internalFormat = GL_R8;
+		case 1:
 			dataFormat = GL_RED;
-		}
-		else if (channels == 3)
-		{
-			internalFormat = GL_RGB8;
+			break;
+		case 3:
 			dataFormat = GL_RGB;
-		}
-		else if (channels == 4)
-		{
-			internalFormat = GL_RGBA8;
+			break;
+		case 4:
 			dataFormat = GL_RGBA;
-		}
-		else
-		{
+			break;
+		default:
 			Logger::Error("FireflyEngine", "Wrong image format with {0} channels!", channels);
+			break;
 		}
 
-		glCreateTextures(GL_TEXTURE_2D, 1, &m_texture);
-		glTextureStorage2D(m_texture, 1, internalFormat, m_width, m_height);
-		glTextureSubImage2D(m_texture, 0, 0, 0, m_width, m_height, dataFormat, GL_UNSIGNED_BYTE, data);
+		glGenTextures(1, &m_texture);
+		glBindTexture(GL_TEXTURE_2D, m_texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, dataFormat, m_width, m_height, 0, dataFormat, GL_UNSIGNED_BYTE, data);
 
 		GLfloat maxAnisotropy;
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAnisotropy);

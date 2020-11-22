@@ -25,6 +25,7 @@ namespace Firefly
 			});
 		}
 
+		glfwWindowHint(GLFW_SAMPLES, 8);
 		m_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
 		FIREFLY_ASSERT(m_window, "Unable to create window with GLFW!");
 		s_windowCount++;
