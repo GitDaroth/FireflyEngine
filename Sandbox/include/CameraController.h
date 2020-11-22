@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Rendering/Camera.h>
-#include <Input/Input.h>
+#include <Firefly/Rendering/Camera.h>
+#include <Firefly/Input/Input.h>
 #include <memory.h>
 
 class CameraController

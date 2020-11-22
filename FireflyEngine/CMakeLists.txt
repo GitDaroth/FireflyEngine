@@ -14,83 +14,84 @@ set_target_properties(glfw uninstall PROPERTIES FOLDER 3rdParty/GLFW)
 set_target_properties(assimp assimp_cmd IrrXML UpdateAssimpLibsDebugSymbolsAndDLLs zlib zlibstatic PROPERTIES FOLDER 3rdParty/assimp)
 
 set(miscFiles
-	include/FireflyEngine.h
-	include/pch.h
+	include/Firefly/Engine.h
+	include/Firefly/pch.h
 	src/pch.cpp)
 
 set(coreFiles
-	include/Core/EntryPoint.h
-	include/Core/Core.h
-	include/Core/Application.h
+	include/Firefly/Core/EntryPoint.h
+	src/Core/EntryPoint.cpp
+	include/Firefly/Core/Core.h
+	include/Firefly/Core/Application.h
 	src/Core/Application.cpp
-	include/Core/Logger.h
+	include/Firefly/Core/Logger.h
 	src/Core/Logger.cpp)
 
 set(windowFiles
-	include/Window/Window.h
+	include/Firefly/Window/Window.h
 	src/Window/Window.cpp
-	include/Window/WindowsWindow.h
+	include/Firefly/Window/WindowsWindow.h
 	src/Window/WindowsWindow.cpp)
 
 set(renderingFiles
-	include/Rendering/Material.h
+	include/Firefly/Rendering/Material.h
 	src/Rendering/Material.cpp
-	include/Rendering/Mesh.h
+	include/Firefly/Rendering/Mesh.h
 	src/Rendering/Mesh.cpp
-	include/Rendering/Camera.h
+	include/Firefly/Rendering/Camera.h
 	src/Rendering/Camera.cpp
-	include/Rendering/RenderingAPI.h
+	include/Firefly/Rendering/RenderingAPI.h
 	src/Rendering/RenderingAPI.cpp
-	include/Rendering/Renderer.h
+	include/Firefly/Rendering/Renderer.h
 	src/Rendering/Renderer.cpp
-	include/Rendering/GraphicsContext.h
-	include/Rendering/Shader.h
-	include/Rendering/Texture.h
-	include/Rendering/VertexArray.h
-	include/Rendering/VertexBuffer.h
-	include/Rendering/IndexBuffer.h
-	include/Rendering/RenderFunctions.h)
+	include/Firefly/Rendering/GraphicsContext.h
+	include/Firefly/Rendering/Shader.h
+	include/Firefly/Rendering/Texture.h
+	include/Firefly/Rendering/VertexArray.h
+	include/Firefly/Rendering/VertexBuffer.h
+	include/Firefly/Rendering/IndexBuffer.h
+	include/Firefly/Rendering/RenderFunctions.h)
 
 set(renderingOpenGLFiles
-	include/Rendering/OpenGL/OpenGLContext.h
+	include/Firefly/Rendering/OpenGL/OpenGLContext.h
 	src/Rendering/OpenGL/OpenGLContext.cpp
-	include/Rendering/OpenGL/OpenGLShader.h
+	include/Firefly/Rendering/OpenGL/OpenGLShader.h
 	src/Rendering/OpenGL/OpenGLShader.cpp
-	include/Rendering/OpenGL/OpenGLTexture.h
+	include/Firefly/Rendering/OpenGL/OpenGLTexture.h
 	src/Rendering/OpenGL/OpenGLTexture.cpp
-	include/Rendering/OpenGL/OpenGLVertexArray.h
+	include/Firefly/Rendering/OpenGL/OpenGLVertexArray.h
 	src/Rendering/OpenGL/OpenGLVertexArray.cpp
-	include/Rendering/OpenGL/OpenGLVertexBuffer.h
+	include/Firefly/Rendering/OpenGL/OpenGLVertexBuffer.h
 	src/Rendering/OpenGL/OpenGLVertexBuffer.cpp
-	include/Rendering/OpenGL/OpenGLIndexBuffer.h
+	include/Firefly/Rendering/OpenGL/OpenGLIndexBuffer.h
 	src/Rendering/OpenGL/OpenGLIndexBuffer.cpp
-	include/Rendering/OpenGL/OpenGLRenderFunctions.h
+	include/Firefly/Rendering/OpenGL/OpenGLRenderFunctions.h
 	src/Rendering/OpenGL/OpenGLRenderFunctions.cpp)
 
 set(sceneFiles
-	include/Scene/Scene.h
+	include/Firefly/Scene/Scene.h
 	src/Scene/Scene.cpp)
 
 set(entityComponentFiles
-	include/Scene/Components/TransformComponent.h
-	include/Scene/Components/MeshComponent.h
-	include/Scene/Components/MaterialComponent.h
-	include/Scene/Components/TagComponent.h)
+	include/Firefly/Scene/Components/TransformComponent.h
+	include/Firefly/Scene/Components/MeshComponent.h
+	include/Firefly/Scene/Components/MaterialComponent.h
+	include/Firefly/Scene/Components/TagComponent.h)
 
 set(eventFiles
-	include/Event/Event.h
-	include/Event/MouseEvent.h
-	include/Event/KeyEvent.h
-	include/Event/GamepadEvent.h
-	include/Event/WindowEvent.h)
+	include/Firefly/Event/Event.h
+	include/Firefly/Event/MouseEvent.h
+	include/Firefly/Event/KeyEvent.h
+	include/Firefly/Event/GamepadEvent.h
+	include/Firefly/Event/WindowEvent.h)
 
 set(inputFiles
-	include/Input/KeyCodes.h
-	include/Input/MouseButtonCodes.h
-	include/Input/GamepadButtonCodes.h
-	include/Input/Gamepad.h
+	include/Firefly/Input/KeyCodes.h
+	include/Firefly/Input/MouseButtonCodes.h
+	include/Firefly/Input/GamepadButtonCodes.h
+	include/Firefly/Input/Gamepad.h
 	src/Input/Gamepad.cpp
-	include/Input/Input.h
+	include/Firefly/Input/Input.h
 	src/Input/Input.cpp)
 
 add_library(FireflyEngine STATIC 
@@ -126,8 +127,8 @@ target_link_libraries(FireflyEngine
 		stb_image
 		assimp)
 
-target_include_directories(FireflyEngine PUBLIC "include")
-target_precompile_headers(FireflyEngine PRIVATE "include/pch.h")
+target_include_directories(FireflyEngine PRIVATE "include/Firefly" INTERFACE "include" "include/Firefly")
+target_precompile_headers(FireflyEngine PRIVATE "include/Firefly/pch.h")
 
 target_compile_features(FireflyEngine PUBLIC cxx_std_17)
 

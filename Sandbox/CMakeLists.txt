@@ -1,4 +1,6 @@
 set(sources 
+	src/main.cpp
+	include/SandboxApp.h
 	src/SandboxApp.cpp
 	include/CameraController.h
 	src/CameraController.cpp)

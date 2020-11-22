@@ -1,9 +1,6 @@
-#pragma once
+#include "Core/EntryPoint.h"
 
-namespace Firefly
-{
-	extern Application* InstantiateApplication();
-}
+#include "Core/Logger.h"
 
 #ifdef FIREFLY_WINDOWS
 	int main(int argc, char** argv)

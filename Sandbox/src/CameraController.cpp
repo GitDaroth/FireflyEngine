@@ -1,7 +1,5 @@
 #include "CameraController.h"
 
-#include <Input/Input.h>
-
 CameraController::CameraController(std::shared_ptr<Firefly::Camera> camera) :
 	m_camera(camera),
 	m_linearSpeed(2.5f),
