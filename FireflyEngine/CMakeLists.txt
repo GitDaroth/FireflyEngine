@@ -70,9 +70,12 @@ set(renderingOpenGLFiles
 
 set(sceneFiles
 	include/Firefly/Scene/Scene.h
-	src/Scene/Scene.cpp)
+	src/Scene/Scene.cpp
+	include/Firefly/Scene/Entity.h
+	src/Scene/Entity.cpp)
 
 set(entityComponentFiles
+	include/Firefly/Scene/Components/Component.h
 	include/Firefly/Scene/Components/TransformComponent.h
 	include/Firefly/Scene/Components/MeshComponent.h
 	include/Firefly/Scene/Components/MaterialComponent.h

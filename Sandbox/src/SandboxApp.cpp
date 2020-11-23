@@ -101,44 +101,40 @@ SandboxApp::SandboxApp()
 	floor2NormalTexture->Init("assets/textures/floor/2_normal.jpg");
 	std::shared_ptr<Firefly::Texture2D> floor2RoughnessTexture = Firefly::RenderingAPI::CreateTexture2D();
 	floor2RoughnessTexture->Init("assets/textures/floor/2_roughness.jpg");
-	std::shared_ptr<Firefly::Texture2D> floor2HeightTexture = Firefly::RenderingAPI::CreateTexture2D();
-	floor2HeightTexture->Init("assets/textures/floor/2_height.jpg");
 	std::shared_ptr<Firefly::Material> floor2Material = std::make_shared<Firefly::Material>(shader);
 	floor2Material->SetAlbedoMap(floor2AlbedoTexture);
 	floor2Material->SetNormalMap(floor2NormalTexture);
 	floor2Material->SetRoughnessMap(floor2RoughnessTexture);
-	floor2Material->SetHeightMap(floor2HeightTexture);
-	floor2Material->SetHeightScale(m_heightScale);
 
-	auto pistol = m_scene->m_entityRegistry.create();
-	m_scene->m_entityRegistry.emplace<Firefly::TagComponent>(pistol, "Pistol");
-	m_scene->m_entityRegistry.emplace<Firefly::TransformComponent>(pistol, glm::rotate(glm::scale(glm::mat4(1), glm::vec3(0.01f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
-	m_scene->m_entityRegistry.emplace<Firefly::MeshComponent>(pistol, pistolMesh);
-	m_scene->m_entityRegistry.emplace<Firefly::MaterialComponent>(pistol, pistolMaterial);
+	Firefly::Entity pistol(m_scene);
+	pistol.AddComponent<Firefly::TagComponent>("Pistol");
+	pistol.AddComponent<Firefly::TransformComponent>(glm::rotate(glm::scale(glm::mat4(1), glm::vec3(0.01f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
+	pistol.AddComponent<Firefly::MeshComponent>(pistolMesh);
+	pistol.AddComponent<Firefly::MaterialComponent>(pistolMaterial);
 
-	auto globe = m_scene->m_entityRegistry.create();
-	m_scene->m_entityRegistry.emplace<Firefly::TagComponent>(globe, "Globe");
-	m_scene->m_entityRegistry.emplace<Firefly::TransformComponent>(globe, glm::scale(glm::translate(glm::mat4(1), glm::vec3(-1.5f, -0.5f, -1.5f)), glm::vec3(0.0075f)));
-	m_scene->m_entityRegistry.emplace<Firefly::MeshComponent>(globe, globeMesh);
-	m_scene->m_entityRegistry.emplace<Firefly::MaterialComponent>(globe, globeMaterial);
+	Firefly::Entity globe(m_scene);
+	globe.AddComponent<Firefly::TagComponent>("Globe");
+	globe.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(-1.5f, -0.5f, -1.5f)), glm::vec3(0.0075f)));
+	globe.AddComponent<Firefly::MeshComponent>(globeMesh);
+	globe.AddComponent<Firefly::MaterialComponent>(globeMaterial);
 
-	auto armchair = m_scene->m_entityRegistry.create();
-	m_scene->m_entityRegistry.emplace<Firefly::TagComponent>(armchair, "Armchair");
-	m_scene->m_entityRegistry.emplace<Firefly::TransformComponent>(armchair, glm::scale(glm::translate(glm::rotate(glm::mat4(1), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)), glm::vec3(1.5f, 1.5f, -0.55f)), glm::vec3(0.01f)));
-	m_scene->m_entityRegistry.emplace<Firefly::MeshComponent>(armchair, armchairMesh);
-	m_scene->m_entityRegistry.emplace<Firefly::MaterialComponent>(armchair, armchairMaterial);
+	Firefly::Entity armchair(m_scene);
+	armchair.AddComponent<Firefly::TagComponent>("Armchair");
+	armchair.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::rotate(glm::mat4(1), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)), glm::vec3(1.5f, 1.5f, -0.55f)), glm::vec3(0.01f)));
+	armchair.AddComponent<Firefly::MeshComponent>(armchairMesh);
+	armchair.AddComponent<Firefly::MaterialComponent>(armchairMaterial);
 
-	auto floor = m_scene->m_entityRegistry.create();
-	m_scene->m_entityRegistry.emplace<Firefly::TagComponent>(floor, "Floor");
-	m_scene->m_entityRegistry.emplace<Firefly::TransformComponent>(floor, glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 8.f)), glm::vec3(4.f)));
-	m_scene->m_entityRegistry.emplace<Firefly::MeshComponent>(floor, floorMesh);
-	m_scene->m_entityRegistry.emplace<Firefly::MaterialComponent>(floor, floorMaterial);
+	Firefly::Entity floor(m_scene);
+	floor.AddComponent<Firefly::TagComponent>("Floor");
+	floor.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 8.f)), glm::vec3(4.f)));
+	floor.AddComponent<Firefly::MeshComponent>(floorMesh);
+	floor.AddComponent<Firefly::MaterialComponent>(floorMaterial);
 
-	auto floor2 = m_scene->m_entityRegistry.create();
-	m_scene->m_entityRegistry.emplace<Firefly::TagComponent>(floor2, "Floor2");
-	m_scene->m_entityRegistry.emplace<Firefly::TransformComponent>(floor2, glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 0.f)), glm::vec3(4.f)));
-	m_scene->m_entityRegistry.emplace<Firefly::MeshComponent>(floor2, floorMesh);
-	m_scene->m_entityRegistry.emplace<Firefly::MaterialComponent>(floor2, floor2Material);
+	Firefly::Entity floor2(m_scene);
+	floor2.AddComponent<Firefly::TagComponent>("Floor2");
+	floor2.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 0.f)), glm::vec3(4.f)));
+	floor2.AddComponent<Firefly::MeshComponent>(floorMesh);
+	floor2.AddComponent<Firefly::MaterialComponent>(floor2Material);
 }
 
 SandboxApp::~SandboxApp()
@@ -184,11 +180,11 @@ void SandboxApp::OnKeyEvent(std::shared_ptr<Firefly::KeyEvent> event)
 			break;
 		}
 
-		auto view = m_scene->m_entityRegistry.view<Firefly::MaterialComponent>();
-		for (auto entity : view)
+		auto entityGroup = m_scene->GetEntityGroup<Firefly::MaterialComponent>();
+		for (auto entity : entityGroup)
 		{
-			auto material = view.get<Firefly::MaterialComponent>(entity).m_material;
-
+			auto material = entity.GetComponent<Firefly::MaterialComponent>().m_material;
+			
 			switch (event->GetKeyCode())
 			{
 			case FIREFLY_KEY_1:

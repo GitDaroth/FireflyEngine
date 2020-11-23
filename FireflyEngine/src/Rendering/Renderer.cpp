@@ -21,12 +21,13 @@ namespace Firefly
 	{
 		glm::mat4 viewProjectionMatrix = camera->GetProjectionMatrix() * camera->GetViewMatrix();
 
-		auto view = scene->m_entityRegistry.view<Firefly::MeshComponent, Firefly::MaterialComponent, Firefly::TransformComponent>();
-		for (auto entity : view)
+		auto entityGroup = scene->GetEntityGroup<MeshComponent, MaterialComponent, TransformComponent>();
+		for (auto entity : entityGroup)
 		{
-			auto mesh = view.get<Firefly::MeshComponent>(entity).m_mesh;
-			auto material = view.get<Firefly::MaterialComponent>(entity).m_material;
-			auto transform = view.get<Firefly::TransformComponent>(entity).m_transform;
+			auto [meshComp, materialComp, transformComp] = entity.GetComponents<MeshComponent, MaterialComponent, TransformComponent>();
+			auto mesh = meshComp.m_mesh;
+			auto material = materialComp.m_material;
+			auto transform = transformComp.m_transform;
 			material->Bind();
 			material->GetShader()->SetUniformMatrix4("u_modelMat", transform);
 			material->GetShader()->SetUniformMatrix3("u_normalMat", glm::transpose(glm::inverse(glm::mat3(transform))));
