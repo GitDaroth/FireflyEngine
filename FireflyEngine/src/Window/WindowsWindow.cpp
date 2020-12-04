@@ -25,13 +25,15 @@ namespace Firefly
 			});
 		}
 
-		glfwWindowHint(GLFW_SAMPLES, 8);
+		//glfwWindowHint(GLFW_SAMPLES, 8);
+		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // tell GLFW not to use OpenGL for context creation
 		m_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
 		FIREFLY_ASSERT(m_window, "Unable to create window with GLFW!");
 		s_windowCount++;
 
-		m_context = RenderingAPI::CreateContext();
-		m_context->Init(m_window);
+		//m_context = RenderingAPI::CreateContext();
+		//m_context->Init(m_window);
+		m_vulkanContext = std::make_shared<VulkanContext>(m_window);
 
 		SetupWindowEvents();
 		SetupInputEvents();
@@ -49,7 +51,8 @@ namespace Firefly
 	{
 		glfwPollEvents();
 		PollGamepadEvents();
-		m_context->SwapBuffers();
+		m_vulkanContext->Draw();
+		//m_context->SwapBuffers();
 	}
 
 	void WindowsWindow::OnSetTitle(const std::string& title)
@@ -67,10 +70,10 @@ namespace Firefly
 
 	void WindowsWindow::OnEnableVSync(bool enabled)
 	{
-		if (enabled)
-			glfwSwapInterval(1);
-		else
-			glfwSwapInterval(0);
+		//if (enabled)
+		//	glfwSwapInterval(1);
+		//else
+		//	glfwSwapInterval(0);
 	}
 
 	void WindowsWindow::SetupWindowEvents()

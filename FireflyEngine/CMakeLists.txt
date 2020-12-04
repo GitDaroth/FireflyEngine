@@ -8,6 +8,7 @@ add_subdirectory(3rdParty/imgui)
 add_subdirectory(3rdParty/stb_image)
 add_subdirectory(3rdParty/assimp)
 add_subdirectory(3rdParty/EnTT)
+find_package(Vulkan REQUIRED)
 
 set_target_properties(spdlog glad glm_static imgui stb_image PROPERTIES FOLDER 3rdParty)
 set_target_properties(glfw uninstall PROPERTIES FOLDER 3rdParty/GLFW)
@@ -68,6 +69,10 @@ set(renderingOpenGLFiles
 	include/Firefly/Rendering/OpenGL/OpenGLRenderFunctions.h
 	src/Rendering/OpenGL/OpenGLRenderFunctions.cpp)
 
+set(renderingVulkanFiles
+	include/Firefly/Rendering/Vulkan/VulkanContext.h
+	src/Rendering/Vulkan/VulkanContext.cpp)
+
 set(sceneFiles
 	include/Firefly/Scene/Scene.h
 	src/Scene/Scene.cpp
@@ -103,6 +108,7 @@ add_library(FireflyEngine STATIC
 	${windowFiles} 
 	${renderingFiles} 
 	${renderingOpenGLFiles} 
+	${renderingVulkanFiles}
 	${sceneFiles} 
 	${entityComponentFiles}
 	${eventFiles} 
@@ -113,6 +119,7 @@ source_group("\\Core" FILES ${coreFiles})
 source_group("\\Window" FILES ${windowFiles})
 source_group("\\Rendering" FILES ${renderingFiles})
 source_group("\\Rendering\\OpenGL" FILES ${renderingOpenGLFiles})
+source_group("\\Rendering\\Vulkan" FILES ${renderingVulkanFiles})
 source_group("\\Scene" FILES ${sceneFiles})
 source_group("\\Scene\\Components" FILES ${entityComponentFiles})
 source_group("\\Event" FILES ${eventFiles})
@@ -126,6 +133,7 @@ target_link_libraries(FireflyEngine
 	PRIVATE
 		glfw
 		glad
+		Vulkan::Vulkan
 		imgui
 		stb_image
 		assimp)

@@ -1,5 +1,7 @@
 #include "Scene/Scene.h"
 
+#include "Rendering/RenderingAPI.h"
+
 namespace Firefly
 {
 	Scene::Scene()

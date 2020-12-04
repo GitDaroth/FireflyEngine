@@ -56,8 +56,8 @@ namespace Firefly
 				int width = resizeEvent->GetWidth();
 				int height = resizeEvent->GetHeight();
 
-				if (width != 0 && height != 0)
-					RenderingAPI::GetRenderFunctions()->SetViewport(0, 0, width, height);
+				//if (width != 0 && height != 0)
+				//	RenderingAPI::GetRenderFunctions()->SetViewport(0, 0, width, height);
 			}
 		}
 		else if (auto keyEvent = event->AsType<KeyEvent>())
