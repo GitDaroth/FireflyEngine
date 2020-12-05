@@ -2,7 +2,6 @@
 
 #include <GLFW/glfw3.h>
 #include <fstream>
-#include "Rendering/Mesh.h"
 
 namespace Firefly
 {
@@ -10,6 +9,14 @@ namespace Firefly
 	{
 		m_glfwWindow = (GLFWwindow*)(window);
 		FIREFLY_ASSERT(m_glfwWindow, "Vulkan requires a GLFWwindow pointer!");
+
+		m_vertices = {
+			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
+			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}}
+		};
+		m_indices = { 0, 1, 2, 2, 3, 0 };
 
 		CreateInstance();
 		CreateDebugMessenger();
@@ -22,12 +29,16 @@ namespace Firefly
 		CreateCommandPool();
 		AllocateCommandBuffers();
 		CreateSynchronizationPrimitivesForRendering();
+		CreateVertexBuffer();
+		CreateIndexBuffer();
 	}
 
 	VulkanContext::~VulkanContext()
 	{
 		m_device.waitIdle();
 
+		DestroyIndexBuffer();
+		DestroyVertexBuffer();
 		DestroySynchronizationPrimitivesForRendering();
 		FreeCommandBuffers();
 		DestroyCommandPool();
@@ -78,7 +89,12 @@ namespace Firefly
 		m_commandBuffers[currentImageIndex].beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
 		m_commandBuffers[currentImageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
 
-		m_commandBuffers[currentImageIndex].draw(3, 1, 0, 0);
+		std::vector<vk::Buffer> vertexBuffers = { m_vertexBuffer };
+		vk::DeviceSize offsets[] = { 0 };
+		m_commandBuffers[currentImageIndex].bindVertexBuffers(0, vertexBuffers.size(), vertexBuffers.data(), offsets);
+		m_commandBuffers[currentImageIndex].bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint32);
+
+		m_commandBuffers[currentImageIndex].drawIndexed(m_indices.size(), 1, 0, 0, 0);
 
 		m_commandBuffers[currentImageIndex].endRenderPass();
 		m_commandBuffers[currentImageIndex].end();
@@ -501,48 +517,40 @@ namespace Firefly
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos = { vertexShaderStageCreateInfo, fragmentShaderStageCreateInfo };
 		// ---------------------------------------------
 		// VERTEX INPUT STATE --------------------------
-		//vk::VertexInputBindingDescription vertexInputBindingDescription{};
-		//vertexInputBindingDescription.binding = 0;
-		//vertexInputBindingDescription.stride = sizeof(Mesh::Vertex);
-		//vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
+		vk::VertexInputBindingDescription vertexInputBindingDescription{};
+		vertexInputBindingDescription.binding = 0;
+		vertexInputBindingDescription.stride = sizeof(Mesh::Vertex);
+		vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
 
-		//std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};
-		//vertexInputAttributeDescriptions[0].binding = 0;
-		//vertexInputAttributeDescriptions[0].location = 0;
-		//vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
-		//vertexInputAttributeDescriptions[0].offset = offsetof(Mesh::Vertex, position);
-		//vertexInputAttributeDescriptions[1].binding = 0;
-		//vertexInputAttributeDescriptions[1].location = 1;
-		//vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
-		//vertexInputAttributeDescriptions[1].offset = offsetof(Mesh::Vertex, normal);
-		//vertexInputAttributeDescriptions[2].binding = 0;
-		//vertexInputAttributeDescriptions[2].location = 2;
-		//vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
-		//vertexInputAttributeDescriptions[2].offset = offsetof(Mesh::Vertex, tangent);
-		//vertexInputAttributeDescriptions[3].binding = 0;
-		//vertexInputAttributeDescriptions[3].location = 3;
-		//vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32Sfloat;
-		//vertexInputAttributeDescriptions[3].offset = offsetof(Mesh::Vertex, bitangent);
-		//vertexInputAttributeDescriptions[4].binding = 0;
-		//vertexInputAttributeDescriptions[4].location = 4;
-		//vertexInputAttributeDescriptions[4].format = vk::Format::eR32G32Sfloat;
-		//vertexInputAttributeDescriptions[4].offset = offsetof(Mesh::Vertex, texCoords);
-
-		//vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
-		//vertexInputStateCreateInfo.pNext = nullptr;
-		//vertexInputStateCreateInfo.flags = {};
-		//vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
-		//vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
-		//vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescriptions.size();
-		//vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data();
+		std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};
+		vertexInputAttributeDescriptions[0].binding = 0;
+		vertexInputAttributeDescriptions[0].location = 0;
+		vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
+		vertexInputAttributeDescriptions[0].offset = offsetof(Mesh::Vertex, position);
+		vertexInputAttributeDescriptions[1].binding = 0;
+		vertexInputAttributeDescriptions[1].location = 1;
+		vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
+		vertexInputAttributeDescriptions[1].offset = offsetof(Mesh::Vertex, normal);
+		vertexInputAttributeDescriptions[2].binding = 0;
+		vertexInputAttributeDescriptions[2].location = 2;
+		vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
+		vertexInputAttributeDescriptions[2].offset = offsetof(Mesh::Vertex, tangent);
+		vertexInputAttributeDescriptions[3].binding = 0;
+		vertexInputAttributeDescriptions[3].location = 3;
+		vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32Sfloat;
+		vertexInputAttributeDescriptions[3].offset = offsetof(Mesh::Vertex, bitangent);
+		vertexInputAttributeDescriptions[4].binding = 0;
+		vertexInputAttributeDescriptions[4].location = 4;
+		vertexInputAttributeDescriptions[4].format = vk::Format::eR32G32Sfloat;
+		vertexInputAttributeDescriptions[4].offset = offsetof(Mesh::Vertex, texCoords);
 
 		vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
 		vertexInputStateCreateInfo.pNext = nullptr;
 		vertexInputStateCreateInfo.flags = {};
-		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 0;
-		vertexInputStateCreateInfo.pVertexBindingDescriptions = nullptr;
-		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = 0;
-		vertexInputStateCreateInfo.pVertexAttributeDescriptions = nullptr;
+		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+		vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
+		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescriptions.size();
+		vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data();
 		// ---------------------------------------------
 		// INPUT ASSEMBLY STATE ------------------------
 		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
@@ -747,6 +755,167 @@ namespace Firefly
 			m_device.destroySemaphore(m_isRenderingFinishedSemaphore[i]);
 			m_device.destroySemaphore(m_isImageAvailableSemaphore[i]);
 		}
+	}
+
+	void VulkanContext::CreateVertexBuffer()
+	{
+		vk::DeviceSize bufferSize = sizeof(Mesh::Vertex) * m_vertices.size();
+		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eTransferSrc;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+
+		vk::Buffer stagingVertexBuffer;
+		vk::DeviceMemory stagingVertexBufferMemory;
+		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingVertexBuffer, stagingVertexBufferMemory);
+
+		void* mappedMemory;
+		m_device.mapMemory(stagingVertexBufferMemory, 0, bufferSize, {}, &mappedMemory);
+		memcpy(mappedMemory, m_vertices.data(), bufferSize);
+		m_device.unmapMemory(stagingVertexBufferMemory);
+
+		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
+		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_vertexBuffer, m_vertexBufferMemory);
+
+		CopyBuffer(stagingVertexBuffer, m_vertexBuffer, bufferSize);
+
+		m_device.destroyBuffer(stagingVertexBuffer);
+		m_device.freeMemory(stagingVertexBufferMemory);
+	}
+
+	void VulkanContext::DestroyVertexBuffer()
+	{
+		m_device.destroyBuffer(m_vertexBuffer);
+		m_device.freeMemory(m_vertexBufferMemory);
+	}
+
+	void VulkanContext::CreateIndexBuffer()
+	{
+		vk::DeviceSize bufferSize = sizeof(uint32_t) * m_indices.size();
+		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eTransferSrc;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+
+		vk::Buffer stagingIndexBuffer;
+		vk::DeviceMemory stagingIndexBufferMemory;
+		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingIndexBuffer, stagingIndexBufferMemory);
+
+		void* mappedMemory;
+		m_device.mapMemory(stagingIndexBufferMemory, 0, bufferSize, {}, &mappedMemory);
+		memcpy(mappedMemory, m_indices.data(), bufferSize);
+		m_device.unmapMemory(stagingIndexBufferMemory);
+
+		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
+		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_indexBuffer, m_indexBufferMemory);
+
+		CopyBuffer(stagingIndexBuffer, m_indexBuffer, bufferSize);
+
+		m_device.destroyBuffer(stagingIndexBuffer);
+		m_device.freeMemory(stagingIndexBufferMemory);
+	}
+
+	void VulkanContext::DestroyIndexBuffer()
+	{
+		m_device.destroyBuffer(m_indexBuffer);
+		m_device.freeMemory(m_indexBufferMemory);
+	}
+
+	vk::CommandBuffer VulkanContext::BeginOneTimeCommandBuffer()
+	{
+		vk::CommandBufferAllocateInfo commandBufferAllocateInfo{};
+		commandBufferAllocateInfo.pNext = nullptr;
+		commandBufferAllocateInfo.level = vk::CommandBufferLevel::ePrimary;
+		commandBufferAllocateInfo.commandPool = m_commandPool;
+		commandBufferAllocateInfo.commandBufferCount = 1;
+
+		vk::CommandBuffer commandBuffer;
+		m_device.allocateCommandBuffers(&commandBufferAllocateInfo, &commandBuffer);
+
+		vk::CommandBufferBeginInfo commandBufferBeginInfo{};
+		commandBufferBeginInfo.pNext = nullptr;
+		commandBufferBeginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+		commandBufferBeginInfo.pInheritanceInfo = nullptr;
+		commandBuffer.begin(&commandBufferBeginInfo);
+
+		return commandBuffer;
+	}
+
+	void VulkanContext::EndCommandBuffer(vk::CommandBuffer commandBuffer)
+	{
+		commandBuffer.end();
+
+		vk::SubmitInfo submitInfo{};
+		submitInfo.pNext = nullptr;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &commandBuffer;
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = nullptr;
+		submitInfo.signalSemaphoreCount = 0;
+		submitInfo.pSignalSemaphores = nullptr;
+		submitInfo.pWaitDstStageMask = nullptr;
+
+		vk::Queue graphicsQueue = m_device.getQueue(m_graphicsQueueFamilyIndex, 0);
+		graphicsQueue.submit(1, &submitInfo, nullptr);
+		graphicsQueue.waitIdle();
+
+		m_device.freeCommandBuffers(m_commandPool, 1, &commandBuffer);
+	}
+
+	void VulkanContext::CreateBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags bufferUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory)
+	{
+		vk::BufferCreateInfo bufferCreateInfo{};
+		bufferCreateInfo.pNext = nullptr;
+		bufferCreateInfo.flags = {};
+		bufferCreateInfo.size = bufferSize;
+		bufferCreateInfo.usage = bufferUsageFlags;
+		bufferCreateInfo.sharingMode = vk::SharingMode::eExclusive;
+		bufferCreateInfo.queueFamilyIndexCount = 0;
+		bufferCreateInfo.pQueueFamilyIndices = nullptr;
+
+		if (m_device.createBuffer(&bufferCreateInfo, nullptr, &buffer) != vk::Result::eSuccess)
+			throw std::runtime_error("Failed to create Vulkan buffer!");
+
+		vk::MemoryRequirements memoryRequirements;
+		m_device.getBufferMemoryRequirements(buffer, &memoryRequirements);
+
+		// Find memory type ----------------------------------------
+		vk::PhysicalDeviceMemoryProperties memoryProperties;
+		m_physicalDevice.getMemoryProperties(&memoryProperties);
+		uint32_t memoryTypeIndex = UINT32_MAX;
+		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+		{
+			// IsMemoryTypeSupported && AreMemoryTypePropertyFlagsSupported
+			if ((memoryRequirements.memoryTypeBits & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags)
+			{
+				memoryTypeIndex = i;
+				break;
+			}
+		}
+		if (memoryTypeIndex == UINT32_MAX)
+			throw std::runtime_error("Failed to find suitable memory type for Vulkan buffer!");
+		// ---------------------------------------------------------
+
+		vk::MemoryAllocateInfo memoryAllocateInfo{};
+		memoryAllocateInfo.pNext = nullptr;
+		memoryAllocateInfo.allocationSize = memoryRequirements.size;
+		memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+
+		if (m_device.allocateMemory(&memoryAllocateInfo, nullptr, &bufferMemory) != vk::Result::eSuccess)
+			throw std::runtime_error("Failed to allocate Vulkan buffer memory!");
+
+		m_device.bindBufferMemory(buffer, bufferMemory, 0);
+	}
+
+	void VulkanContext::CopyBuffer(vk::Buffer sourceBuffer, vk::Buffer destinationBuffer, vk::DeviceSize size)
+	{
+		vk::CommandBuffer commandBuffer = BeginOneTimeCommandBuffer();
+
+		vk::BufferCopy bufferCopy{};
+		bufferCopy.srcOffset = 0;
+		bufferCopy.dstOffset = 0;
+		bufferCopy.size = size;
+		commandBuffer.copyBuffer(sourceBuffer, destinationBuffer, 1, &bufferCopy);
+
+		EndCommandBuffer(commandBuffer);
 	}
 
 	vk::ImageView VulkanContext::CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags)

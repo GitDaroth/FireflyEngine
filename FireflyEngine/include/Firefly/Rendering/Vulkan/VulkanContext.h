@@ -1,5 +1,7 @@
 #include <vulkan/vulkan.hpp>
 
+#include "Rendering/Mesh.h"
+
 struct GLFWwindow;
 
 namespace Firefly
@@ -45,6 +47,15 @@ namespace Firefly
 		void CreateSynchronizationPrimitivesForRendering();
 		void DestroySynchronizationPrimitivesForRendering();
 
+		void CreateVertexBuffer();
+		void DestroyVertexBuffer();
+		void CreateIndexBuffer();
+		void DestroyIndexBuffer();
+
+		vk::CommandBuffer BeginOneTimeCommandBuffer();
+		void EndCommandBuffer(vk::CommandBuffer commandBuffer);
+		void CreateBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags bufferUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
+		void CopyBuffer(vk::Buffer sourceBuffer, vk::Buffer destinationBuffer, vk::DeviceSize size);
 		vk::ImageView CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags);
 		std::vector<const char*> GetRequiredInstanceExtensions() const;
 		std::vector<const char*> GetRequiredInstanceLayers() const;
@@ -60,6 +71,8 @@ namespace Firefly
 
 		vk::PhysicalDevice m_physicalDevice;
 		vk::Device m_device;
+		uint32_t m_graphicsQueueFamilyIndex;
+		uint32_t m_presentQueueFamilyIndex;
 
 		vk::SwapchainKHR m_swapchain;
 		vk::SurfaceFormatKHR m_swapchainSurfaceFormat;
@@ -77,8 +90,13 @@ namespace Firefly
 		vk::CommandPool m_commandPool;
 		std::vector<vk::CommandBuffer> m_commandBuffers;
 
-		uint32_t m_graphicsQueueFamilyIndex;
-		uint32_t m_presentQueueFamilyIndex;
+		std::vector<Mesh::Vertex> m_vertices;
+		vk::Buffer m_vertexBuffer;
+		vk::DeviceMemory m_vertexBufferMemory;
+
+		std::vector<uint32_t> m_indices;
+		vk::Buffer m_indexBuffer;
+		vk::DeviceMemory m_indexBufferMemory;
 
 		uint32_t m_currentFrameIndex = 0;
 		std::vector<vk::Semaphore> m_isImageAvailableSemaphore;
