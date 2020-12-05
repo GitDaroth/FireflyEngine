@@ -44,7 +44,7 @@ namespace Firefly
 	{
 		// AQUIRE NEXT IMAGE
 		uint32_t currentImageIndex;
-		vk::Result result = m_device.acquireNextImageKHR(m_swapchain, UINT64_MAX, m_isImageAvailableSemaphore, nullptr, &currentImageIndex);
+		vk::Result result = m_device.acquireNextImageKHR(m_swapchain, UINT64_MAX, m_isImageAvailableSemaphore[m_currentFrameIndex], nullptr, &currentImageIndex);
 		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		{
 			RecreateSwapchain();
@@ -83,8 +83,8 @@ namespace Firefly
 		m_commandBuffers[currentImageIndex].endRenderPass();
 		m_commandBuffers[currentImageIndex].end();
 
-		std::vector<vk::Semaphore> isImageAvailableSemaphores = { m_isImageAvailableSemaphore };
-		std::vector<vk::Semaphore> isRenderingFinishedSemaphores = { m_isRenderingFinishedSemaphore };
+		std::vector<vk::Semaphore> isImageAvailableSemaphores = { m_isImageAvailableSemaphore[m_currentFrameIndex] };
+		std::vector<vk::Semaphore> isRenderingFinishedSemaphores = { m_isRenderingFinishedSemaphore[m_currentFrameIndex] };
 		vk::PipelineStageFlags waitStageMask = vk::PipelineStageFlagBits::eTopOfPipe; //vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		vk::SubmitInfo submitInfo{};
 		submitInfo.waitSemaphoreCount = isImageAvailableSemaphores.size();
@@ -117,6 +117,8 @@ namespace Firefly
 			return;
 		}
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to present the image with the present queue!");
+
+		m_currentFrameIndex = (m_currentFrameIndex + 1) % m_swapchainImages.size();
 	}
 
 	void VulkanContext::CreateInstance() 
@@ -717,19 +719,21 @@ namespace Firefly
 		semaphoreCreateInfo.pNext = nullptr;
 		semaphoreCreateInfo.flags = {};
 
-		vk::Result result = m_device.createSemaphore(&semaphoreCreateInfo, nullptr, &m_isImageAvailableSemaphore);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
-
-		result = m_device.createSemaphore(&semaphoreCreateInfo, nullptr, &m_isRenderingFinishedSemaphore);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
-
 		vk::FenceCreateInfo fenceCreateInfo{};
 		fenceCreateInfo.pNext = nullptr;
 		fenceCreateInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
+		m_isImageAvailableSemaphore.resize(m_swapchainImages.size());
+		m_isRenderingFinishedSemaphore.resize(m_swapchainImages.size());
 		m_isCommandBufferFinishedFences.resize(m_swapchainImages.size());
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
 		{
+			vk::Result result = m_device.createSemaphore(&semaphoreCreateInfo, nullptr, &m_isImageAvailableSemaphore[i]);
+			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
+
+			result = m_device.createSemaphore(&semaphoreCreateInfo, nullptr, &m_isRenderingFinishedSemaphore[i]);
+			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
+
 			result = m_device.createFence(&fenceCreateInfo, nullptr, &m_isCommandBufferFinishedFences[i]);
 			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Fence!");
 		}
@@ -738,9 +742,11 @@ namespace Firefly
 	void VulkanContext::DestroySynchronizationPrimitivesForRendering()
 	{
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		{
 			m_device.destroyFence(m_isCommandBufferFinishedFences[i]);
-		m_device.destroySemaphore(m_isImageAvailableSemaphore);
-		m_device.destroySemaphore(m_isRenderingFinishedSemaphore);
+			m_device.destroySemaphore(m_isRenderingFinishedSemaphore[i]);
+			m_device.destroySemaphore(m_isImageAvailableSemaphore[i]);
+		}
 	}
 
 	vk::ImageView VulkanContext::CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags)

@@ -80,8 +80,9 @@ namespace Firefly
 		uint32_t m_graphicsQueueFamilyIndex;
 		uint32_t m_presentQueueFamilyIndex;
 
-		vk::Semaphore m_isImageAvailableSemaphore;
-		vk::Semaphore m_isRenderingFinishedSemaphore;
+		uint32_t m_currentFrameIndex = 0;
+		std::vector<vk::Semaphore> m_isImageAvailableSemaphore;
+		std::vector<vk::Semaphore> m_isRenderingFinishedSemaphore;
 		std::vector<vk::Fence> m_isCommandBufferFinishedFences;
 
 		vk::DebugUtilsMessengerEXT m_debugMessenger;
