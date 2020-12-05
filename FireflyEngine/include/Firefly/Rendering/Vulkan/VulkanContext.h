@@ -19,14 +19,15 @@ namespace Firefly
 		void CreateDebugMessenger();
 		void DestroyDebugMessenger();
 
-		void CreateSurface(GLFWwindow* glfwWindow);
+		void CreateSurface();
 		void DestroySurface();
 
 		void PickPhysicalDevice();
 		void CreateDevice();
 		void DestroyDevice();
 
-		void CreateSwapchain(GLFWwindow* glfwWindow);
+		void CreateSwapchain();
+		void RecreateSwapchain();
 		void DestroySwapchain();
 
 		void CreateRenderPass();
@@ -51,6 +52,8 @@ namespace Firefly
 		std::vector<const char*> GetRequiredDeviceLayers() const;
 		constexpr bool AreValidationLayersEnabled() const;
 		static std::vector<char> ReadBinaryFile(const std::string& fileName);
+
+		GLFWwindow* m_glfwWindow;
 
 		vk::Instance m_instance;
 		vk::SurfaceKHR m_surface;

@@ -8,15 +8,15 @@ namespace Firefly
 {
 	VulkanContext::VulkanContext(void* window)
 	{
-		GLFWwindow* glfwWindow = (GLFWwindow*)(window);
-		FIREFLY_ASSERT(glfwWindow, "Vulkan requires a GLFWwindow pointer!");
+		m_glfwWindow = (GLFWwindow*)(window);
+		FIREFLY_ASSERT(m_glfwWindow, "Vulkan requires a GLFWwindow pointer!");
 
 		CreateInstance();
 		CreateDebugMessenger();
-		CreateSurface(glfwWindow);
+		CreateSurface();
 		PickPhysicalDevice();
 		CreateDevice();
-		CreateSwapchain(glfwWindow);
+		CreateSwapchain();
 		CreateRenderPass();
 		CreateGraphicsPipeline();
 		CreateCommandPool();
@@ -45,7 +45,12 @@ namespace Firefly
 		// AQUIRE NEXT IMAGE
 		uint32_t currentImageIndex;
 		vk::Result result = m_device.acquireNextImageKHR(m_swapchain, UINT64_MAX, m_isImageAvailableSemaphore, nullptr, &currentImageIndex);
-		//FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to aquire next image from the swapchain!");
+		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+		{
+			RecreateSwapchain();
+			return;
+		}
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to aquire next image from the swapchain!");
 
 		// RENDER TO IMAGE
 		// wait until the indexed command buffer is not used anymore before recording new commands to it
@@ -106,7 +111,12 @@ namespace Firefly
 
 		vk::Queue presentQueue = m_device.getQueue(m_presentQueueFamilyIndex, 0);
 		result = presentQueue.presentKHR(&presentInfo);
-		//FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to present the image with the present queue!");
+		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+		{
+			RecreateSwapchain();
+			return;
+		}
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to present the image with the present queue!");
 	}
 
 	void VulkanContext::CreateInstance() 
@@ -169,10 +179,10 @@ namespace Firefly
 		m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger, nullptr, dispatchLoaderDynamic);
 	}
 
-	void VulkanContext::CreateSurface(GLFWwindow* glfwWindow)
+	void VulkanContext::CreateSurface()
 	{
 		VkSurfaceKHR surface;
-		vk::Result result = vk::Result(glfwCreateWindowSurface(m_instance, glfwWindow, nullptr, &surface));
+		vk::Result result = vk::Result(glfwCreateWindowSurface(m_instance, m_glfwWindow, nullptr, &surface));
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan window surface!");
 		m_surface = vk::SurfaceKHR(surface);
 	}
@@ -261,7 +271,7 @@ namespace Firefly
 		m_device.destroy();
 	}
 
-	void VulkanContext::CreateSwapchain(GLFWwindow* glfwWindow)
+	void VulkanContext::CreateSwapchain()
 	{
 		vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
 		if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
@@ -271,7 +281,7 @@ namespace Firefly
 		else
 		{
 			int width, height;
-			glfwGetFramebufferSize(glfwWindow, &width, &height);
+			glfwGetFramebufferSize(m_glfwWindow, &width, &height);
 			vk::Extent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 			actualExtent.width = std::max(surfaceCapabilities.minImageExtent.width, std::min(surfaceCapabilities.maxImageExtent.width, actualExtent.width));
 			actualExtent.height = std::max(surfaceCapabilities.minImageExtent.height, std::min(surfaceCapabilities.maxImageExtent.height, actualExtent.height));
@@ -280,23 +290,31 @@ namespace Firefly
 
 		std::vector<vk::SurfaceFormatKHR> surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(m_surface);
 		for (const vk::SurfaceFormatKHR& surfaceFormat : surfaceFormats)
+		{
 			if (surfaceFormat.format == vk::Format::eB8G8R8A8Srgb && surfaceFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
 			{
 				m_swapchainSurfaceFormat = surfaceFormat;
 				break;
 			}
 			else
+			{
 				m_swapchainSurfaceFormat = surfaceFormats[0];
+			}
+		}
 
 		std::vector<vk::PresentModeKHR> presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
 		for (const vk::PresentModeKHR& presentMode : presentModes)
+		{
 			if (presentMode == vk::PresentModeKHR::eMailbox)
 			{
 				m_swapchainPresentMode = presentMode;
 				break;
 			}
 			else
+			{
 				m_swapchainPresentMode = vk::PresentModeKHR::eFifo;
+			}
+		}
 
 		uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
 		if (surfaceCapabilities.maxImageCount > 0)
@@ -341,6 +359,29 @@ namespace Firefly
 		uint32_t mipLevels = 1;
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
 			m_swapchainImageViews[i] = CreateImageView(m_swapchainImages[i], mipLevels, m_swapchainSurfaceFormat.format, vk::ImageAspectFlagBits::eColor);
+	}
+
+	void VulkanContext::RecreateSwapchain()
+	{
+		m_device.waitIdle();
+
+		int width = 0;
+		int height = 0;
+		glfwGetFramebufferSize(m_glfwWindow, &width, &height);
+		if (width == 0 && height == 0)
+			return;
+
+		DestroySynchronizationPrimitivesForRendering();
+		FreeCommandBuffers();
+		DestroyGraphicsPipeline();
+		DestroyRenderPass();
+		DestroySwapchain();
+
+		CreateSwapchain();
+		CreateRenderPass();
+		CreateGraphicsPipeline();
+		AllocateCommandBuffers();
+		CreateSynchronizationPrimitivesForRendering();
 	}
 
 	void VulkanContext::DestroySwapchain()
