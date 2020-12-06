@@ -2,6 +2,7 @@
 
 #include <GLFW/glfw3.h>
 #include <fstream>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Firefly
 {
@@ -18,32 +19,43 @@ namespace Firefly
 		};
 		m_indices = { 0, 1, 2, 2, 3, 0 };
 
+		for (size_t i = 0; i < m_instanceCount; i++)
+		{
+			m_modelMatrices.push_back(glm::translate(glm::mat4(1.0f), glm::vec3(i * 0.1f, 0.0f, 0.0f)));
+		}
+
 		CreateInstance();
 		CreateDebugMessenger();
 		CreateSurface();
 		PickPhysicalDevice();
 		CreateDevice();
 		CreateSwapchain();
+		CreateDynamicUniformBuffer();
+		CreateDescriptorPool();
+		AllocateDescriptorSets();
 		CreateRenderPass();
 		CreateGraphicsPipeline();
 		CreateCommandPool();
 		AllocateCommandBuffers();
 		CreateSynchronizationPrimitivesForRendering();
-		CreateVertexBuffer();
-		CreateIndexBuffer();
+		CreateVertexBuffers();
+		CreateIndexBuffers();
 	}
 
 	VulkanContext::~VulkanContext()
 	{
 		m_device.waitIdle();
 
-		DestroyIndexBuffer();
-		DestroyVertexBuffer();
+		DestroyIndexBuffers();
+		DestroyVertexBuffers();
 		DestroySynchronizationPrimitivesForRendering();
 		FreeCommandBuffers();
 		DestroyCommandPool();
 		DestroyGraphicsPipeline();
 		DestroyRenderPass();
+		FreeDescriptorSets();
+		DestroyDescriptorPool();
+		DestroyDynamicUniformBuffer();
 		DestroySwapchain();
 		DestroyDevice();
 		DestroySurface();
@@ -68,6 +80,7 @@ namespace Firefly
 		m_device.waitForFences(1, &m_isCommandBufferFinishedFences[currentImageIndex], true, UINT64_MAX);
 		m_device.resetFences(1, &m_isCommandBufferFinishedFences[currentImageIndex]);
 
+		m_commandBuffers[currentImageIndex].reset({});
 		vk::CommandBufferBeginInfo commandBufferBeginInfo{};
 		commandBufferBeginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
 		result = m_commandBuffers[currentImageIndex].begin(&commandBufferBeginInfo);
@@ -89,12 +102,30 @@ namespace Firefly
 		m_commandBuffers[currentImageIndex].beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
 		m_commandBuffers[currentImageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
 
-		std::vector<vk::Buffer> vertexBuffers = { m_vertexBuffer };
-		vk::DeviceSize offsets[] = { 0 };
-		m_commandBuffers[currentImageIndex].bindVertexBuffers(0, vertexBuffers.size(), vertexBuffers.data(), offsets);
-		m_commandBuffers[currentImageIndex].bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint32);
+		// update dynamic uniform buffer for model matrix
+		for (size_t i = 0; i < m_instanceCount; i++)
+		{
+			glm::mat4* modelMatrixData = (glm::mat4*)((uint64_t)m_modelMatrixUniformData + i * m_modelMatrixUniformAlignment);
+			*modelMatrixData = m_modelMatrices[i];
+		}
+		void* mappedMemory;
+		size_t bufferSize = m_instanceCount * m_modelMatrixUniformAlignment;
+		m_device.mapMemory(m_uniformBufferMemories[currentImageIndex], 0, bufferSize, {}, &mappedMemory);
+		memcpy(mappedMemory, m_modelMatrixUniformData, bufferSize);
+		m_device.unmapMemory(m_uniformBufferMemories[currentImageIndex]);
 
-		m_commandBuffers[currentImageIndex].drawIndexed(m_indices.size(), 1, 0, 0, 0);
+		for (size_t i = 0; i < m_instanceCount; i++)
+		{
+			std::vector<vk::Buffer> vertexBuffers = { m_vertexBuffer };
+			vk::DeviceSize offsets[] = { 0 };
+			m_commandBuffers[currentImageIndex].bindVertexBuffers(0, vertexBuffers.size(), vertexBuffers.data(), offsets);
+			m_commandBuffers[currentImageIndex].bindIndexBuffer(m_indexBuffer, 0, vk::IndexType::eUint32);
+
+			uint32_t dynamicOffset = i * m_modelMatrixUniformAlignment;
+			m_commandBuffers[currentImageIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, 1, &m_descriptorSets[currentImageIndex], 1, &dynamicOffset);
+
+			m_commandBuffers[currentImageIndex].drawIndexed(m_indices.size(), 1, 0, 0, 0);
+		}
 
 		m_commandBuffers[currentImageIndex].endRenderPass();
 		m_commandBuffers[currentImageIndex].end();
@@ -393,9 +424,11 @@ namespace Firefly
 		FreeCommandBuffers();
 		DestroyGraphicsPipeline();
 		DestroyRenderPass();
+		FreeDescriptorSets();
 		DestroySwapchain();
 
 		CreateSwapchain();
+		AllocateDescriptorSets();
 		CreateRenderPass();
 		CreateGraphicsPipeline();
 		AllocateCommandBuffers();
@@ -407,6 +440,119 @@ namespace Firefly
 		for (const vk::ImageView& imageView : m_swapchainImageViews)
 			m_device.destroyImageView(imageView);
 		m_device.destroySwapchainKHR(m_swapchain);
+	}
+
+	void VulkanContext::CreateDynamicUniformBuffer()
+	{
+		size_t minUniformBufferOffsetAlignment = m_physicalDevice.getProperties().limits.minUniformBufferOffsetAlignment;
+		m_modelMatrixUniformAlignment = sizeof(glm::mat4);
+		if (minUniformBufferOffsetAlignment > 0)
+			m_modelMatrixUniformAlignment = (m_modelMatrixUniformAlignment + minUniformBufferOffsetAlignment - 1) & ~(minUniformBufferOffsetAlignment - 1);
+
+		size_t bufferSize = m_instanceCount * m_modelMatrixUniformAlignment;
+
+		m_modelMatrixUniformData = (glm::mat4*)_aligned_malloc(bufferSize, m_modelMatrixUniformAlignment);
+
+		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+
+		m_uniformBuffers.resize(m_swapchainImages.size());
+		m_uniformBufferMemories.resize(m_swapchainImages.size());
+
+		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffers[i], m_uniformBufferMemories[i]);
+	}
+
+	void VulkanContext::DestroyDynamicUniformBuffer()
+	{
+		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		{
+			m_device.destroyBuffer(m_uniformBuffers[i]);
+			m_device.freeMemory(m_uniformBufferMemories[i]);
+		}
+	}
+
+	void VulkanContext::CreateDescriptorPool()
+	{
+		vk::DescriptorPoolSize uniformBufferDescriptorPoolSize{};
+		uniformBufferDescriptorPoolSize.descriptorCount = m_swapchainImages.size();
+
+		std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = { uniformBufferDescriptorPoolSize };
+
+		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{};
+		descriptorPoolCreateInfo.pNext = nullptr;
+		descriptorPoolCreateInfo.flags = {};
+		descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
+		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
+		descriptorPoolCreateInfo.maxSets = m_swapchainImages.size();
+
+		vk::Result result = m_device.createDescriptorPool(&descriptorPoolCreateInfo, nullptr, &m_descriptorPool);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan descriptor pool!");
+	}
+
+	void VulkanContext::DestroyDescriptorPool()
+	{
+		m_device.destroyDescriptorPool(m_descriptorPool);
+	}
+
+	void VulkanContext::AllocateDescriptorSets()
+	{
+		// DESCRIPTOR LAYOUT
+		vk::DescriptorSetLayoutBinding uniformBufferObjectLayoutBinding{};
+		uniformBufferObjectLayoutBinding.binding = 0;
+		uniformBufferObjectLayoutBinding.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+		uniformBufferObjectLayoutBinding.descriptorCount = 1;
+		uniformBufferObjectLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+		uniformBufferObjectLayoutBinding.pImmutableSamplers = nullptr;
+
+		std::vector<vk::DescriptorSetLayoutBinding> bindings = { uniformBufferObjectLayoutBinding };
+
+		vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
+		descriptorSetLayoutCreateInfo.pNext = nullptr;
+		descriptorSetLayoutCreateInfo.flags = {};
+		descriptorSetLayoutCreateInfo.bindingCount = bindings.size();
+		descriptorSetLayoutCreateInfo.pBindings = bindings.data();
+
+		vk::Result result = m_device.createDescriptorSetLayout(&descriptorSetLayoutCreateInfo, nullptr, &m_descriptorSetLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+
+		// DESCRIPTOR SETS
+		m_descriptorSets.resize(m_swapchainImages.size());
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_swapchainImages.size(), m_descriptorSetLayout);
+		vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+		descriptorSetAllocateInfo.pNext = nullptr;
+		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+		descriptorSetAllocateInfo.descriptorSetCount = m_swapchainImages.size();
+		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
+
+		result = m_device.allocateDescriptorSets(&descriptorSetAllocateInfo, m_descriptorSets.data());
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+
+		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		{
+			vk::DescriptorBufferInfo descriptorBufferInfo{};
+			descriptorBufferInfo.buffer = m_uniformBuffers[i];
+			descriptorBufferInfo.offset = 0;
+			descriptorBufferInfo.range = m_modelMatrixUniformAlignment;
+
+			std::array<vk::WriteDescriptorSet, 1> writeDescriptorSets{};
+			writeDescriptorSets[0].dstSet = m_descriptorSets[i];
+			writeDescriptorSets[0].dstBinding = 0;
+			writeDescriptorSets[0].dstArrayElement = 0;
+			writeDescriptorSets[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+			writeDescriptorSets[0].descriptorCount = 1;
+			writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfo;
+			writeDescriptorSets[0].pImageInfo = nullptr;
+			writeDescriptorSets[0].pTexelBufferView = nullptr;
+
+			m_device.updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+		}
+	}
+
+	void VulkanContext::FreeDescriptorSets()
+	{
+		m_device.freeDescriptorSets(m_descriptorPool, m_descriptorSets.size(), m_descriptorSets.data());
+		m_device.destroyDescriptorSetLayout(m_descriptorSetLayout);
 	}
 
 	void VulkanContext::CreateRenderPass()
@@ -646,8 +792,8 @@ namespace Firefly
 		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 		pipelineLayoutCreateInfo.pNext = nullptr;
 		pipelineLayoutCreateInfo.flags = {};
-		pipelineLayoutCreateInfo.setLayoutCount = 0;
-		pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+		pipelineLayoutCreateInfo.setLayoutCount = 1;
+		pipelineLayoutCreateInfo.pSetLayouts = &m_descriptorSetLayout;
 		pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 		pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
@@ -757,7 +903,7 @@ namespace Firefly
 		}
 	}
 
-	void VulkanContext::CreateVertexBuffer()
+	void VulkanContext::CreateVertexBuffers()
 	{
 		vk::DeviceSize bufferSize = sizeof(Mesh::Vertex) * m_vertices.size();
 		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eTransferSrc;
@@ -782,13 +928,13 @@ namespace Firefly
 		m_device.freeMemory(stagingVertexBufferMemory);
 	}
 
-	void VulkanContext::DestroyVertexBuffer()
+	void VulkanContext::DestroyVertexBuffers()
 	{
 		m_device.destroyBuffer(m_vertexBuffer);
 		m_device.freeMemory(m_vertexBufferMemory);
 	}
 
-	void VulkanContext::CreateIndexBuffer()
+	void VulkanContext::CreateIndexBuffers()
 	{
 		vk::DeviceSize bufferSize = sizeof(uint32_t) * m_indices.size();
 		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eTransferSrc;
@@ -813,7 +959,7 @@ namespace Firefly
 		m_device.freeMemory(stagingIndexBufferMemory);
 	}
 
-	void VulkanContext::DestroyIndexBuffer()
+	void VulkanContext::DestroyIndexBuffers()
 	{
 		m_device.destroyBuffer(m_indexBuffer);
 		m_device.freeMemory(m_indexBufferMemory);

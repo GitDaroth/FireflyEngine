@@ -29,7 +29,7 @@ namespace Firefly
 		m_vertexArray->Init();
 		m_vertexArray->Bind();
 
-		std::shared_ptr<VertexBuffer> vertexBuffer = RenderingAPI::CreateVertexBuffer();
+		std::shared_ptr<VertexBuffer> vertexBuffer = RenderingAPI::CreateVertexBuffers();
 		vertexBuffer->Init((float*)vertices.data(), vertices.size() * sizeof(Vertex));
 
 		VertexBuffer::Layout layout = {
@@ -41,7 +41,7 @@ namespace Firefly
 		};
 		vertexBuffer->SetLayout(layout);
 
-		std::shared_ptr<IndexBuffer> indexBuffer = RenderingAPI::CreateIndexBuffer();
+		std::shared_ptr<IndexBuffer> indexBuffer = RenderingAPI::CreateIndexBuffers();
 		indexBuffer->Init(indices.data(), indices.size() * sizeof(uint32_t));
 
 		m_vertexArray->AddVertexBuffer(vertexBuffer);

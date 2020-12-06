@@ -81,7 +81,7 @@ namespace Firefly
 		}
 	}
 
-	std::shared_ptr<VertexBuffer> RenderingAPI::CreateVertexBuffer()
+	std::shared_ptr<VertexBuffer> RenderingAPI::CreateVertexBuffers()
 	{
 		switch (s_type)
 		{
@@ -98,7 +98,7 @@ namespace Firefly
 		}
 	}
 
-	std::shared_ptr<IndexBuffer> RenderingAPI::CreateIndexBuffer()
+	std::shared_ptr<IndexBuffer> RenderingAPI::CreateIndexBuffers()
 	{
 		switch (s_type)
 		{

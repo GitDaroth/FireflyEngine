@@ -32,25 +32,31 @@ namespace Firefly
 		void RecreateSwapchain();
 		void DestroySwapchain();
 
+		void CreateDynamicUniformBuffer();
+		void DestroyDynamicUniformBuffer();
+
+		void CreateDescriptorPool();
+		void DestroyDescriptorPool();
+		void AllocateDescriptorSets();
+		void FreeDescriptorSets();
+
 		void CreateRenderPass();
 		void DestroyRenderPass();
-
 		void CreateGraphicsPipeline();
 		void DestroyGraphicsPipeline();
 
 		void CreateCommandPool();
 		void DestroyCommandPool();
-
 		void AllocateCommandBuffers();
 		void FreeCommandBuffers();
 
 		void CreateSynchronizationPrimitivesForRendering();
 		void DestroySynchronizationPrimitivesForRendering();
 
-		void CreateVertexBuffer();
-		void DestroyVertexBuffer();
-		void CreateIndexBuffer();
-		void DestroyIndexBuffer();
+		void CreateVertexBuffers();
+		void DestroyVertexBuffers();
+		void CreateIndexBuffers();
+		void DestroyIndexBuffers();
 
 		vk::CommandBuffer BeginOneTimeCommandBuffer();
 		void EndCommandBuffer(vk::CommandBuffer commandBuffer);
@@ -97,6 +103,18 @@ namespace Firefly
 		std::vector<uint32_t> m_indices;
 		vk::Buffer m_indexBuffer;
 		vk::DeviceMemory m_indexBufferMemory;
+
+		vk::DescriptorPool m_descriptorPool;
+		vk::DescriptorSetLayout m_descriptorSetLayout;
+		std::vector<vk::DescriptorSet> m_descriptorSets;
+
+		std::vector<glm::mat4> m_modelMatrices;
+		size_t m_modelMatrixUniformAlignment;
+		glm::mat4* m_modelMatrixUniformData;
+		std::vector<vk::Buffer> m_uniformBuffers;
+		std::vector<vk::DeviceMemory> m_uniformBufferMemories;
+
+		uint32_t m_instanceCount = 10;
 
 		uint32_t m_currentFrameIndex = 0;
 		std::vector<vk::Semaphore> m_isImageAvailableSemaphore;
