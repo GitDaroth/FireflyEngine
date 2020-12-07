@@ -6,6 +6,17 @@ struct GLFWwindow;
 
 namespace Firefly
 {
+	struct UboPerFrame
+	{
+		glm::mat4 viewMatrix;
+		glm::mat4 projectionMatrix;
+	};
+
+	struct UboPerObject
+	{
+		glm::mat4* modelMatrixData; // contains the model matrices of all objects in the scene
+	};
+
 	class VulkanContext
 	{
 	public:
@@ -32,8 +43,8 @@ namespace Firefly
 		void RecreateSwapchain();
 		void DestroySwapchain();
 
-		void CreateDynamicUniformBuffer();
-		void DestroyDynamicUniformBuffer();
+		void CreateUniformBuffers();
+		void DestroyUniformBuffers();
 
 		void CreateDescriptorPool();
 		void DestroyDescriptorPool();
@@ -70,6 +81,10 @@ namespace Firefly
 		constexpr bool AreValidationLayersEnabled() const;
 		static std::vector<char> ReadBinaryFile(const std::string& fileName);
 
+		std::vector<Mesh::Vertex> m_vertices;
+		std::vector<uint32_t> m_indices;
+		std::vector<glm::mat4> m_modelMatrices;
+
 		GLFWwindow* m_glfwWindow;
 
 		vk::Instance m_instance;
@@ -96,11 +111,9 @@ namespace Firefly
 		vk::CommandPool m_commandPool;
 		std::vector<vk::CommandBuffer> m_commandBuffers;
 
-		std::vector<Mesh::Vertex> m_vertices;
 		vk::Buffer m_vertexBuffer;
 		vk::DeviceMemory m_vertexBufferMemory;
 
-		std::vector<uint32_t> m_indices;
 		vk::Buffer m_indexBuffer;
 		vk::DeviceMemory m_indexBufferMemory;
 
@@ -108,13 +121,16 @@ namespace Firefly
 		vk::DescriptorSetLayout m_descriptorSetLayout;
 		std::vector<vk::DescriptorSet> m_descriptorSets;
 
-		std::vector<glm::mat4> m_modelMatrices;
-		size_t m_modelMatrixUniformAlignment;
-		glm::mat4* m_modelMatrixUniformData;
-		std::vector<vk::Buffer> m_uniformBuffers;
-		std::vector<vk::DeviceMemory> m_uniformBufferMemories;
+		UboPerFrame m_uboPerFrame;
+		std::vector<vk::Buffer> m_uniformBuffersPerFrame;
+		std::vector<vk::DeviceMemory> m_uniformBufferMemoriesPerFrame;
 
-		uint32_t m_instanceCount = 10;
+		size_t m_modelMatrixUniformAlignment;
+		UboPerObject m_uboPerObject;
+		std::vector<vk::Buffer> m_uniformBuffersPerObject;
+		std::vector<vk::DeviceMemory> m_uniformBufferMemoriesPerObject;
+
+		uint32_t m_objectCount = 10;
 
 		uint32_t m_currentFrameIndex = 0;
 		std::vector<vk::Semaphore> m_isImageAvailableSemaphore;

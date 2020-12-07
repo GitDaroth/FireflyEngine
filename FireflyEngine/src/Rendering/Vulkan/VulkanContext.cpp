@@ -12,16 +12,20 @@ namespace Firefly
 		FIREFLY_ASSERT(m_glfwWindow, "Vulkan requires a GLFWwindow pointer!");
 
 		m_vertices = {
-			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f}},
-			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}}
+			{{ -1.0f, -1.0f,  1.0f }, { 1.0f, 0.0f, 0.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{  1.0f, -1.0f,  1.0f }, { 0.0f, 1.0f, 0.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{  1.0f,  1.0f,  1.0f }, { 0.0f, 0.0f, 1.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{ -1.0f,  1.0f,  1.0f }, { 0.0f, 0.0f, 0.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{ -1.0f, -1.0f, -1.0f }, { 1.0f, 0.0f, 0.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{  1.0f, -1.0f, -1.0f }, { 0.0f, 1.0f, 0.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{  1.0f,  1.0f, -1.0f }, { 0.0f, 0.0f, 1.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+			{{ -1.0f,  1.0f, -1.0f }, { 0.0f, 0.0f, 0.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}}
 		};
-		m_indices = { 0, 1, 2, 2, 3, 0 };
+		m_indices = { 0,1,2, 2,3,0, 1,5,6, 6,2,1, 7,6,5, 5,4,7, 4,0,3, 3,7,4, 4,5,1, 1,0,4, 3,2,6, 6,7,3 };
 
-		for (size_t i = 0; i < m_instanceCount; i++)
+		for (size_t i = 0; i < m_objectCount; i++)
 		{
-			m_modelMatrices.push_back(glm::translate(glm::mat4(1.0f), glm::vec3(i * 0.1f, 0.0f, 0.0f)));
+			m_modelMatrices.push_back(glm::translate(glm::mat4(1.0f), glm::vec3(i, i, i)));
 		}
 
 		CreateInstance();
@@ -30,7 +34,7 @@ namespace Firefly
 		PickPhysicalDevice();
 		CreateDevice();
 		CreateSwapchain();
-		CreateDynamicUniformBuffer();
+		CreateUniformBuffers();
 		CreateDescriptorPool();
 		AllocateDescriptorSets();
 		CreateRenderPass();
@@ -55,7 +59,7 @@ namespace Firefly
 		DestroyRenderPass();
 		FreeDescriptorSets();
 		DestroyDescriptorPool();
-		DestroyDynamicUniformBuffer();
+		DestroyUniformBuffers();
 		DestroySwapchain();
 		DestroyDevice();
 		DestroySurface();
@@ -102,19 +106,33 @@ namespace Firefly
 		m_commandBuffers[currentImageIndex].beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
 		m_commandBuffers[currentImageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
 
-		// update dynamic uniform buffer for model matrix
-		for (size_t i = 0; i < m_instanceCount; i++)
-		{
-			glm::mat4* modelMatrixData = (glm::mat4*)((uint64_t)m_modelMatrixUniformData + i * m_modelMatrixUniformAlignment);
-			*modelMatrixData = m_modelMatrices[i];
-		}
-		void* mappedMemory;
-		size_t bufferSize = m_instanceCount * m_modelMatrixUniformAlignment;
-		m_device.mapMemory(m_uniformBufferMemories[currentImageIndex], 0, bufferSize, {}, &mappedMemory);
-		memcpy(mappedMemory, m_modelMatrixUniformData, bufferSize);
-		m_device.unmapMemory(m_uniformBufferMemories[currentImageIndex]);
+		// update uniform buffer per frame
+		m_uboPerFrame.viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		m_uboPerFrame.projectionMatrix = glm::perspective(glm::radians(45.0f), m_swapchainExtent.width / (float)m_swapchainExtent.height, 0.1f, 10000.0f);
+		m_uboPerFrame.projectionMatrix[1][1] *= -1; // Vulkan has inverted y axis in comparison to OpenGL
 
-		for (size_t i = 0; i < m_instanceCount; i++)
+		void* mappedMemoryPerFrame;
+		m_device.mapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex], 0, sizeof(UboPerFrame), {}, &mappedMemoryPerFrame);
+		memcpy(mappedMemoryPerFrame, &m_uboPerFrame, sizeof(UboPerFrame));
+		m_device.unmapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex]);
+
+		// update dynamic uniform buffer per object for model matrix
+		for (size_t i = 0; i < m_objectCount; i++)
+		{
+			glm::mat4* modelMatrix = (glm::mat4*)((uint64_t)m_uboPerObject.modelMatrixData + i * m_modelMatrixUniformAlignment);
+			*modelMatrix = m_modelMatrices[i];
+		}
+		void* mappedMemoryPerObject;
+		size_t bufferSize = m_objectCount * m_modelMatrixUniformAlignment;
+		m_device.mapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex], 0, bufferSize, {}, &mappedMemoryPerObject);
+		memcpy(mappedMemoryPerObject, m_uboPerObject.modelMatrixData, bufferSize);
+		vk::MappedMemoryRange memoryRange {};
+		memoryRange.memory = m_uniformBufferMemoriesPerObject[currentImageIndex];
+		memoryRange.size = bufferSize;
+		m_device.flushMappedMemoryRanges(1, &memoryRange);
+		m_device.unmapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex]);
+
+		for (size_t i = 0; i < m_objectCount; i++)
 		{
 			std::vector<vk::Buffer> vertexBuffers = { m_vertexBuffer };
 			vk::DeviceSize offsets[] = { 0 };
@@ -442,46 +460,57 @@ namespace Firefly
 		m_device.destroySwapchainKHR(m_swapchain);
 	}
 
-	void VulkanContext::CreateDynamicUniformBuffer()
+	void VulkanContext::CreateUniformBuffers()
 	{
+		size_t bufferSize = sizeof(UboPerFrame);
+		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+		m_uniformBuffersPerFrame.resize(m_swapchainImages.size());
+		m_uniformBufferMemoriesPerFrame.resize(m_swapchainImages.size());
+		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffersPerFrame[i], m_uniformBufferMemoriesPerFrame[i]);
+
 		size_t minUniformBufferOffsetAlignment = m_physicalDevice.getProperties().limits.minUniformBufferOffsetAlignment;
 		m_modelMatrixUniformAlignment = sizeof(glm::mat4);
 		if (minUniformBufferOffsetAlignment > 0)
 			m_modelMatrixUniformAlignment = (m_modelMatrixUniformAlignment + minUniformBufferOffsetAlignment - 1) & ~(minUniformBufferOffsetAlignment - 1);
 
-		size_t bufferSize = m_instanceCount * m_modelMatrixUniformAlignment;
-
-		m_modelMatrixUniformData = (glm::mat4*)_aligned_malloc(bufferSize, m_modelMatrixUniformAlignment);
-
-		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
-		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-
-		m_uniformBuffers.resize(m_swapchainImages.size());
-		m_uniformBufferMemories.resize(m_swapchainImages.size());
-
+		bufferSize = m_objectCount * m_modelMatrixUniformAlignment;
+		m_uboPerObject.modelMatrixData = (glm::mat4*)_aligned_malloc(bufferSize, m_modelMatrixUniformAlignment);
+		bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
+		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible;// | vk::MemoryPropertyFlagBits::eHostCoherent;
+		m_uniformBuffersPerObject.resize(m_swapchainImages.size());
+		m_uniformBufferMemoriesPerObject.resize(m_swapchainImages.size());
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
-			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffers[i], m_uniformBufferMemories[i]);
+			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffersPerObject[i], m_uniformBufferMemoriesPerObject[i]);
 	}
 
-	void VulkanContext::DestroyDynamicUniformBuffer()
+	void VulkanContext::DestroyUniformBuffers()
 	{
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
 		{
-			m_device.destroyBuffer(m_uniformBuffers[i]);
-			m_device.freeMemory(m_uniformBufferMemories[i]);
+			m_device.destroyBuffer(m_uniformBuffersPerObject[i]);
+			m_device.freeMemory(m_uniformBufferMemoriesPerObject[i]);
+			m_device.destroyBuffer(m_uniformBuffersPerFrame[i]);
+			m_device.freeMemory(m_uniformBufferMemoriesPerFrame[i]);
 		}
 	}
 
 	void VulkanContext::CreateDescriptorPool()
 	{
-		vk::DescriptorPoolSize uniformBufferDescriptorPoolSize{};
-		uniformBufferDescriptorPoolSize.descriptorCount = m_swapchainImages.size();
+		vk::DescriptorPoolSize uniformBufferDescriptorPoolSizePerFrame{};
+		uniformBufferDescriptorPoolSizePerFrame.type = vk::DescriptorType::eUniformBuffer;
+		uniformBufferDescriptorPoolSizePerFrame.descriptorCount = m_swapchainImages.size();
 
-		std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = { uniformBufferDescriptorPoolSize };
+		vk::DescriptorPoolSize uniformBufferDescriptorPoolSizePerObject{};
+		uniformBufferDescriptorPoolSizePerObject.type = vk::DescriptorType::eUniformBufferDynamic;
+		uniformBufferDescriptorPoolSizePerObject.descriptorCount = m_swapchainImages.size();
+
+		std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = { uniformBufferDescriptorPoolSizePerFrame, uniformBufferDescriptorPoolSizePerObject };
 
 		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{};
 		descriptorPoolCreateInfo.pNext = nullptr;
-		descriptorPoolCreateInfo.flags = {};
+		descriptorPoolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 		descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
 		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
 		descriptorPoolCreateInfo.maxSets = m_swapchainImages.size();
@@ -498,18 +527,23 @@ namespace Firefly
 	void VulkanContext::AllocateDescriptorSets()
 	{
 		// DESCRIPTOR LAYOUT
-		vk::DescriptorSetLayoutBinding uniformBufferObjectLayoutBinding{};
-		uniformBufferObjectLayoutBinding.binding = 0;
-		uniformBufferObjectLayoutBinding.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
-		uniformBufferObjectLayoutBinding.descriptorCount = 1;
-		uniformBufferObjectLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
-		uniformBufferObjectLayoutBinding.pImmutableSamplers = nullptr;
+		vk::DescriptorSetLayoutBinding uniformBufferObjectLayoutBindingPerFrame{};
+		uniformBufferObjectLayoutBindingPerFrame.binding = 0;
+		uniformBufferObjectLayoutBindingPerFrame.descriptorType = vk::DescriptorType::eUniformBuffer;
+		uniformBufferObjectLayoutBindingPerFrame.descriptorCount = 1;
+		uniformBufferObjectLayoutBindingPerFrame.stageFlags = vk::ShaderStageFlagBits::eVertex;
+		uniformBufferObjectLayoutBindingPerFrame.pImmutableSamplers = nullptr;
 
-		std::vector<vk::DescriptorSetLayoutBinding> bindings = { uniformBufferObjectLayoutBinding };
+		vk::DescriptorSetLayoutBinding uniformBufferObjectLayoutBindingPerObject{};
+		uniformBufferObjectLayoutBindingPerObject.binding = 1;
+		uniformBufferObjectLayoutBindingPerObject.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+		uniformBufferObjectLayoutBindingPerObject.descriptorCount = 1;
+		uniformBufferObjectLayoutBindingPerObject.stageFlags = vk::ShaderStageFlagBits::eVertex;
+		uniformBufferObjectLayoutBindingPerObject.pImmutableSamplers = nullptr;
+
+		std::vector<vk::DescriptorSetLayoutBinding> bindings = { uniformBufferObjectLayoutBindingPerFrame, uniformBufferObjectLayoutBindingPerObject };
 
 		vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
-		descriptorSetLayoutCreateInfo.pNext = nullptr;
-		descriptorSetLayoutCreateInfo.flags = {};
 		descriptorSetLayoutCreateInfo.bindingCount = bindings.size();
 		descriptorSetLayoutCreateInfo.pBindings = bindings.data();
 
@@ -530,20 +564,34 @@ namespace Firefly
 
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
 		{
-			vk::DescriptorBufferInfo descriptorBufferInfo{};
-			descriptorBufferInfo.buffer = m_uniformBuffers[i];
-			descriptorBufferInfo.offset = 0;
-			descriptorBufferInfo.range = m_modelMatrixUniformAlignment;
+			vk::DescriptorBufferInfo descriptorBufferInfoPerFrame{};
+			descriptorBufferInfoPerFrame.buffer = m_uniformBuffersPerFrame[i];
+			descriptorBufferInfoPerFrame.offset = 0;
+			descriptorBufferInfoPerFrame.range = sizeof(UboPerFrame);
 
-			std::array<vk::WriteDescriptorSet, 1> writeDescriptorSets{};
+			vk::DescriptorBufferInfo descriptorBufferInfoPerObject{};
+			descriptorBufferInfoPerObject.buffer = m_uniformBuffersPerObject[i];
+			descriptorBufferInfoPerObject.offset = 0;
+			descriptorBufferInfoPerObject.range = sizeof(glm::mat4);//m_modelMatrixUniformAlignment;
+
+			std::array<vk::WriteDescriptorSet, 2> writeDescriptorSets{};
 			writeDescriptorSets[0].dstSet = m_descriptorSets[i];
 			writeDescriptorSets[0].dstBinding = 0;
 			writeDescriptorSets[0].dstArrayElement = 0;
-			writeDescriptorSets[0].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+			writeDescriptorSets[0].descriptorType = vk::DescriptorType::eUniformBuffer;
 			writeDescriptorSets[0].descriptorCount = 1;
-			writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfo;
+			writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfoPerFrame;
 			writeDescriptorSets[0].pImageInfo = nullptr;
 			writeDescriptorSets[0].pTexelBufferView = nullptr;
+
+			writeDescriptorSets[1].dstSet = m_descriptorSets[i];
+			writeDescriptorSets[1].dstBinding = 1;
+			writeDescriptorSets[1].dstArrayElement = 0;
+			writeDescriptorSets[1].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+			writeDescriptorSets[1].descriptorCount = 1;
+			writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoPerObject;
+			writeDescriptorSets[1].pImageInfo = nullptr;
+			writeDescriptorSets[1].pTexelBufferView = nullptr;
 
 			m_device.updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
 		}
@@ -735,7 +783,7 @@ namespace Firefly
 		rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eFill;
 		rasterizationStateCreateInfo.lineWidth = 1.f;
 		rasterizationStateCreateInfo.cullMode = vk::CullModeFlagBits::eBack;
-		rasterizationStateCreateInfo.frontFace = vk::FrontFace::eClockwise;
+		rasterizationStateCreateInfo.frontFace = vk::FrontFace::eCounterClockwise;
 		rasterizationStateCreateInfo.depthBiasEnable = false;
 		rasterizationStateCreateInfo.depthBiasConstantFactor = 0.f;
 		rasterizationStateCreateInfo.depthBiasClamp = 0.f;
