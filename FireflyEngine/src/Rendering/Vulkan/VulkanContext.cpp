@@ -2,6 +2,7 @@
 
 #include <GLFW/glfw3.h>
 #include <fstream>
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace Firefly
@@ -25,7 +26,7 @@ namespace Firefly
 
 		for (size_t i = 0; i < m_objectCount; i++)
 		{
-			m_modelMatrices.push_back(glm::translate(glm::mat4(1.0f), glm::vec3(i, i, i)));
+			m_modelMatrices.push_back(glm::translate(glm::mat4(1.0f), glm::vec3(i, i, -(float)i)));
 		}
 
 		CreateInstance();
@@ -34,32 +35,36 @@ namespace Firefly
 		PickPhysicalDevice();
 		CreateDevice();
 		CreateSwapchain();
+		CreateCommandPool();
+		AllocateCommandBuffers();
+		CreateVertexBuffers();
+		CreateIndexBuffers();
 		CreateUniformBuffers();
 		CreateDescriptorPool();
 		AllocateDescriptorSets();
+		CreateDepthImage();
 		CreateRenderPass();
+		CreateFramebuffers();
 		CreateGraphicsPipeline();
-		CreateCommandPool();
-		AllocateCommandBuffers();
 		CreateSynchronizationPrimitivesForRendering();
-		CreateVertexBuffers();
-		CreateIndexBuffers();
 	}
 
 	VulkanContext::~VulkanContext()
 	{
 		m_device.waitIdle();
 
-		DestroyIndexBuffers();
-		DestroyVertexBuffers();
 		DestroySynchronizationPrimitivesForRendering();
-		FreeCommandBuffers();
-		DestroyCommandPool();
 		DestroyGraphicsPipeline();
+		DestroyFramebuffers();
 		DestroyRenderPass();
+		DestroyDepthImage();
 		FreeDescriptorSets();
 		DestroyDescriptorPool();
 		DestroyUniformBuffers();
+		DestroyIndexBuffers();
+		DestroyVertexBuffers();
+		FreeCommandBuffers();
+		DestroyCommandPool();
 		DestroySwapchain();
 		DestroyDevice();
 		DestroySurface();
@@ -90,9 +95,9 @@ namespace Firefly
 		result = m_commandBuffers[currentImageIndex].begin(&commandBufferBeginInfo);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to begin recording Vulkan command buffer!");
 
-		std::array<vk::ClearValue, 1> clearValues = {}; // order of clear values needs to be in the order of attachments
+		std::array<vk::ClearValue, 2> clearValues = {}; // order of clear values needs to be in the order of attachments
 		clearValues[0].color = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f };
-		//clearValues[1].depthStencil = { 1.0f, 0 };
+		clearValues[1].depthStencil = { 1.0f, 0 };
 
 		vk::RenderPassBeginInfo renderPassBeginInfo{};
 		renderPassBeginInfo.pNext = nullptr;
@@ -150,7 +155,7 @@ namespace Firefly
 
 		std::vector<vk::Semaphore> isImageAvailableSemaphores = { m_isImageAvailableSemaphore[m_currentFrameIndex] };
 		std::vector<vk::Semaphore> isRenderingFinishedSemaphores = { m_isRenderingFinishedSemaphore[m_currentFrameIndex] };
-		vk::PipelineStageFlags waitStageMask = vk::PipelineStageFlagBits::eTopOfPipe; //vk::PipelineStageFlagBits::eColorAttachmentOutput;
+		vk::PipelineStageFlags waitStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		vk::SubmitInfo submitInfo{};
 		submitInfo.waitSemaphoreCount = isImageAvailableSemaphores.size();
 		submitInfo.pWaitSemaphores = isImageAvailableSemaphores.data();
@@ -439,17 +444,21 @@ namespace Firefly
 			return;
 
 		DestroySynchronizationPrimitivesForRendering();
-		FreeCommandBuffers();
 		DestroyGraphicsPipeline();
+		DestroyFramebuffers();
 		DestroyRenderPass();
+		DestroyDepthImage();
 		FreeDescriptorSets();
+		FreeCommandBuffers();
 		DestroySwapchain();
 
 		CreateSwapchain();
-		AllocateDescriptorSets();
-		CreateRenderPass();
-		CreateGraphicsPipeline();
 		AllocateCommandBuffers();
+		AllocateDescriptorSets();
+		CreateDepthImage();
+		CreateRenderPass();
+		CreateFramebuffers();
+		CreateGraphicsPipeline();
 		CreateSynchronizationPrimitivesForRendering();
 	}
 
@@ -458,6 +467,102 @@ namespace Firefly
 		for (const vk::ImageView& imageView : m_swapchainImageViews)
 			m_device.destroyImageView(imageView);
 		m_device.destroySwapchainKHR(m_swapchain);
+	}
+
+	void VulkanContext::CreateCommandPool()
+	{
+		vk::CommandPoolCreateInfo commandPoolCreateInfo{};
+		commandPoolCreateInfo.pNext = nullptr;
+		commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+		commandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+
+		vk::Result result = m_device.createCommandPool(&commandPoolCreateInfo, nullptr, &m_commandPool);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command pool!");
+	}
+
+	void VulkanContext::DestroyCommandPool()
+	{
+		m_device.destroyCommandPool(m_commandPool);
+	}
+
+	void VulkanContext::AllocateCommandBuffers()
+	{
+		m_commandBuffers.resize(m_swapchainImages.size());
+		vk::CommandBufferAllocateInfo commandBufferAllocateInfo{};
+		commandBufferAllocateInfo.pNext = nullptr;
+		commandBufferAllocateInfo.commandPool = m_commandPool;
+		commandBufferAllocateInfo.level = vk::CommandBufferLevel::ePrimary;
+		commandBufferAllocateInfo.commandBufferCount = m_commandBuffers.size();
+
+		vk::Result result = m_device.allocateCommandBuffers(&commandBufferAllocateInfo, m_commandBuffers.data());
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command buffers!");
+	}
+
+	void VulkanContext::FreeCommandBuffers()
+	{
+		m_device.freeCommandBuffers(m_commandPool, m_commandBuffers.size(), m_commandBuffers.data());
+	}
+
+	void VulkanContext::CreateVertexBuffers()
+	{
+		vk::DeviceSize bufferSize = sizeof(Mesh::Vertex) * m_vertices.size();
+		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eTransferSrc;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+
+		vk::Buffer stagingVertexBuffer;
+		vk::DeviceMemory stagingVertexBufferMemory;
+		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingVertexBuffer, stagingVertexBufferMemory);
+
+		void* mappedMemory;
+		m_device.mapMemory(stagingVertexBufferMemory, 0, bufferSize, {}, &mappedMemory);
+		memcpy(mappedMemory, m_vertices.data(), bufferSize);
+		m_device.unmapMemory(stagingVertexBufferMemory);
+
+		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
+		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_vertexBuffer, m_vertexBufferMemory);
+
+		CopyBuffer(stagingVertexBuffer, m_vertexBuffer, bufferSize);
+
+		m_device.destroyBuffer(stagingVertexBuffer);
+		m_device.freeMemory(stagingVertexBufferMemory);
+	}
+
+	void VulkanContext::DestroyVertexBuffers()
+	{
+		m_device.destroyBuffer(m_vertexBuffer);
+		m_device.freeMemory(m_vertexBufferMemory);
+	}
+
+	void VulkanContext::CreateIndexBuffers()
+	{
+		vk::DeviceSize bufferSize = sizeof(uint32_t) * m_indices.size();
+		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eTransferSrc;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+
+		vk::Buffer stagingIndexBuffer;
+		vk::DeviceMemory stagingIndexBufferMemory;
+		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingIndexBuffer, stagingIndexBufferMemory);
+
+		void* mappedMemory;
+		m_device.mapMemory(stagingIndexBufferMemory, 0, bufferSize, {}, &mappedMemory);
+		memcpy(mappedMemory, m_indices.data(), bufferSize);
+		m_device.unmapMemory(stagingIndexBufferMemory);
+
+		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
+		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_indexBuffer, m_indexBufferMemory);
+
+		CopyBuffer(stagingIndexBuffer, m_indexBuffer, bufferSize);
+
+		m_device.destroyBuffer(stagingIndexBuffer);
+		m_device.freeMemory(stagingIndexBufferMemory);
+	}
+
+	void VulkanContext::DestroyIndexBuffers()
+	{
+		m_device.destroyBuffer(m_indexBuffer);
+		m_device.freeMemory(m_indexBufferMemory);
 	}
 
 	void VulkanContext::CreateUniformBuffers()
@@ -603,6 +708,29 @@ namespace Firefly
 		m_device.destroyDescriptorSetLayout(m_descriptorSetLayout);
 	}
 
+	void VulkanContext::CreateDepthImage()
+	{
+		uint32_t mipLevels = 1;
+		vk::Format depthFormat = FindDepthFormat();
+		vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
+		vk::ImageUsageFlags imageUsageFlags = vk::ImageUsageFlagBits::eDepthStencilAttachment;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		CreateImage(m_swapchainExtent.width, m_swapchainExtent.height, mipLevels, vk::SampleCountFlagBits::e1, depthFormat, tiling, imageUsageFlags, memoryPropertyFlags, m_depthImage, m_depthImageMemory);
+
+		m_depthImageView = CreateImageView(m_depthImage, mipLevels, depthFormat, vk::ImageAspectFlagBits::eDepth);
+
+		vk::ImageLayout oldLayout = vk::ImageLayout::eUndefined;
+		vk::ImageLayout newLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		TransitionImageLayout(m_depthImage, mipLevels, depthFormat, oldLayout, newLayout);
+	}
+
+	void VulkanContext::DestroyDepthImage()
+	{
+		m_device.destroyImageView(m_depthImageView);
+		m_device.destroyImage(m_depthImage);
+		m_device.freeMemory(m_depthImageMemory);
+	}
+
 	void VulkanContext::CreateRenderPass()
 	{
 		vk::AttachmentDescription colorAttachmentDescription{};
@@ -620,6 +748,21 @@ namespace Firefly
 		colorAttachmentReference.attachment = 0;
 		colorAttachmentReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
 
+		vk::AttachmentDescription depthAttachmentDescription{};
+		depthAttachmentDescription.flags = {};
+		depthAttachmentDescription.format = FindDepthFormat();
+		depthAttachmentDescription.samples = vk::SampleCountFlagBits::e1;
+		depthAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
+		depthAttachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
+		depthAttachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		depthAttachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		depthAttachmentDescription.initialLayout = vk::ImageLayout::eUndefined;
+		depthAttachmentDescription.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+		vk::AttachmentReference depthAttachmentReference{};
+		depthAttachmentReference.attachment = 1;
+		depthAttachmentReference.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
 		vk::SubpassDescription subpassDescription{};
 		subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
 		subpassDescription.flags = {};
@@ -627,28 +770,45 @@ namespace Firefly
 		subpassDescription.pColorAttachments = &colorAttachmentReference;
 		subpassDescription.inputAttachmentCount = 0;
 		subpassDescription.pInputAttachments = nullptr;
-		subpassDescription.pDepthStencilAttachment = nullptr;
+		subpassDescription.pDepthStencilAttachment = &depthAttachmentReference;
 		subpassDescription.preserveAttachmentCount = 0;
 		subpassDescription.pPreserveAttachments = nullptr;
 		subpassDescription.pResolveAttachments = nullptr;
 
+		vk::SubpassDependency subpassDependency{};
+		subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+		subpassDependency.dstSubpass = 0;
+		subpassDependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
+		subpassDependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
+		subpassDependency.srcAccessMask = {};
+		subpassDependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+		std::array<vk::AttachmentDescription, 2> attachments = { colorAttachmentDescription, depthAttachmentDescription };
 		vk::RenderPassCreateInfo renderPassCreateInfo{};
 		renderPassCreateInfo.pNext = nullptr;
 		renderPassCreateInfo.flags = {};
-		renderPassCreateInfo.attachmentCount = 1;
-		renderPassCreateInfo.pAttachments = &colorAttachmentDescription;
+		renderPassCreateInfo.attachmentCount = attachments.size();
+		renderPassCreateInfo.pAttachments = attachments.data();
 		renderPassCreateInfo.subpassCount = 1;
 		renderPassCreateInfo.pSubpasses = &subpassDescription;
-		renderPassCreateInfo.dependencyCount = 0;
-		renderPassCreateInfo.pDependencies = nullptr;
+		renderPassCreateInfo.dependencyCount = 1;
+		renderPassCreateInfo.pDependencies = &subpassDependency;
 
 		vk::Result result = m_device.createRenderPass(&renderPassCreateInfo, nullptr, &m_renderPass);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan render pass!");
+	}
 
+	void VulkanContext::DestroyRenderPass()
+	{
+		m_device.destroyRenderPass(m_renderPass);
+	}
+
+	void VulkanContext::CreateFramebuffers()
+	{
 		m_framebuffers.resize(m_swapchainImageViews.size());
-		for (size_t i = 0; i < m_swapchainImageViews.size(); i++) 
+		for (size_t i = 0; i < m_swapchainImageViews.size(); i++)
 		{
-			std::vector<vk::ImageView> attachments = { m_swapchainImageViews[i] };
+			std::vector<vk::ImageView> attachments = { m_swapchainImageViews[i], m_depthImageView };
 			vk::FramebufferCreateInfo framebufferCreateInfo{};
 			framebufferCreateInfo.renderPass = m_renderPass;
 			framebufferCreateInfo.attachmentCount = attachments.size();
@@ -657,16 +817,15 @@ namespace Firefly
 			framebufferCreateInfo.height = m_swapchainExtent.height;
 			framebufferCreateInfo.layers = 1;
 
-			result = m_device.createFramebuffer(&framebufferCreateInfo, nullptr, &m_framebuffers[i]);
+			vk::Result result = m_device.createFramebuffer(&framebufferCreateInfo, nullptr, &m_framebuffers[i]);
 			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan framebuffer!");
 		}
 	}
 
-	void VulkanContext::DestroyRenderPass()
+	void VulkanContext::DestroyFramebuffers()
 	{
 		for (const vk::Framebuffer& framebuffer : m_framebuffers)
 			m_device.destroyFramebuffer(framebuffer);
-		m_device.destroyRenderPass(m_renderPass);
 	}
 
 	void VulkanContext::CreateGraphicsPipeline()
@@ -823,18 +982,18 @@ namespace Firefly
 		colorBlendStateCreateInfo.blendConstants[3] = 0.f;
 		// ---------------------------------------------
 		// DEPTH STENCIL STATE -------------------------
-		//vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
-		//depthStencilStateCreateInfo.pNext = nullptr;
-		//depthStencilStateCreateInfo.flags = {};
-		//depthStencilStateCreateInfo.depthTestEnable = true;
-		//depthStencilStateCreateInfo.depthWriteEnable = true;
-		//depthStencilStateCreateInfo.depthCompareOp = vk::CompareOp::eLess;
-		//depthStencilStateCreateInfo.depthBoundsTestEnable = false;
-		//depthStencilStateCreateInfo.minDepthBounds = 0.0f;
-		//depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
-		//depthStencilStateCreateInfo.stencilTestEnable = false;
-		//depthStencilStateCreateInfo.front = {};
-		//depthStencilStateCreateInfo.back = {};
+		vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
+		depthStencilStateCreateInfo.pNext = nullptr;
+		depthStencilStateCreateInfo.flags = {};
+		depthStencilStateCreateInfo.depthTestEnable = true;
+		depthStencilStateCreateInfo.depthWriteEnable = true;
+		depthStencilStateCreateInfo.depthCompareOp = vk::CompareOp::eLess;
+		depthStencilStateCreateInfo.depthBoundsTestEnable = false;
+		depthStencilStateCreateInfo.minDepthBounds = 0.0f;
+		depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
+		depthStencilStateCreateInfo.stencilTestEnable = false;
+		depthStencilStateCreateInfo.front = {};
+		depthStencilStateCreateInfo.back = {};
 		// ---------------------------------------------
 		// PIPELINE LAYOUT -----------------------------
 		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
@@ -859,7 +1018,7 @@ namespace Firefly
 		pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
 		pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
 		pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
-		pipelineCreateInfo.pDepthStencilState = nullptr;
+		pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
 		pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
 		pipelineCreateInfo.pDynamicState = nullptr;
 		pipelineCreateInfo.layout = m_pipelineLayout;
@@ -879,40 +1038,6 @@ namespace Firefly
 	{
 		m_device.destroyPipeline(m_graphicsPipeline);
 		m_device.destroyPipelineLayout(m_pipelineLayout);
-	}
-
-	void VulkanContext::CreateCommandPool()
-	{
-		vk::CommandPoolCreateInfo commandPoolCreateInfo{};
-		commandPoolCreateInfo.pNext = nullptr;
-		commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-		commandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
-
-		vk::Result result = m_device.createCommandPool(&commandPoolCreateInfo, nullptr, &m_commandPool);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command pool!");
-	}
-
-	void VulkanContext::DestroyCommandPool()
-	{
-		m_device.destroyCommandPool(m_commandPool);
-	}
-
-	void VulkanContext::AllocateCommandBuffers()
-	{
-		m_commandBuffers.resize(m_framebuffers.size());
-		vk::CommandBufferAllocateInfo commandBufferAllocateInfo{};
-		commandBufferAllocateInfo.pNext = nullptr;
-		commandBufferAllocateInfo.commandPool = m_commandPool;
-		commandBufferAllocateInfo.level = vk::CommandBufferLevel::ePrimary;
-		commandBufferAllocateInfo.commandBufferCount = m_commandBuffers.size();
-
-		vk::Result result = m_device.allocateCommandBuffers(&commandBufferAllocateInfo, m_commandBuffers.data());
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command buffers!");
-	}
-
-	void VulkanContext::FreeCommandBuffers()
-	{
-		m_device.freeCommandBuffers(m_commandPool, m_commandBuffers.size(), m_commandBuffers.data());
 	}
 
 	void VulkanContext::CreateSynchronizationPrimitivesForRendering()
@@ -949,68 +1074,6 @@ namespace Firefly
 			m_device.destroySemaphore(m_isRenderingFinishedSemaphore[i]);
 			m_device.destroySemaphore(m_isImageAvailableSemaphore[i]);
 		}
-	}
-
-	void VulkanContext::CreateVertexBuffers()
-	{
-		vk::DeviceSize bufferSize = sizeof(Mesh::Vertex) * m_vertices.size();
-		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eTransferSrc;
-		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-
-		vk::Buffer stagingVertexBuffer;
-		vk::DeviceMemory stagingVertexBufferMemory;
-		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingVertexBuffer, stagingVertexBufferMemory);
-
-		void* mappedMemory;
-		m_device.mapMemory(stagingVertexBufferMemory, 0, bufferSize, {}, &mappedMemory);
-		memcpy(mappedMemory, m_vertices.data(), bufferSize);
-		m_device.unmapMemory(stagingVertexBufferMemory);
-
-		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
-		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_vertexBuffer, m_vertexBufferMemory);
-
-		CopyBuffer(stagingVertexBuffer, m_vertexBuffer, bufferSize);
-
-		m_device.destroyBuffer(stagingVertexBuffer);
-		m_device.freeMemory(stagingVertexBufferMemory);
-	}
-
-	void VulkanContext::DestroyVertexBuffers()
-	{
-		m_device.destroyBuffer(m_vertexBuffer);
-		m_device.freeMemory(m_vertexBufferMemory);
-	}
-
-	void VulkanContext::CreateIndexBuffers()
-	{
-		vk::DeviceSize bufferSize = sizeof(uint32_t) * m_indices.size();
-		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eTransferSrc;
-		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-
-		vk::Buffer stagingIndexBuffer;
-		vk::DeviceMemory stagingIndexBufferMemory;
-		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingIndexBuffer, stagingIndexBufferMemory);
-
-		void* mappedMemory;
-		m_device.mapMemory(stagingIndexBufferMemory, 0, bufferSize, {}, &mappedMemory);
-		memcpy(mappedMemory, m_indices.data(), bufferSize);
-		m_device.unmapMemory(stagingIndexBufferMemory);
-
-		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
-		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_indexBuffer, m_indexBufferMemory);
-
-		CopyBuffer(stagingIndexBuffer, m_indexBuffer, bufferSize);
-
-		m_device.destroyBuffer(stagingIndexBuffer);
-		m_device.freeMemory(stagingIndexBufferMemory);
-	}
-
-	void VulkanContext::DestroyIndexBuffers()
-	{
-		m_device.destroyBuffer(m_indexBuffer);
-		m_device.freeMemory(m_indexBufferMemory);
 	}
 
 	vk::CommandBuffer VulkanContext::BeginOneTimeCommandBuffer()
@@ -1112,6 +1175,57 @@ namespace Firefly
 		EndCommandBuffer(commandBuffer);
 	}
 
+	void VulkanContext::CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits sampleCount, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags imageUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Image& image, vk::DeviceMemory& imageMemory)
+	{
+		vk::ImageCreateInfo imageCreateInfo{};
+		imageCreateInfo.pNext = nullptr;
+		imageCreateInfo.flags = {};
+		imageCreateInfo.imageType = vk::ImageType::e2D;
+		imageCreateInfo.extent.width = width;
+		imageCreateInfo.extent.height = height;
+		imageCreateInfo.extent.depth = 1;
+		imageCreateInfo.mipLevels = mipLevels;
+		imageCreateInfo.arrayLayers = 1;
+		imageCreateInfo.format = format;
+		imageCreateInfo.tiling = tiling;
+		imageCreateInfo.initialLayout = vk::ImageLayout::eUndefined;
+		imageCreateInfo.usage = imageUsageFlags;
+		imageCreateInfo.sharingMode = vk::SharingMode::eExclusive;
+		imageCreateInfo.samples = sampleCount;
+
+		if (m_device.createImage(&imageCreateInfo, nullptr, &image) != vk::Result::eSuccess)
+			throw std::runtime_error("Failed to create Vulkan image!");
+
+		vk::MemoryRequirements memoryRequirements;
+		m_device.getImageMemoryRequirements(image, &memoryRequirements);
+
+		// Find memory type ----------------------------------------
+		vk::PhysicalDeviceMemoryProperties memoryProperties;
+		m_physicalDevice.getMemoryProperties(&memoryProperties);
+		uint32_t memoryTypeIndex = UINT32_MAX;
+		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+		{
+			// IsMemoryTypeSupported && AreMemoryTypePropertyFlagsSupported
+			if ((memoryRequirements.memoryTypeBits & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags)
+			{
+				memoryTypeIndex = i;
+				break;
+			}
+		}
+		if (memoryTypeIndex == UINT32_MAX)
+			throw std::runtime_error("Failed to find suitable memory type for Vulkan buffer!");
+		// ---------------------------------------------------------
+
+		vk::MemoryAllocateInfo memoryAllocateInfo{};
+		memoryAllocateInfo.allocationSize = memoryRequirements.size;
+		memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+
+		if (m_device.allocateMemory(&memoryAllocateInfo, nullptr, &imageMemory) != vk::Result::eSuccess)
+			throw std::runtime_error("Failed to allocate Vulkan image memory!");
+
+		vkBindImageMemory(m_device, image, imageMemory, 0);
+	}
+
 	vk::ImageView VulkanContext::CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags)
 	{
 		vk::ImageViewCreateInfo imageViewCreateInfo{};
@@ -1135,6 +1249,115 @@ namespace Firefly
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan image view!");
 
 		return imageView;
+	}
+
+	void VulkanContext::TransitionImageLayout(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout)
+	{
+		vk::CommandBuffer commandBuffer = BeginOneTimeCommandBuffer();
+
+		vk::ImageMemoryBarrier imageMemoryBarrier{};
+		imageMemoryBarrier.pNext = nullptr;
+		imageMemoryBarrier.oldLayout = oldLayout;
+		imageMemoryBarrier.newLayout = newLayout;
+		imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imageMemoryBarrier.image = image;
+		imageMemoryBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		imageMemoryBarrier.subresourceRange.baseMipLevel = 0;
+		imageMemoryBarrier.subresourceRange.levelCount = mipLevels;
+		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		imageMemoryBarrier.subresourceRange.layerCount = 1;
+
+		vk::PipelineStageFlags sourcePipelineStageFlags;
+		vk::PipelineStageFlags destinationPipelineStageFlags;
+
+		if (newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+		{
+			imageMemoryBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eDepth;
+
+			if (HasStencilComponent(format))
+				imageMemoryBarrier.subresourceRange.aspectMask |= vk::ImageAspectFlagBits::eStencil;
+		}
+		else
+		{
+			imageMemoryBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		}
+
+		if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eTransferDstOptimal)
+		{
+			imageMemoryBarrier.srcAccessMask = {};
+			imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferWrite;
+
+			sourcePipelineStageFlags = vk::PipelineStageFlagBits::eTopOfPipe;
+			destinationPipelineStageFlags = vk::PipelineStageFlagBits::eTransfer;
+		}
+		else if (oldLayout == vk::ImageLayout::eTransferDstOptimal && newLayout == vk::ImageLayout::eShaderReadOnlyOptimal)
+		{
+			imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+			imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+
+			sourcePipelineStageFlags = vk::PipelineStageFlagBits::eTransfer;
+			destinationPipelineStageFlags = vk::PipelineStageFlagBits::eFragmentShader;
+		}
+		else if (oldLayout == vk::ImageLayout::eUndefined && newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+		{
+			imageMemoryBarrier.srcAccessMask = {};
+			imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+			sourcePipelineStageFlags = vk::PipelineStageFlagBits::eTopOfPipe;
+			destinationPipelineStageFlags = vk::PipelineStageFlagBits::eEarlyFragmentTests;
+		}
+		else
+			throw std::invalid_argument("Unsupported layout transition!");
+
+		commandBuffer.pipelineBarrier(sourcePipelineStageFlags, destinationPipelineStageFlags, {}, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+		EndCommandBuffer(commandBuffer);
+	}
+
+	vk::Format VulkanContext::FindSupportedFormat(const std::vector<vk::Format>& formatCandidates, vk::ImageTiling tiling, vk::FormatFeatureFlags formatFeatureFlags)
+	{
+		for (vk::Format format : formatCandidates)
+		{
+			vk::FormatProperties formatProperties;
+			m_physicalDevice.getFormatProperties(format, &formatProperties);
+
+			if (tiling == vk::ImageTiling::eLinear && (formatProperties.linearTilingFeatures & formatFeatureFlags) == formatFeatureFlags)
+				return format;
+			else if (tiling == vk::ImageTiling::eOptimal && (formatProperties.optimalTilingFeatures & formatFeatureFlags) == formatFeatureFlags)
+				return format;
+		}
+
+		throw std::runtime_error("Failed to find supported format!");
+	}
+
+	vk::Format VulkanContext::FindDepthFormat()
+	{
+		std::vector<vk::Format> formatCandidates = { vk::Format::eD32Sfloat, vk::Format::eD32SfloatS8Uint, vk::Format::eD24UnormS8Uint };
+		vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
+		vk::FormatFeatureFlags formatFeatureFlags = vk::FormatFeatureFlagBits::eDepthStencilAttachment;
+		return FindSupportedFormat(formatCandidates, tiling, formatFeatureFlags);
+	}
+
+	bool VulkanContext::HasStencilComponent(vk::Format format)
+	{
+		return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;
+	}
+
+	std::vector<char> ReadBinaryFile(const std::string& fileName)
+	{
+		std::ifstream file(fileName, std::ios::ate | std::ios::binary);
+
+		if (!file.is_open())
+			throw std::runtime_error("Failed to open binary file!");
+
+		size_t fileSize = (size_t)file.tellg();
+		std::vector<char> fileBytes(fileSize);
+		file.seekg(0);
+		file.read(fileBytes.data(), fileSize);
+		file.close();
+
+		return fileBytes;
 	}
 
 	std::vector<const char*> VulkanContext::GetRequiredInstanceExtensions() const

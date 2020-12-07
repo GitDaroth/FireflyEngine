@@ -43,6 +43,16 @@ namespace Firefly
 		void RecreateSwapchain();
 		void DestroySwapchain();
 
+		void CreateCommandPool();
+		void DestroyCommandPool();
+		void AllocateCommandBuffers();
+		void FreeCommandBuffers();
+
+		void CreateVertexBuffers();
+		void DestroyVertexBuffers();
+		void CreateIndexBuffers();
+		void DestroyIndexBuffers();
+
 		void CreateUniformBuffers();
 		void DestroyUniformBuffers();
 
@@ -51,29 +61,31 @@ namespace Firefly
 		void AllocateDescriptorSets();
 		void FreeDescriptorSets();
 
+		void CreateDepthImage();
+		void DestroyDepthImage();
+
 		void CreateRenderPass();
 		void DestroyRenderPass();
+
+		void CreateFramebuffers();
+		void DestroyFramebuffers();
+
 		void CreateGraphicsPipeline();
 		void DestroyGraphicsPipeline();
 
-		void CreateCommandPool();
-		void DestroyCommandPool();
-		void AllocateCommandBuffers();
-		void FreeCommandBuffers();
-
 		void CreateSynchronizationPrimitivesForRendering();
 		void DestroySynchronizationPrimitivesForRendering();
-
-		void CreateVertexBuffers();
-		void DestroyVertexBuffers();
-		void CreateIndexBuffers();
-		void DestroyIndexBuffers();
 
 		vk::CommandBuffer BeginOneTimeCommandBuffer();
 		void EndCommandBuffer(vk::CommandBuffer commandBuffer);
 		void CreateBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags bufferUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
 		void CopyBuffer(vk::Buffer sourceBuffer, vk::Buffer destinationBuffer, vk::DeviceSize size);
+		void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits sampleCount, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags imageUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Image& image, vk::DeviceMemory& imageMemory);
 		vk::ImageView CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags);
+		void TransitionImageLayout(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+		vk::Format FindSupportedFormat(const std::vector<vk::Format>& formatCandidates, vk::ImageTiling tiling, vk::FormatFeatureFlags formatFeatureFlags);
+		vk::Format FindDepthFormat();
+		bool HasStencilComponent(vk::Format format);
 		std::vector<const char*> GetRequiredInstanceExtensions() const;
 		std::vector<const char*> GetRequiredInstanceLayers() const;
 		std::vector<const char*> GetRequiredDeviceExtensions() const;
@@ -101,6 +113,10 @@ namespace Firefly
 		vk::Extent2D m_swapchainExtent;
 		std::vector<vk::Image> m_swapchainImages;
 		std::vector<vk::ImageView> m_swapchainImageViews;
+
+		vk::Image m_depthImage;
+		vk::DeviceMemory m_depthImageMemory;
+		vk::ImageView m_depthImageView;
 
 		vk::RenderPass m_renderPass;
 		std::vector<vk::Framebuffer> m_framebuffers;
