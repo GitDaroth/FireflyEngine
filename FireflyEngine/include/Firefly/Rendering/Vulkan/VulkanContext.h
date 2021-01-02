@@ -7,6 +7,7 @@
 #include "Rendering/Vulkan/VulkanInstance.h"
 #include "Rendering/Vulkan/VulkanDebugMessenger.h"
 #include "Rendering/Vulkan/VulkanSurface.h"
+#include "Rendering/Vulkan/VulkanDevice.h"
 
 namespace Firefly
 {
@@ -30,12 +31,7 @@ namespace Firefly
 		void Draw();
 
 	private:
-		//void CreateSurface();
-		//void DestroySurface();
-
-		void PickPhysicalDevice();
-		void CreateDevice();
-		void DestroyDevice();
+		vk::PhysicalDevice PickPhysicalDevice();
 
 		void CreateSwapchain();
 		void RecreateSwapchain();
@@ -98,11 +94,7 @@ namespace Firefly
 		VulkanInstance* m_instance;
 		VulkanDebugMessenger* m_debugMessenger;
 		VulkanSurface* m_surface;
-
-		vk::PhysicalDevice m_physicalDevice;
-		vk::Device m_device;
-		uint32_t m_graphicsQueueFamilyIndex;
-		uint32_t m_presentQueueFamilyIndex;
+		VulkanDevice* m_device;
 
 		vk::SwapchainKHR m_swapchain;
 		vk::SurfaceFormatKHR m_swapchainSurfaceFormat;

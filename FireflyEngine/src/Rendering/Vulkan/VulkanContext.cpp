@@ -30,9 +30,8 @@ namespace Firefly
 		if (AreValidationLayersEnabled())
 			m_debugMessenger = new VulkanDebugMessenger(m_instance);
 		m_surface = new VulkanSurface(m_instance, window);
+		m_device = new VulkanDevice(PickPhysicalDevice(), m_surface, GetRequiredDeviceExtensions(), GetRequiredDeviceLayers());
 
-		PickPhysicalDevice();
-		CreateDevice();
 		CreateSwapchain();
 		CreateCommandPool();
 		AllocateCommandBuffers();
@@ -50,7 +49,7 @@ namespace Firefly
 
 	VulkanContext::~VulkanContext()
 	{
-		m_device.waitIdle();
+		m_device->GetDevice().waitIdle();
 
 		DestroySynchronizationPrimitivesForRendering();
 		DestroyGraphicsPipeline();
@@ -65,8 +64,8 @@ namespace Firefly
 		FreeCommandBuffers();
 		DestroyCommandPool();
 		DestroySwapchain();
-		DestroyDevice();
 
+		delete m_device;
 		delete m_surface;
 		if (AreValidationLayersEnabled())
 			delete m_debugMessenger;
@@ -77,7 +76,7 @@ namespace Firefly
 	{
 		// AQUIRE NEXT IMAGE
 		uint32_t currentImageIndex;
-		vk::Result result = m_device.acquireNextImageKHR(m_swapchain, UINT64_MAX, m_isImageAvailableSemaphore[m_currentFrameIndex], nullptr, &currentImageIndex);
+		vk::Result result = m_device->GetDevice().acquireNextImageKHR(m_swapchain, UINT64_MAX, m_isImageAvailableSemaphore[m_currentFrameIndex], nullptr, &currentImageIndex);
 		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		{
 			RecreateSwapchain();
@@ -87,8 +86,8 @@ namespace Firefly
 
 		// RENDER TO IMAGE
 		// wait until the indexed command buffer is not used anymore before recording new commands to it
-		m_device.waitForFences(1, &m_isCommandBufferFinishedFences[currentImageIndex], true, UINT64_MAX);
-		m_device.resetFences(1, &m_isCommandBufferFinishedFences[currentImageIndex]);
+		m_device->GetDevice().waitForFences(1, &m_isCommandBufferFinishedFences[currentImageIndex], true, UINT64_MAX);
+		m_device->GetDevice().resetFences(1, &m_isCommandBufferFinishedFences[currentImageIndex]);
 
 		m_commandBuffers[currentImageIndex].reset({});
 		vk::CommandBufferBeginInfo commandBufferBeginInfo{};
@@ -118,9 +117,9 @@ namespace Firefly
 		m_uboPerFrame.projectionMatrix[1][1] *= -1; // Vulkan has inverted y axis in comparison to OpenGL
 
 		void* mappedMemoryPerFrame;
-		m_device.mapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex], 0, sizeof(UboPerFrame), {}, &mappedMemoryPerFrame);
+		m_device->GetDevice().mapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex], 0, sizeof(UboPerFrame), {}, &mappedMemoryPerFrame);
 		memcpy(mappedMemoryPerFrame, &m_uboPerFrame, sizeof(UboPerFrame));
-		m_device.unmapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex]);
+		m_device->GetDevice().unmapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex]);
 
 		// update dynamic uniform buffer per object for model matrix
 		for (size_t i = 0; i < m_objectCount; i++)
@@ -130,13 +129,13 @@ namespace Firefly
 		}
 		void* mappedMemoryPerObject;
 		size_t bufferSize = m_objectCount * m_modelMatrixUniformAlignment;
-		m_device.mapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex], 0, bufferSize, {}, &mappedMemoryPerObject);
+		m_device->GetDevice().mapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex], 0, bufferSize, {}, &mappedMemoryPerObject);
 		memcpy(mappedMemoryPerObject, m_uboPerObject.modelMatrixData, bufferSize);
 		vk::MappedMemoryRange memoryRange {};
 		memoryRange.memory = m_uniformBufferMemoriesPerObject[currentImageIndex];
 		memoryRange.size = bufferSize;
-		m_device.flushMappedMemoryRanges(1, &memoryRange);
-		m_device.unmapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex]);
+		m_device->GetDevice().flushMappedMemoryRanges(1, &memoryRange);
+		m_device->GetDevice().unmapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex]);
 
 		for (size_t i = 0; i < m_objectCount; i++)
 		{
@@ -166,8 +165,7 @@ namespace Firefly
 		submitInfo.signalSemaphoreCount = isRenderingFinishedSemaphores.size();
 		submitInfo.pSignalSemaphores = isRenderingFinishedSemaphores.data();
 
-		vk::Queue graphicsQueue = m_device.getQueue(m_graphicsQueueFamilyIndex, 0);
-		result = graphicsQueue.submit(1, &submitInfo, m_isCommandBufferFinishedFences[currentImageIndex]);
+		result = m_device->GetGraphicsQueue().submit(1, &submitInfo, m_isCommandBufferFinishedFences[currentImageIndex]);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to submit commands to the graphics queue!");
 
 		// PRESENT RENDERED IMAGE
@@ -180,8 +178,7 @@ namespace Firefly
 		presentInfo.pImageIndices = &currentImageIndex;
 		presentInfo.pResults = nullptr;
 
-		vk::Queue presentQueue = m_device.getQueue(m_presentQueueFamilyIndex, 0);
-		result = presentQueue.presentKHR(&presentInfo);
+		result = m_device->GetPresentQueue().presentKHR(&presentInfo);
 		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		{
 			RecreateSwapchain();
@@ -192,88 +189,20 @@ namespace Firefly
 		m_currentFrameIndex = (m_currentFrameIndex + 1) % m_swapchainImages.size();
 	}
 
-	void VulkanContext::PickPhysicalDevice()
+	vk::PhysicalDevice VulkanContext::PickPhysicalDevice()
 	{
 		std::vector<vk::PhysicalDevice> physicalDevices = m_instance->GetInstance().enumeratePhysicalDevices();
 		FIREFLY_ASSERT(physicalDevices.size() > 0, "Unable to find a graphics card with Vulkan support!");
 
-		// TODO: Check required device extensions and other requirements
+		// TODO: Check required device extensions, layers, queue families and other requirements
 		// TODO: Pick most suitable device
 
-		m_physicalDevice = physicalDevices[0];
-
-		// Find required queue family indices
-		std::vector<vk::QueueFamilyProperties> queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
-		bool graphicsSupport = false;
-		bool presentSupport = false;
-		for (size_t i = 0; i < queueFamilyProperties.size(); i++)
-		{
-			if (!graphicsSupport)
-			{
-				if (queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics)
-				{
-					graphicsSupport = true;
-					m_graphicsQueueFamilyIndex = i;
-				}
-			}
-			if (!presentSupport)
-			{
-				vk::Bool32 surfaceSupport;
-				m_physicalDevice.getSurfaceSupportKHR(i, m_surface->GetSurface(), &surfaceSupport);
-				if (surfaceSupport)
-				{
-					presentSupport = true;
-					m_presentQueueFamilyIndex = i;
-				}
-			}
-		}
-		FIREFLY_ASSERT(graphicsSupport && presentSupport, "Picked Vulkan device doesn't support all required queue families!");
-	}
-
-	void VulkanContext::CreateDevice()
-	{
-		float queuePriority = 1.0f;
-		vk::DeviceQueueCreateInfo graphicsQueueCreateInfo{};
-		graphicsQueueCreateInfo.pNext = nullptr;
-		graphicsQueueCreateInfo.flags = {};
-		graphicsQueueCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
-		graphicsQueueCreateInfo.queueCount = 1;
-		graphicsQueueCreateInfo.pQueuePriorities = &queuePriority;
-
-		vk::DeviceQueueCreateInfo presentQueueCreateInfo{};
-		presentQueueCreateInfo.pNext = nullptr;
-		presentQueueCreateInfo.flags = {};
-		presentQueueCreateInfo.queueFamilyIndex = m_presentQueueFamilyIndex;
-		presentQueueCreateInfo.queueCount = 1;
-		presentQueueCreateInfo.pQueuePriorities = &queuePriority;
-
-		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos = { graphicsQueueCreateInfo, presentQueueCreateInfo };
-
-		std::vector<const char*> requiredDeviceExtensions = GetRequiredDeviceExtensions();
-		std::vector<const char*> requiredDeviceLayers = GetRequiredDeviceLayers();
-		vk::DeviceCreateInfo deviceCreateInfo{};
-		deviceCreateInfo.pNext = nullptr;
-		deviceCreateInfo.flags = {};
-		deviceCreateInfo.enabledExtensionCount = requiredDeviceExtensions.size();
-		deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
-		deviceCreateInfo.enabledLayerCount = requiredDeviceLayers.size();
-		deviceCreateInfo.ppEnabledLayerNames = requiredDeviceLayers.data();
-		deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
-		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-		deviceCreateInfo.pEnabledFeatures = nullptr;
-
-		vk::Result result = m_physicalDevice.createDevice(&deviceCreateInfo, nullptr, &m_device);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan logical device!");
-	}
-	
-	void VulkanContext::DestroyDevice() 
-	{
-		m_device.destroy();
+		return physicalDevices[0];
 	}
 
 	void VulkanContext::CreateSwapchain()
 	{
-		vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface->GetSurface());
+		vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_device->GetPhysicalDevice().getSurfaceCapabilitiesKHR(m_surface->GetSurface());
 		if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
 		{
 			m_swapchainExtent = surfaceCapabilities.currentExtent;
@@ -286,7 +215,7 @@ namespace Firefly
 			m_swapchainExtent = actualExtent;
 		}
 
-		std::vector<vk::SurfaceFormatKHR> surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(m_surface->GetSurface());
+		std::vector<vk::SurfaceFormatKHR> surfaceFormats = m_device->GetPhysicalDevice().getSurfaceFormatsKHR(m_surface->GetSurface());
 		for (const vk::SurfaceFormatKHR& surfaceFormat : surfaceFormats)
 		{
 			if (surfaceFormat.format == vk::Format::eB8G8R8A8Srgb && surfaceFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
@@ -300,7 +229,7 @@ namespace Firefly
 			}
 		}
 
-		std::vector<vk::PresentModeKHR> presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface->GetSurface());
+		std::vector<vk::PresentModeKHR> presentModes = m_device->GetPhysicalDevice().getSurfacePresentModesKHR(m_surface->GetSurface());
 		for (const vk::PresentModeKHR& presentMode : presentModes)
 		{
 			if (presentMode == vk::PresentModeKHR::eMailbox)
@@ -334,8 +263,8 @@ namespace Firefly
 		swapchainCreateInfo.imageArrayLayers = 1;
 		swapchainCreateInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
 
-		std::vector<uint32_t> queueFamilyIndices = { m_graphicsQueueFamilyIndex, m_presentQueueFamilyIndex };
-		if (m_graphicsQueueFamilyIndex != m_presentQueueFamilyIndex)
+		std::vector<uint32_t> queueFamilyIndices = { m_device->GetGraphicsQueueFamilyIndex(), m_device->GetPresentQueueFamilyIndex() };
+		if (m_device->GetGraphicsQueueFamilyIndex() != m_device->GetPresentQueueFamilyIndex())
 		{
 			swapchainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
 			swapchainCreateInfo.queueFamilyIndexCount = queueFamilyIndices.size();
@@ -348,10 +277,10 @@ namespace Firefly
 			swapchainCreateInfo.pQueueFamilyIndices = nullptr;
 		}
 
-		vk::Result result = m_device.createSwapchainKHR(&swapchainCreateInfo, nullptr, &m_swapchain);
+		vk::Result result = m_device->GetDevice().createSwapchainKHR(&swapchainCreateInfo, nullptr, &m_swapchain);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan swapchain!");
 
-		m_swapchainImages = m_device.getSwapchainImagesKHR(m_swapchain);
+		m_swapchainImages = m_device->GetDevice().getSwapchainImagesKHR(m_swapchain);
 
 		m_swapchainImageViews.resize(m_swapchainImages.size());
 		uint32_t mipLevels = 1;
@@ -361,7 +290,7 @@ namespace Firefly
 
 	void VulkanContext::RecreateSwapchain()
 	{
-		m_device.waitIdle();
+		m_device->GetDevice().waitIdle();
 
 		if (m_surface->GetWidth() == 0 && m_surface->GetHeight() == 0)
 			return;
@@ -388,8 +317,8 @@ namespace Firefly
 	void VulkanContext::DestroySwapchain()
 	{
 		for (const vk::ImageView& imageView : m_swapchainImageViews)
-			m_device.destroyImageView(imageView);
-		m_device.destroySwapchainKHR(m_swapchain);
+			m_device->GetDevice().destroyImageView(imageView);
+		m_device->GetDevice().destroySwapchainKHR(m_swapchain);
 	}
 
 	void VulkanContext::CreateCommandPool()
@@ -397,15 +326,15 @@ namespace Firefly
 		vk::CommandPoolCreateInfo commandPoolCreateInfo{};
 		commandPoolCreateInfo.pNext = nullptr;
 		commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-		commandPoolCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+		commandPoolCreateInfo.queueFamilyIndex = m_device->GetGraphicsQueueFamilyIndex();
 
-		vk::Result result = m_device.createCommandPool(&commandPoolCreateInfo, nullptr, &m_commandPool);
+		vk::Result result = m_device->GetDevice().createCommandPool(&commandPoolCreateInfo, nullptr, &m_commandPool);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command pool!");
 	}
 
 	void VulkanContext::DestroyCommandPool()
 	{
-		m_device.destroyCommandPool(m_commandPool);
+		m_device->GetDevice().destroyCommandPool(m_commandPool);
 	}
 
 	void VulkanContext::AllocateCommandBuffers()
@@ -417,13 +346,13 @@ namespace Firefly
 		commandBufferAllocateInfo.level = vk::CommandBufferLevel::ePrimary;
 		commandBufferAllocateInfo.commandBufferCount = m_commandBuffers.size();
 
-		vk::Result result = m_device.allocateCommandBuffers(&commandBufferAllocateInfo, m_commandBuffers.data());
+		vk::Result result = m_device->GetDevice().allocateCommandBuffers(&commandBufferAllocateInfo, m_commandBuffers.data());
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command buffers!");
 	}
 
 	void VulkanContext::FreeCommandBuffers()
 	{
-		m_device.freeCommandBuffers(m_commandPool, m_commandBuffers.size(), m_commandBuffers.data());
+		m_device->GetDevice().freeCommandBuffers(m_commandPool, m_commandBuffers.size(), m_commandBuffers.data());
 	}
 
 	void VulkanContext::CreateVertexBuffers()
@@ -437,9 +366,9 @@ namespace Firefly
 		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingVertexBuffer, stagingVertexBufferMemory);
 
 		void* mappedMemory;
-		m_device.mapMemory(stagingVertexBufferMemory, 0, bufferSize, {}, &mappedMemory);
+		m_device->GetDevice().mapMemory(stagingVertexBufferMemory, 0, bufferSize, {}, &mappedMemory);
 		memcpy(mappedMemory, m_vertices.data(), bufferSize);
-		m_device.unmapMemory(stagingVertexBufferMemory);
+		m_device->GetDevice().unmapMemory(stagingVertexBufferMemory);
 
 		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
 		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
@@ -447,14 +376,14 @@ namespace Firefly
 
 		CopyBuffer(stagingVertexBuffer, m_vertexBuffer, bufferSize);
 
-		m_device.destroyBuffer(stagingVertexBuffer);
-		m_device.freeMemory(stagingVertexBufferMemory);
+		m_device->GetDevice().destroyBuffer(stagingVertexBuffer);
+		m_device->GetDevice().freeMemory(stagingVertexBufferMemory);
 	}
 
 	void VulkanContext::DestroyVertexBuffers()
 	{
-		m_device.destroyBuffer(m_vertexBuffer);
-		m_device.freeMemory(m_vertexBufferMemory);
+		m_device->GetDevice().destroyBuffer(m_vertexBuffer);
+		m_device->GetDevice().freeMemory(m_vertexBufferMemory);
 	}
 
 	void VulkanContext::CreateIndexBuffers()
@@ -468,9 +397,9 @@ namespace Firefly
 		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingIndexBuffer, stagingIndexBufferMemory);
 
 		void* mappedMemory;
-		m_device.mapMemory(stagingIndexBufferMemory, 0, bufferSize, {}, &mappedMemory);
+		m_device->GetDevice().mapMemory(stagingIndexBufferMemory, 0, bufferSize, {}, &mappedMemory);
 		memcpy(mappedMemory, m_indices.data(), bufferSize);
-		m_device.unmapMemory(stagingIndexBufferMemory);
+		m_device->GetDevice().unmapMemory(stagingIndexBufferMemory);
 
 		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
 		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
@@ -478,14 +407,14 @@ namespace Firefly
 
 		CopyBuffer(stagingIndexBuffer, m_indexBuffer, bufferSize);
 
-		m_device.destroyBuffer(stagingIndexBuffer);
-		m_device.freeMemory(stagingIndexBufferMemory);
+		m_device->GetDevice().destroyBuffer(stagingIndexBuffer);
+		m_device->GetDevice().freeMemory(stagingIndexBufferMemory);
 	}
 
 	void VulkanContext::DestroyIndexBuffers()
 	{
-		m_device.destroyBuffer(m_indexBuffer);
-		m_device.freeMemory(m_indexBufferMemory);
+		m_device->GetDevice().destroyBuffer(m_indexBuffer);
+		m_device->GetDevice().freeMemory(m_indexBufferMemory);
 	}
 
 	void VulkanContext::CreateUniformBuffers()
@@ -498,7 +427,7 @@ namespace Firefly
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
 			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffersPerFrame[i], m_uniformBufferMemoriesPerFrame[i]);
 
-		size_t minUniformBufferOffsetAlignment = m_physicalDevice.getProperties().limits.minUniformBufferOffsetAlignment;
+		size_t minUniformBufferOffsetAlignment = m_device->GetPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
 		m_modelMatrixUniformAlignment = sizeof(glm::mat4);
 		if (minUniformBufferOffsetAlignment > 0)
 			m_modelMatrixUniformAlignment = (m_modelMatrixUniformAlignment + minUniformBufferOffsetAlignment - 1) & ~(minUniformBufferOffsetAlignment - 1);
@@ -517,10 +446,10 @@ namespace Firefly
 	{
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
 		{
-			m_device.destroyBuffer(m_uniformBuffersPerObject[i]);
-			m_device.freeMemory(m_uniformBufferMemoriesPerObject[i]);
-			m_device.destroyBuffer(m_uniformBuffersPerFrame[i]);
-			m_device.freeMemory(m_uniformBufferMemoriesPerFrame[i]);
+			m_device->GetDevice().destroyBuffer(m_uniformBuffersPerObject[i]);
+			m_device->GetDevice().freeMemory(m_uniformBufferMemoriesPerObject[i]);
+			m_device->GetDevice().destroyBuffer(m_uniformBuffersPerFrame[i]);
+			m_device->GetDevice().freeMemory(m_uniformBufferMemoriesPerFrame[i]);
 		}
 	}
 
@@ -543,13 +472,13 @@ namespace Firefly
 		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
 		descriptorPoolCreateInfo.maxSets = m_swapchainImages.size();
 
-		vk::Result result = m_device.createDescriptorPool(&descriptorPoolCreateInfo, nullptr, &m_descriptorPool);
+		vk::Result result = m_device->GetDevice().createDescriptorPool(&descriptorPoolCreateInfo, nullptr, &m_descriptorPool);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan descriptor pool!");
 	}
 
 	void VulkanContext::DestroyDescriptorPool()
 	{
-		m_device.destroyDescriptorPool(m_descriptorPool);
+		m_device->GetDevice().destroyDescriptorPool(m_descriptorPool);
 	}
 
 	void VulkanContext::AllocateDescriptorSets()
@@ -575,7 +504,7 @@ namespace Firefly
 		descriptorSetLayoutCreateInfo.bindingCount = bindings.size();
 		descriptorSetLayoutCreateInfo.pBindings = bindings.data();
 
-		vk::Result result = m_device.createDescriptorSetLayout(&descriptorSetLayoutCreateInfo, nullptr, &m_descriptorSetLayout);
+		vk::Result result = m_device->GetDevice().createDescriptorSetLayout(&descriptorSetLayoutCreateInfo, nullptr, &m_descriptorSetLayout);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
 
 		// DESCRIPTOR SETS
@@ -587,7 +516,7 @@ namespace Firefly
 		descriptorSetAllocateInfo.descriptorSetCount = m_swapchainImages.size();
 		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
 
-		result = m_device.allocateDescriptorSets(&descriptorSetAllocateInfo, m_descriptorSets.data());
+		result = m_device->GetDevice().allocateDescriptorSets(&descriptorSetAllocateInfo, m_descriptorSets.data());
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
 
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
@@ -621,14 +550,14 @@ namespace Firefly
 			writeDescriptorSets[1].pImageInfo = nullptr;
 			writeDescriptorSets[1].pTexelBufferView = nullptr;
 
-			m_device.updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+			m_device->GetDevice().updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
 		}
 	}
 
 	void VulkanContext::FreeDescriptorSets()
 	{
-		m_device.freeDescriptorSets(m_descriptorPool, m_descriptorSets.size(), m_descriptorSets.data());
-		m_device.destroyDescriptorSetLayout(m_descriptorSetLayout);
+		m_device->GetDevice().freeDescriptorSets(m_descriptorPool, m_descriptorSets.size(), m_descriptorSets.data());
+		m_device->GetDevice().destroyDescriptorSetLayout(m_descriptorSetLayout);
 	}
 
 	void VulkanContext::CreateDepthImage()
@@ -649,9 +578,9 @@ namespace Firefly
 
 	void VulkanContext::DestroyDepthImage()
 	{
-		m_device.destroyImageView(m_depthImageView);
-		m_device.destroyImage(m_depthImage);
-		m_device.freeMemory(m_depthImageMemory);
+		m_device->GetDevice().destroyImageView(m_depthImageView);
+		m_device->GetDevice().destroyImage(m_depthImage);
+		m_device->GetDevice().freeMemory(m_depthImageMemory);
 	}
 
 	void VulkanContext::CreateRenderPass()
@@ -717,13 +646,13 @@ namespace Firefly
 		renderPassCreateInfo.dependencyCount = 1;
 		renderPassCreateInfo.pDependencies = &subpassDependency;
 
-		vk::Result result = m_device.createRenderPass(&renderPassCreateInfo, nullptr, &m_renderPass);
+		vk::Result result = m_device->GetDevice().createRenderPass(&renderPassCreateInfo, nullptr, &m_renderPass);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan render pass!");
 	}
 
 	void VulkanContext::DestroyRenderPass()
 	{
-		m_device.destroyRenderPass(m_renderPass);
+		m_device->GetDevice().destroyRenderPass(m_renderPass);
 	}
 
 	void VulkanContext::CreateFramebuffers()
@@ -740,7 +669,7 @@ namespace Firefly
 			framebufferCreateInfo.height = m_swapchainExtent.height;
 			framebufferCreateInfo.layers = 1;
 
-			vk::Result result = m_device.createFramebuffer(&framebufferCreateInfo, nullptr, &m_framebuffers[i]);
+			vk::Result result = m_device->GetDevice().createFramebuffer(&framebufferCreateInfo, nullptr, &m_framebuffers[i]);
 			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan framebuffer!");
 		}
 	}
@@ -748,7 +677,7 @@ namespace Firefly
 	void VulkanContext::DestroyFramebuffers()
 	{
 		for (const vk::Framebuffer& framebuffer : m_framebuffers)
-			m_device.destroyFramebuffer(framebuffer);
+			m_device->GetDevice().destroyFramebuffer(framebuffer);
 	}
 
 	void VulkanContext::CreateGraphicsPipeline()
@@ -761,7 +690,7 @@ namespace Firefly
 		vertexShaderModuleCreateInfo.flags = {};
 		vertexShaderModuleCreateInfo.codeSize = vertexShaderCode.size();
 		vertexShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(vertexShaderCode.data());
-		vk::Result result = m_device.createShaderModule(&vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule);
+		vk::Result result = m_device->GetDevice().createShaderModule(&vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan vertex shader module!");
 
 		std::vector<char> fragmentShaderCode = ReadBinaryFile("assets/shaders/triangle.frag.spv");
@@ -771,7 +700,7 @@ namespace Firefly
 		fragmentShaderModuleCreateInfo.flags = {};
 		fragmentShaderModuleCreateInfo.codeSize = fragmentShaderCode.size();
 		fragmentShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(fragmentShaderCode.data());
-		result = m_device.createShaderModule(&fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule);
+		result = m_device->GetDevice().createShaderModule(&fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan fragment shader module!");
 
 		vk::PipelineShaderStageCreateInfo vertexShaderStageCreateInfo{};
@@ -927,7 +856,7 @@ namespace Firefly
 		pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
 		pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-		result = m_device.createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout);
+		result = m_device->GetDevice().createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan pipeline layout!");
 		// ---------------------------------------------
 		// GRAPHICS PIPELINE ---------------------------
@@ -950,17 +879,17 @@ namespace Firefly
 		pipelineCreateInfo.basePipelineHandle = nullptr;
 		pipelineCreateInfo.basePipelineIndex = -1;
 
-		result = m_device.createGraphicsPipelines(nullptr, 1, &pipelineCreateInfo, nullptr, &m_graphicsPipeline);
+		result = m_device->GetDevice().createGraphicsPipelines(nullptr, 1, &pipelineCreateInfo, nullptr, &m_graphicsPipeline);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan graphics pipeline!");
 		// ---------------------------------------------
-		m_device.destroyShaderModule(vertexShaderModule);
-		m_device.destroyShaderModule(fragmentShaderModule);
+		m_device->GetDevice().destroyShaderModule(vertexShaderModule);
+		m_device->GetDevice().destroyShaderModule(fragmentShaderModule);
 	}
 
 	void VulkanContext::DestroyGraphicsPipeline()
 	{
-		m_device.destroyPipeline(m_graphicsPipeline);
-		m_device.destroyPipelineLayout(m_pipelineLayout);
+		m_device->GetDevice().destroyPipeline(m_graphicsPipeline);
+		m_device->GetDevice().destroyPipelineLayout(m_pipelineLayout);
 	}
 
 	void VulkanContext::CreateSynchronizationPrimitivesForRendering()
@@ -978,13 +907,13 @@ namespace Firefly
 		m_isCommandBufferFinishedFences.resize(m_swapchainImages.size());
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
 		{
-			vk::Result result = m_device.createSemaphore(&semaphoreCreateInfo, nullptr, &m_isImageAvailableSemaphore[i]);
+			vk::Result result = m_device->GetDevice().createSemaphore(&semaphoreCreateInfo, nullptr, &m_isImageAvailableSemaphore[i]);
 			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
 
-			result = m_device.createSemaphore(&semaphoreCreateInfo, nullptr, &m_isRenderingFinishedSemaphore[i]);
+			result = m_device->GetDevice().createSemaphore(&semaphoreCreateInfo, nullptr, &m_isRenderingFinishedSemaphore[i]);
 			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
 
-			result = m_device.createFence(&fenceCreateInfo, nullptr, &m_isCommandBufferFinishedFences[i]);
+			result = m_device->GetDevice().createFence(&fenceCreateInfo, nullptr, &m_isCommandBufferFinishedFences[i]);
 			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Fence!");
 		}
 	}
@@ -993,9 +922,9 @@ namespace Firefly
 	{
 		for (size_t i = 0; i < m_swapchainImages.size(); i++)
 		{
-			m_device.destroyFence(m_isCommandBufferFinishedFences[i]);
-			m_device.destroySemaphore(m_isRenderingFinishedSemaphore[i]);
-			m_device.destroySemaphore(m_isImageAvailableSemaphore[i]);
+			m_device->GetDevice().destroyFence(m_isCommandBufferFinishedFences[i]);
+			m_device->GetDevice().destroySemaphore(m_isRenderingFinishedSemaphore[i]);
+			m_device->GetDevice().destroySemaphore(m_isImageAvailableSemaphore[i]);
 		}
 	}
 
@@ -1008,7 +937,7 @@ namespace Firefly
 		commandBufferAllocateInfo.commandBufferCount = 1;
 
 		vk::CommandBuffer commandBuffer;
-		m_device.allocateCommandBuffers(&commandBufferAllocateInfo, &commandBuffer);
+		m_device->GetDevice().allocateCommandBuffers(&commandBufferAllocateInfo, &commandBuffer);
 
 		vk::CommandBufferBeginInfo commandBufferBeginInfo{};
 		commandBufferBeginInfo.pNext = nullptr;
@@ -1033,11 +962,11 @@ namespace Firefly
 		submitInfo.pSignalSemaphores = nullptr;
 		submitInfo.pWaitDstStageMask = nullptr;
 
-		vk::Queue graphicsQueue = m_device.getQueue(m_graphicsQueueFamilyIndex, 0);
+		vk::Queue graphicsQueue = m_device->GetGraphicsQueue();
 		graphicsQueue.submit(1, &submitInfo, nullptr);
 		graphicsQueue.waitIdle();
 
-		m_device.freeCommandBuffers(m_commandPool, 1, &commandBuffer);
+		m_device->GetDevice().freeCommandBuffers(m_commandPool, 1, &commandBuffer);
 	}
 
 	void VulkanContext::CreateBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags bufferUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory)
@@ -1051,15 +980,15 @@ namespace Firefly
 		bufferCreateInfo.queueFamilyIndexCount = 0;
 		bufferCreateInfo.pQueueFamilyIndices = nullptr;
 
-		if (m_device.createBuffer(&bufferCreateInfo, nullptr, &buffer) != vk::Result::eSuccess)
+		if (m_device->GetDevice().createBuffer(&bufferCreateInfo, nullptr, &buffer) != vk::Result::eSuccess)
 			throw std::runtime_error("Failed to create Vulkan buffer!");
 
 		vk::MemoryRequirements memoryRequirements;
-		m_device.getBufferMemoryRequirements(buffer, &memoryRequirements);
+		m_device->GetDevice().getBufferMemoryRequirements(buffer, &memoryRequirements);
 
 		// Find memory type ----------------------------------------
 		vk::PhysicalDeviceMemoryProperties memoryProperties;
-		m_physicalDevice.getMemoryProperties(&memoryProperties);
+		m_device->GetPhysicalDevice().getMemoryProperties(&memoryProperties);
 		uint32_t memoryTypeIndex = UINT32_MAX;
 		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
 		{
@@ -1079,10 +1008,10 @@ namespace Firefly
 		memoryAllocateInfo.allocationSize = memoryRequirements.size;
 		memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
 
-		if (m_device.allocateMemory(&memoryAllocateInfo, nullptr, &bufferMemory) != vk::Result::eSuccess)
+		if (m_device->GetDevice().allocateMemory(&memoryAllocateInfo, nullptr, &bufferMemory) != vk::Result::eSuccess)
 			throw std::runtime_error("Failed to allocate Vulkan buffer memory!");
 
-		m_device.bindBufferMemory(buffer, bufferMemory, 0);
+		m_device->GetDevice().bindBufferMemory(buffer, bufferMemory, 0);
 	}
 
 	void VulkanContext::CopyBuffer(vk::Buffer sourceBuffer, vk::Buffer destinationBuffer, vk::DeviceSize size)
@@ -1116,15 +1045,15 @@ namespace Firefly
 		imageCreateInfo.sharingMode = vk::SharingMode::eExclusive;
 		imageCreateInfo.samples = sampleCount;
 
-		if (m_device.createImage(&imageCreateInfo, nullptr, &image) != vk::Result::eSuccess)
+		if (m_device->GetDevice().createImage(&imageCreateInfo, nullptr, &image) != vk::Result::eSuccess)
 			throw std::runtime_error("Failed to create Vulkan image!");
 
 		vk::MemoryRequirements memoryRequirements;
-		m_device.getImageMemoryRequirements(image, &memoryRequirements);
+		m_device->GetDevice().getImageMemoryRequirements(image, &memoryRequirements);
 
 		// Find memory type ----------------------------------------
 		vk::PhysicalDeviceMemoryProperties memoryProperties;
-		m_physicalDevice.getMemoryProperties(&memoryProperties);
+		m_device->GetPhysicalDevice().getMemoryProperties(&memoryProperties);
 		uint32_t memoryTypeIndex = UINT32_MAX;
 		for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
 		{
@@ -1143,10 +1072,10 @@ namespace Firefly
 		memoryAllocateInfo.allocationSize = memoryRequirements.size;
 		memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
 
-		if (m_device.allocateMemory(&memoryAllocateInfo, nullptr, &imageMemory) != vk::Result::eSuccess)
+		if (m_device->GetDevice().allocateMemory(&memoryAllocateInfo, nullptr, &imageMemory) != vk::Result::eSuccess)
 			throw std::runtime_error("Failed to allocate Vulkan image memory!");
 
-		vkBindImageMemory(m_device, image, imageMemory, 0);
+		vkBindImageMemory(m_device->GetDevice(), image, imageMemory, 0);
 	}
 
 	vk::ImageView VulkanContext::CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags)
@@ -1168,7 +1097,7 @@ namespace Firefly
 		imageViewCreateInfo.subresourceRange.layerCount = 1;
 
 		vk::ImageView imageView;
-		vk::Result result = m_device.createImageView(&imageViewCreateInfo, nullptr, &imageView);
+		vk::Result result = m_device->GetDevice().createImageView(&imageViewCreateInfo, nullptr, &imageView);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan image view!");
 
 		return imageView;
@@ -1243,7 +1172,7 @@ namespace Firefly
 		for (vk::Format format : formatCandidates)
 		{
 			vk::FormatProperties formatProperties;
-			m_physicalDevice.getFormatProperties(format, &formatProperties);
+			m_device->GetPhysicalDevice().getFormatProperties(format, &formatProperties);
 
 			if (tiling == vk::ImageTiling::eLinear && (formatProperties.linearTilingFeatures & formatFeatureFlags) == formatFeatureFlags)
 				return format;
