@@ -23,6 +23,7 @@ set(coreFiles
 	include/Firefly/Core/EntryPoint.h
 	src/Core/EntryPoint.cpp
 	include/Firefly/Core/Core.h
+	include/Firefly/Core/Version.h
 	include/Firefly/Core/Application.h
 	src/Core/Application.cpp
 	include/Firefly/Core/Logger.h
@@ -71,7 +72,17 @@ set(renderingOpenGLFiles
 
 set(renderingVulkanFiles
 	include/Firefly/Rendering/Vulkan/VulkanContext.h
-	src/Rendering/Vulkan/VulkanContext.cpp)
+	src/Rendering/Vulkan/VulkanContext.cpp
+	include/Firefly/Rendering/Vulkan/VulkanInstance.h
+	src/Rendering/Vulkan/VulkanInstance.cpp
+	include/Firefly/Rendering/Vulkan/VulkanSurface.h
+	src/Rendering/Vulkan/VulkanSurface.cpp
+	include/Firefly/Rendering/Vulkan/VulkanDevice.h
+	src/Rendering/Vulkan/VulkanDevice.cpp
+	include/Firefly/Rendering/Vulkan/VulkanDebugMessenger.h
+	src/Rendering/Vulkan/VulkanDebugMessenger.cpp
+	include/Firefly/Rendering/Vulkan/VulkanSwapchain.h
+	src/Rendering/Vulkan/VulkanSwapchain.cpp)
 
 set(sceneFiles
 	include/Firefly/Scene/Scene.h

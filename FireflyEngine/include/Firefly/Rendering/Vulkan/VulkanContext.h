@@ -1,8 +1,12 @@
+#pragma once
+
 #include <vulkan/vulkan.hpp>
 
 #include "Rendering/Mesh.h"
 
-struct GLFWwindow;
+#include "Rendering/Vulkan/VulkanInstance.h"
+#include "Rendering/Vulkan/VulkanDebugMessenger.h"
+#include "Rendering/Vulkan/VulkanSurface.h"
 
 namespace Firefly
 {
@@ -26,14 +30,8 @@ namespace Firefly
 		void Draw();
 
 	private:
-		void CreateInstance();
-		void DestroyInstance();
-
-		void CreateDebugMessenger();
-		void DestroyDebugMessenger();
-
-		void CreateSurface();
-		void DestroySurface();
+		//void CreateSurface();
+		//void DestroySurface();
 
 		void PickPhysicalDevice();
 		void CreateDevice();
@@ -97,10 +95,9 @@ namespace Firefly
 		std::vector<uint32_t> m_indices;
 		std::vector<glm::mat4> m_modelMatrices;
 
-		GLFWwindow* m_glfwWindow;
-
-		vk::Instance m_instance;
-		vk::SurfaceKHR m_surface;
+		VulkanInstance* m_instance;
+		VulkanDebugMessenger* m_debugMessenger;
+		VulkanSurface* m_surface;
 
 		vk::PhysicalDevice m_physicalDevice;
 		vk::Device m_device;
@@ -152,12 +149,5 @@ namespace Firefly
 		std::vector<vk::Semaphore> m_isImageAvailableSemaphore;
 		std::vector<vk::Semaphore> m_isRenderingFinishedSemaphore;
 		std::vector<vk::Fence> m_isCommandBufferFinishedFences;
-
-		vk::DebugUtilsMessengerEXT m_debugMessenger;
-		static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
-			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-			VkDebugUtilsMessageTypeFlagsEXT messageType,
-			const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-			void* pUserData);
 	};
 }

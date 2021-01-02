@@ -9,9 +9,6 @@ namespace Firefly
 {
 	VulkanContext::VulkanContext(void* window)
 	{
-		m_glfwWindow = (GLFWwindow*)(window);
-		FIREFLY_ASSERT(m_glfwWindow, "Vulkan requires a GLFWwindow pointer!");
-
 		m_vertices = {
 			{{ -1.0f, -1.0f,  1.0f }, { 1.0f, 0.0f, 0.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
 			{{  1.0f, -1.0f,  1.0f }, { 0.0f, 1.0f, 0.0f }, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
@@ -29,9 +26,11 @@ namespace Firefly
 			m_modelMatrices.push_back(glm::translate(glm::mat4(1.0f), glm::vec3(i, i, -(float)i)));
 		}
 
-		CreateInstance();
-		CreateDebugMessenger();
-		CreateSurface();
+		m_instance = new VulkanInstance("Sandbox", Version(1, 0, 0), GetRequiredInstanceExtensions(), GetRequiredInstanceLayers());
+		if (AreValidationLayersEnabled())
+			m_debugMessenger = new VulkanDebugMessenger(m_instance);
+		m_surface = new VulkanSurface(m_instance, window);
+
 		PickPhysicalDevice();
 		CreateDevice();
 		CreateSwapchain();
@@ -67,9 +66,11 @@ namespace Firefly
 		DestroyCommandPool();
 		DestroySwapchain();
 		DestroyDevice();
-		DestroySurface();
-		DestroyDebugMessenger();
-		DestroyInstance();
+
+		delete m_surface;
+		if (AreValidationLayersEnabled())
+			delete m_debugMessenger;
+		delete m_instance;
 	}
 
 	void VulkanContext::Draw()
@@ -191,82 +192,9 @@ namespace Firefly
 		m_currentFrameIndex = (m_currentFrameIndex + 1) % m_swapchainImages.size();
 	}
 
-	void VulkanContext::CreateInstance() 
-	{
-		// TODO: Hand in the name and version of the application from client
-
-		vk::ApplicationInfo applicationInfo{};
-		applicationInfo.pNext = nullptr;
-		applicationInfo.pApplicationName = "Sandbox";
-		applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-		applicationInfo.pEngineName = "FireflyEngine";
-		applicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		applicationInfo.apiVersion = VK_API_VERSION_1_2;
-
-		// TODO: Check required instance extensions and layers
-		std::vector<const char*> requiredInstanceExtensions = GetRequiredInstanceExtensions();
-		std::vector<const char*> requiredInstanceLayers = GetRequiredInstanceLayers();
-		vk::InstanceCreateInfo instanceCreateInfo{};
-		instanceCreateInfo.pNext = nullptr;
-		instanceCreateInfo.flags = {};
-		instanceCreateInfo.pApplicationInfo = &applicationInfo;
-		instanceCreateInfo.enabledExtensionCount = requiredInstanceExtensions.size();
-		instanceCreateInfo.ppEnabledExtensionNames = requiredInstanceExtensions.data();
-		instanceCreateInfo.enabledLayerCount = requiredInstanceLayers.size();
-		instanceCreateInfo.ppEnabledLayerNames = requiredInstanceLayers.data();
-
-		vk::Result result = vk::createInstance(&instanceCreateInfo, nullptr, &m_instance);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan instance!");
-	}
-
-	void VulkanContext::DestroyInstance()
-	{
-		m_instance.destroy();
-	}
-
-	void VulkanContext::CreateDebugMessenger()
-	{
-		if (!AreValidationLayersEnabled())
-			return;
-
-		vk::DebugUtilsMessengerCreateInfoEXT debugMessngerCreateInfo{};
-		debugMessngerCreateInfo.pNext = nullptr;
-		debugMessngerCreateInfo.flags = {};
-		debugMessngerCreateInfo.pUserData = nullptr;
-		debugMessngerCreateInfo.messageSeverity = vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError;
-		debugMessngerCreateInfo.messageType = vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance;
-		debugMessngerCreateInfo.pfnUserCallback = DebugMessengerCallback;
-
-		vk::DispatchLoaderDynamic dispatchLoaderDynamic(m_instance, vkGetInstanceProcAddr);
-		vk::Result result = m_instance.createDebugUtilsMessengerEXT(&debugMessngerCreateInfo, nullptr, &m_debugMessenger, dispatchLoaderDynamic);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan debug messenger!");
-	}
-
-	void VulkanContext::DestroyDebugMessenger()
-	{
-		if (!AreValidationLayersEnabled())
-			return;
-
-		vk::DispatchLoaderDynamic dispatchLoaderDynamic(m_instance, vkGetInstanceProcAddr);
-		m_instance.destroyDebugUtilsMessengerEXT(m_debugMessenger, nullptr, dispatchLoaderDynamic);
-	}
-
-	void VulkanContext::CreateSurface()
-	{
-		VkSurfaceKHR surface;
-		vk::Result result = vk::Result(glfwCreateWindowSurface(m_instance, m_glfwWindow, nullptr, &surface));
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan window surface!");
-		m_surface = vk::SurfaceKHR(surface);
-	}
-
-	void VulkanContext::DestroySurface()
-	{
-		m_instance.destroySurfaceKHR(m_surface);
-	}
-
 	void VulkanContext::PickPhysicalDevice()
 	{
-		std::vector<vk::PhysicalDevice> physicalDevices = m_instance.enumeratePhysicalDevices();
+		std::vector<vk::PhysicalDevice> physicalDevices = m_instance->GetInstance().enumeratePhysicalDevices();
 		FIREFLY_ASSERT(physicalDevices.size() > 0, "Unable to find a graphics card with Vulkan support!");
 
 		// TODO: Check required device extensions and other requirements
@@ -291,7 +219,7 @@ namespace Firefly
 			if (!presentSupport)
 			{
 				vk::Bool32 surfaceSupport;
-				m_physicalDevice.getSurfaceSupportKHR(i, m_surface, &surfaceSupport);
+				m_physicalDevice.getSurfaceSupportKHR(i, m_surface->GetSurface(), &surfaceSupport);
 				if (surfaceSupport)
 				{
 					presentSupport = true;
@@ -345,22 +273,20 @@ namespace Firefly
 
 	void VulkanContext::CreateSwapchain()
 	{
-		vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
+		vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface->GetSurface());
 		if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
 		{
 			m_swapchainExtent = surfaceCapabilities.currentExtent;
 		}
 		else
 		{
-			int width, height;
-			glfwGetFramebufferSize(m_glfwWindow, &width, &height);
-			vk::Extent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+			vk::Extent2D actualExtent = { static_cast<uint32_t>(m_surface->GetWidth()), static_cast<uint32_t>(m_surface->GetHeight()) };
 			actualExtent.width = std::max(surfaceCapabilities.minImageExtent.width, std::min(surfaceCapabilities.maxImageExtent.width, actualExtent.width));
 			actualExtent.height = std::max(surfaceCapabilities.minImageExtent.height, std::min(surfaceCapabilities.maxImageExtent.height, actualExtent.height));
 			m_swapchainExtent = actualExtent;
 		}
 
-		std::vector<vk::SurfaceFormatKHR> surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(m_surface);
+		std::vector<vk::SurfaceFormatKHR> surfaceFormats = m_physicalDevice.getSurfaceFormatsKHR(m_surface->GetSurface());
 		for (const vk::SurfaceFormatKHR& surfaceFormat : surfaceFormats)
 		{
 			if (surfaceFormat.format == vk::Format::eB8G8R8A8Srgb && surfaceFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
@@ -374,7 +300,7 @@ namespace Firefly
 			}
 		}
 
-		std::vector<vk::PresentModeKHR> presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface);
+		std::vector<vk::PresentModeKHR> presentModes = m_physicalDevice.getSurfacePresentModesKHR(m_surface->GetSurface());
 		for (const vk::PresentModeKHR& presentMode : presentModes)
 		{
 			if (presentMode == vk::PresentModeKHR::eMailbox)
@@ -395,7 +321,7 @@ namespace Firefly
 		vk::SwapchainCreateInfoKHR swapchainCreateInfo{};
 		swapchainCreateInfo.pNext = nullptr;
 		swapchainCreateInfo.flags = {};
-		swapchainCreateInfo.surface = m_surface;
+		swapchainCreateInfo.surface = m_surface->GetSurface();
 		swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
 		swapchainCreateInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
 		swapchainCreateInfo.presentMode = m_swapchainPresentMode;
@@ -437,10 +363,7 @@ namespace Firefly
 	{
 		m_device.waitIdle();
 
-		int width = 0;
-		int height = 0;
-		glfwGetFramebufferSize(m_glfwWindow, &width, &height);
-		if (width == 0 && height == 0)
+		if (m_surface->GetWidth() == 0 && m_surface->GetHeight() == 0)
 			return;
 
 		DestroySynchronizationPrimitivesForRendering();
@@ -1405,43 +1328,6 @@ namespace Firefly
 #else 
 		return true;
 #endif
-	}
-
-	VKAPI_ATTR VkBool32 VKAPI_CALL VulkanContext::DebugMessengerCallback(
-		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-		VkDebugUtilsMessageTypeFlagsEXT messageType,
-		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-		void* pUserData)
-	{
-		std::string messageTypeLabel;
-		switch (messageType)
-		{
-		case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
-			messageTypeLabel = "general";
-			break;
-		case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
-			messageTypeLabel = "validation";
-			break;
-		case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
-			messageTypeLabel = "performance";
-			break;
-		}
-
-		std::string message = "[" + messageTypeLabel + "] debug message: " + std::string(pCallbackData->pMessage);
-		switch (messageSeverity)
-		{
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
-			break;
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
-			break;
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-			Logger::Warn("Vulkan", message);
-			break;
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-			Logger::Error("Vulkan", message);
-			break;
-		}
-		return VK_FALSE;
 	}
 
 	std::vector<char> VulkanContext::ReadBinaryFile(const std::string& fileName)
