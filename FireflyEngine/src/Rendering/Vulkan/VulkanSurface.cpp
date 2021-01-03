@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanSurface.h"
 
+#include "Rendering/Vulkan/VulkanDevice.h"
 #include <GLFW/glfw3.h>
 
 namespace Firefly

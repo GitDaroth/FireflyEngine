@@ -6,6 +6,8 @@ struct GLFWwindow;
 
 namespace Firefly
 {
+	class VulkanDevice;
+
 	class VulkanSurface
 	{
 	public:

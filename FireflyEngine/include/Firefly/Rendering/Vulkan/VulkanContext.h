@@ -8,6 +8,7 @@
 #include "Rendering/Vulkan/VulkanDebugMessenger.h"
 #include "Rendering/Vulkan/VulkanSurface.h"
 #include "Rendering/Vulkan/VulkanDevice.h"
+#include "Rendering/Vulkan/VulkanSwapchain.h"
 
 namespace Firefly
 {
@@ -33,23 +34,22 @@ namespace Firefly
 	private:
 		vk::PhysicalDevice PickPhysicalDevice();
 
-		void CreateSwapchain();
 		void RecreateSwapchain();
-		void DestroySwapchain();
 
 		void CreateCommandPool();
 		void DestroyCommandPool();
 		void AllocateCommandBuffers();
 		void FreeCommandBuffers();
 
+		// Per Mesh
 		void CreateVertexBuffers();
 		void DestroyVertexBuffers();
 		void CreateIndexBuffers();
 		void DestroyIndexBuffers();
 
+		// Per Shader
 		void CreateUniformBuffers();
 		void DestroyUniformBuffers();
-
 		void CreateDescriptorPool();
 		void DestroyDescriptorPool();
 		void AllocateDescriptorSets();
@@ -95,13 +95,7 @@ namespace Firefly
 		VulkanDebugMessenger* m_debugMessenger;
 		VulkanSurface* m_surface;
 		VulkanDevice* m_device;
-
-		vk::SwapchainKHR m_swapchain;
-		vk::SurfaceFormatKHR m_swapchainSurfaceFormat;
-		vk::PresentModeKHR m_swapchainPresentMode;
-		vk::Extent2D m_swapchainExtent;
-		std::vector<vk::Image> m_swapchainImages;
-		std::vector<vk::ImageView> m_swapchainImageViews;
+		VulkanSwapchain* m_swapchain;
 
 		vk::Image m_depthImage;
 		vk::DeviceMemory m_depthImageMemory;

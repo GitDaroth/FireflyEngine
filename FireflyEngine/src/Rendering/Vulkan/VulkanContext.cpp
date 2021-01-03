@@ -31,8 +31,8 @@ namespace Firefly
 			m_debugMessenger = new VulkanDebugMessenger(m_instance);
 		m_surface = new VulkanSurface(m_instance, window);
 		m_device = new VulkanDevice(PickPhysicalDevice(), m_surface, GetRequiredDeviceExtensions(), GetRequiredDeviceLayers());
+		m_swapchain = new VulkanSwapchain(m_device, m_surface);
 
-		CreateSwapchain();
 		CreateCommandPool();
 		AllocateCommandBuffers();
 		CreateVertexBuffers();
@@ -63,8 +63,8 @@ namespace Firefly
 		DestroyVertexBuffers();
 		FreeCommandBuffers();
 		DestroyCommandPool();
-		DestroySwapchain();
 
+		delete m_swapchain;
 		delete m_device;
 		delete m_surface;
 		if (AreValidationLayersEnabled())
@@ -76,7 +76,7 @@ namespace Firefly
 	{
 		// AQUIRE NEXT IMAGE
 		uint32_t currentImageIndex;
-		vk::Result result = m_device->GetDevice().acquireNextImageKHR(m_swapchain, UINT64_MAX, m_isImageAvailableSemaphore[m_currentFrameIndex], nullptr, &currentImageIndex);
+		vk::Result result = m_device->GetDevice().acquireNextImageKHR(m_swapchain->GetSwapchain(), UINT64_MAX, m_isImageAvailableSemaphore[m_currentFrameIndex], nullptr, &currentImageIndex);
 		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		{
 			RecreateSwapchain();
@@ -99,12 +99,14 @@ namespace Firefly
 		clearValues[0].color = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f };
 		clearValues[1].depthStencil = { 1.0f, 0 };
 
+		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
+
 		vk::RenderPassBeginInfo renderPassBeginInfo{};
 		renderPassBeginInfo.pNext = nullptr;
 		renderPassBeginInfo.renderPass = m_renderPass;
 		renderPassBeginInfo.framebuffer = m_framebuffers[currentImageIndex];
 		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent = m_swapchainExtent;
+		renderPassBeginInfo.renderArea.extent = swapchainExtent;
 		renderPassBeginInfo.clearValueCount = clearValues.size();
 		renderPassBeginInfo.pClearValues = clearValues.data();
 
@@ -113,7 +115,7 @@ namespace Firefly
 
 		// update uniform buffer per frame
 		m_uboPerFrame.viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 20.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_uboPerFrame.projectionMatrix = glm::perspective(glm::radians(45.0f), m_swapchainExtent.width / (float)m_swapchainExtent.height, 0.1f, 10000.0f);
+		m_uboPerFrame.projectionMatrix = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10000.0f);
 		m_uboPerFrame.projectionMatrix[1][1] *= -1; // Vulkan has inverted y axis in comparison to OpenGL
 
 		void* mappedMemoryPerFrame;
@@ -170,7 +172,7 @@ namespace Firefly
 
 		// PRESENT RENDERED IMAGE
 		vk::PresentInfoKHR presentInfo{};
-		std::vector<vk::SwapchainKHR> swapchains = { m_swapchain };
+		std::vector<vk::SwapchainKHR> swapchains = { m_swapchain->GetSwapchain() };
 		presentInfo.waitSemaphoreCount = isRenderingFinishedSemaphores.size();
 		presentInfo.pWaitSemaphores = isRenderingFinishedSemaphores.data();
 		presentInfo.swapchainCount = swapchains.size();
@@ -186,7 +188,7 @@ namespace Firefly
 		}
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to present the image with the present queue!");
 
-		m_currentFrameIndex = (m_currentFrameIndex + 1) % m_swapchainImages.size();
+		m_currentFrameIndex = (m_currentFrameIndex + 1) % m_swapchain->GetImageCount();
 	}
 
 	vk::PhysicalDevice VulkanContext::PickPhysicalDevice()
@@ -198,94 +200,6 @@ namespace Firefly
 		// TODO: Pick most suitable device
 
 		return physicalDevices[0];
-	}
-
-	void VulkanContext::CreateSwapchain()
-	{
-		vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_device->GetPhysicalDevice().getSurfaceCapabilitiesKHR(m_surface->GetSurface());
-		if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
-		{
-			m_swapchainExtent = surfaceCapabilities.currentExtent;
-		}
-		else
-		{
-			vk::Extent2D actualExtent = { static_cast<uint32_t>(m_surface->GetWidth()), static_cast<uint32_t>(m_surface->GetHeight()) };
-			actualExtent.width = std::max(surfaceCapabilities.minImageExtent.width, std::min(surfaceCapabilities.maxImageExtent.width, actualExtent.width));
-			actualExtent.height = std::max(surfaceCapabilities.minImageExtent.height, std::min(surfaceCapabilities.maxImageExtent.height, actualExtent.height));
-			m_swapchainExtent = actualExtent;
-		}
-
-		std::vector<vk::SurfaceFormatKHR> surfaceFormats = m_device->GetPhysicalDevice().getSurfaceFormatsKHR(m_surface->GetSurface());
-		for (const vk::SurfaceFormatKHR& surfaceFormat : surfaceFormats)
-		{
-			if (surfaceFormat.format == vk::Format::eB8G8R8A8Srgb && surfaceFormat.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
-			{
-				m_swapchainSurfaceFormat = surfaceFormat;
-				break;
-			}
-			else
-			{
-				m_swapchainSurfaceFormat = surfaceFormats[0];
-			}
-		}
-
-		std::vector<vk::PresentModeKHR> presentModes = m_device->GetPhysicalDevice().getSurfacePresentModesKHR(m_surface->GetSurface());
-		for (const vk::PresentModeKHR& presentMode : presentModes)
-		{
-			if (presentMode == vk::PresentModeKHR::eMailbox)
-			{
-				m_swapchainPresentMode = presentMode;
-				break;
-			}
-			else
-			{
-				m_swapchainPresentMode = vk::PresentModeKHR::eFifo;
-			}
-		}
-
-		uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
-		if (surfaceCapabilities.maxImageCount > 0)
-			imageCount = std::min(imageCount, surfaceCapabilities.maxImageCount);
-
-		vk::SwapchainCreateInfoKHR swapchainCreateInfo{};
-		swapchainCreateInfo.pNext = nullptr;
-		swapchainCreateInfo.flags = {};
-		swapchainCreateInfo.surface = m_surface->GetSurface();
-		swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform;
-		swapchainCreateInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
-		swapchainCreateInfo.presentMode = m_swapchainPresentMode;
-		swapchainCreateInfo.clipped = true;
-		swapchainCreateInfo.oldSwapchain = nullptr;
-		swapchainCreateInfo.minImageCount = imageCount;
-		swapchainCreateInfo.imageFormat = m_swapchainSurfaceFormat.format;
-		swapchainCreateInfo.imageColorSpace = m_swapchainSurfaceFormat.colorSpace;
-		swapchainCreateInfo.imageExtent = m_swapchainExtent;
-		swapchainCreateInfo.imageArrayLayers = 1;
-		swapchainCreateInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
-
-		std::vector<uint32_t> queueFamilyIndices = { m_device->GetGraphicsQueueFamilyIndex(), m_device->GetPresentQueueFamilyIndex() };
-		if (m_device->GetGraphicsQueueFamilyIndex() != m_device->GetPresentQueueFamilyIndex())
-		{
-			swapchainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-			swapchainCreateInfo.queueFamilyIndexCount = queueFamilyIndices.size();
-			swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-		}
-		else
-		{
-			swapchainCreateInfo.imageSharingMode = vk::SharingMode::eExclusive;
-			swapchainCreateInfo.queueFamilyIndexCount = 0;
-			swapchainCreateInfo.pQueueFamilyIndices = nullptr;
-		}
-
-		vk::Result result = m_device->GetDevice().createSwapchainKHR(&swapchainCreateInfo, nullptr, &m_swapchain);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan swapchain!");
-
-		m_swapchainImages = m_device->GetDevice().getSwapchainImagesKHR(m_swapchain);
-
-		m_swapchainImageViews.resize(m_swapchainImages.size());
-		uint32_t mipLevels = 1;
-		for (size_t i = 0; i < m_swapchainImages.size(); i++)
-			m_swapchainImageViews[i] = CreateImageView(m_swapchainImages[i], mipLevels, m_swapchainSurfaceFormat.format, vk::ImageAspectFlagBits::eColor);
 	}
 
 	void VulkanContext::RecreateSwapchain()
@@ -302,9 +216,9 @@ namespace Firefly
 		DestroyDepthImage();
 		FreeDescriptorSets();
 		FreeCommandBuffers();
-		DestroySwapchain();
+		delete m_swapchain;
 
-		CreateSwapchain();
+		m_swapchain = new VulkanSwapchain(m_device, m_surface);
 		AllocateCommandBuffers();
 		AllocateDescriptorSets();
 		CreateDepthImage();
@@ -312,13 +226,6 @@ namespace Firefly
 		CreateFramebuffers();
 		CreateGraphicsPipeline();
 		CreateSynchronizationPrimitivesForRendering();
-	}
-
-	void VulkanContext::DestroySwapchain()
-	{
-		for (const vk::ImageView& imageView : m_swapchainImageViews)
-			m_device->GetDevice().destroyImageView(imageView);
-		m_device->GetDevice().destroySwapchainKHR(m_swapchain);
 	}
 
 	void VulkanContext::CreateCommandPool()
@@ -339,7 +246,7 @@ namespace Firefly
 
 	void VulkanContext::AllocateCommandBuffers()
 	{
-		m_commandBuffers.resize(m_swapchainImages.size());
+		m_commandBuffers.resize(m_swapchain->GetImageCount());
 		vk::CommandBufferAllocateInfo commandBufferAllocateInfo{};
 		commandBufferAllocateInfo.pNext = nullptr;
 		commandBufferAllocateInfo.commandPool = m_commandPool;
@@ -422,9 +329,9 @@ namespace Firefly
 		size_t bufferSize = sizeof(UboPerFrame);
 		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
 		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-		m_uniformBuffersPerFrame.resize(m_swapchainImages.size());
-		m_uniformBufferMemoriesPerFrame.resize(m_swapchainImages.size());
-		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		m_uniformBuffersPerFrame.resize(m_swapchain->GetImageCount());
+		m_uniformBufferMemoriesPerFrame.resize(m_swapchain->GetImageCount());
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
 			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffersPerFrame[i], m_uniformBufferMemoriesPerFrame[i]);
 
 		size_t minUniformBufferOffsetAlignment = m_device->GetPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
@@ -436,15 +343,15 @@ namespace Firefly
 		m_uboPerObject.modelMatrixData = (glm::mat4*)_aligned_malloc(bufferSize, m_modelMatrixUniformAlignment);
 		bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
 		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible;// | vk::MemoryPropertyFlagBits::eHostCoherent;
-		m_uniformBuffersPerObject.resize(m_swapchainImages.size());
-		m_uniformBufferMemoriesPerObject.resize(m_swapchainImages.size());
-		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		m_uniformBuffersPerObject.resize(m_swapchain->GetImageCount());
+		m_uniformBufferMemoriesPerObject.resize(m_swapchain->GetImageCount());
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
 			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffersPerObject[i], m_uniformBufferMemoriesPerObject[i]);
 	}
 
 	void VulkanContext::DestroyUniformBuffers()
 	{
-		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
 		{
 			m_device->GetDevice().destroyBuffer(m_uniformBuffersPerObject[i]);
 			m_device->GetDevice().freeMemory(m_uniformBufferMemoriesPerObject[i]);
@@ -457,11 +364,11 @@ namespace Firefly
 	{
 		vk::DescriptorPoolSize uniformBufferDescriptorPoolSizePerFrame{};
 		uniformBufferDescriptorPoolSizePerFrame.type = vk::DescriptorType::eUniformBuffer;
-		uniformBufferDescriptorPoolSizePerFrame.descriptorCount = m_swapchainImages.size();
+		uniformBufferDescriptorPoolSizePerFrame.descriptorCount = m_swapchain->GetImageCount();
 
 		vk::DescriptorPoolSize uniformBufferDescriptorPoolSizePerObject{};
 		uniformBufferDescriptorPoolSizePerObject.type = vk::DescriptorType::eUniformBufferDynamic;
-		uniformBufferDescriptorPoolSizePerObject.descriptorCount = m_swapchainImages.size();
+		uniformBufferDescriptorPoolSizePerObject.descriptorCount = m_swapchain->GetImageCount();
 
 		std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = { uniformBufferDescriptorPoolSizePerFrame, uniformBufferDescriptorPoolSizePerObject };
 
@@ -470,7 +377,7 @@ namespace Firefly
 		descriptorPoolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
 		descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
 		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
-		descriptorPoolCreateInfo.maxSets = m_swapchainImages.size();
+		descriptorPoolCreateInfo.maxSets = m_swapchain->GetImageCount();
 
 		vk::Result result = m_device->GetDevice().createDescriptorPool(&descriptorPoolCreateInfo, nullptr, &m_descriptorPool);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan descriptor pool!");
@@ -508,18 +415,18 @@ namespace Firefly
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
 
 		// DESCRIPTOR SETS
-		m_descriptorSets.resize(m_swapchainImages.size());
-		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_swapchainImages.size(), m_descriptorSetLayout);
+		m_descriptorSets.resize(m_swapchain->GetImageCount());
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_swapchain->GetImageCount(), m_descriptorSetLayout);
 		vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
 		descriptorSetAllocateInfo.pNext = nullptr;
 		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
-		descriptorSetAllocateInfo.descriptorSetCount = m_swapchainImages.size();
+		descriptorSetAllocateInfo.descriptorSetCount = m_swapchain->GetImageCount();
 		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
 
 		result = m_device->GetDevice().allocateDescriptorSets(&descriptorSetAllocateInfo, m_descriptorSets.data());
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
 
-		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
 		{
 			vk::DescriptorBufferInfo descriptorBufferInfoPerFrame{};
 			descriptorBufferInfoPerFrame.buffer = m_uniformBuffersPerFrame[i];
@@ -563,11 +470,12 @@ namespace Firefly
 	void VulkanContext::CreateDepthImage()
 	{
 		uint32_t mipLevels = 1;
+		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
 		vk::Format depthFormat = FindDepthFormat();
 		vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
 		vk::ImageUsageFlags imageUsageFlags = vk::ImageUsageFlagBits::eDepthStencilAttachment;
 		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		CreateImage(m_swapchainExtent.width, m_swapchainExtent.height, mipLevels, vk::SampleCountFlagBits::e1, depthFormat, tiling, imageUsageFlags, memoryPropertyFlags, m_depthImage, m_depthImageMemory);
+		CreateImage(swapchainExtent.width, swapchainExtent.height, mipLevels, vk::SampleCountFlagBits::e1, depthFormat, tiling, imageUsageFlags, memoryPropertyFlags, m_depthImage, m_depthImageMemory);
 
 		m_depthImageView = CreateImageView(m_depthImage, mipLevels, depthFormat, vk::ImageAspectFlagBits::eDepth);
 
@@ -587,7 +495,7 @@ namespace Firefly
 	{
 		vk::AttachmentDescription colorAttachmentDescription{};
 		colorAttachmentDescription.flags = {};
-		colorAttachmentDescription.format = m_swapchainSurfaceFormat.format;
+		colorAttachmentDescription.format = m_swapchain->GetFormat().format;
 		colorAttachmentDescription.samples = vk::SampleCountFlagBits::e1;
 		colorAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
 		colorAttachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
@@ -657,16 +565,17 @@ namespace Firefly
 
 	void VulkanContext::CreateFramebuffers()
 	{
-		m_framebuffers.resize(m_swapchainImageViews.size());
-		for (size_t i = 0; i < m_swapchainImageViews.size(); i++)
+		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
+		m_framebuffers.resize(m_swapchain->GetImageCount());
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
 		{
-			std::vector<vk::ImageView> attachments = { m_swapchainImageViews[i], m_depthImageView };
+			std::vector<vk::ImageView> attachments = { m_swapchain->GetImageViews()[i], m_depthImageView };
 			vk::FramebufferCreateInfo framebufferCreateInfo{};
 			framebufferCreateInfo.renderPass = m_renderPass;
 			framebufferCreateInfo.attachmentCount = attachments.size();
 			framebufferCreateInfo.pAttachments = attachments.data();
-			framebufferCreateInfo.width = m_swapchainExtent.width;
-			framebufferCreateInfo.height = m_swapchainExtent.height;
+			framebufferCreateInfo.width = swapchainExtent.width;
+			framebufferCreateInfo.height = swapchainExtent.height;
 			framebufferCreateInfo.layers = 1;
 
 			vk::Result result = m_device->GetDevice().createFramebuffer(&framebufferCreateInfo, nullptr, &m_framebuffers[i]);
@@ -765,17 +674,18 @@ namespace Firefly
 		inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
 		// ---------------------------------------------
 		// VIEWPORT STATE ------------------------------
+		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
 		vk::Viewport viewport{};
 		viewport.x = 0.f;
 		viewport.y = 0.f;
-		viewport.width = (float)m_swapchainExtent.width;
-		viewport.height = (float)m_swapchainExtent.height;
+		viewport.width = (float)swapchainExtent.width;
+		viewport.height = (float)swapchainExtent.height;
 		viewport.minDepth = 0.f;
 		viewport.maxDepth = 1.f;
 
 		vk::Rect2D scissor{};
 		scissor.offset = { 0, 0 };
-		scissor.extent = m_swapchainExtent;
+		scissor.extent = swapchainExtent;
 
 		vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
 		viewportStateCreateInfo.pNext = nullptr;
@@ -902,10 +812,10 @@ namespace Firefly
 		fenceCreateInfo.pNext = nullptr;
 		fenceCreateInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 
-		m_isImageAvailableSemaphore.resize(m_swapchainImages.size());
-		m_isRenderingFinishedSemaphore.resize(m_swapchainImages.size());
-		m_isCommandBufferFinishedFences.resize(m_swapchainImages.size());
-		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		m_isImageAvailableSemaphore.resize(m_swapchain->GetImageCount());
+		m_isRenderingFinishedSemaphore.resize(m_swapchain->GetImageCount());
+		m_isCommandBufferFinishedFences.resize(m_swapchain->GetImageCount());
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
 		{
 			vk::Result result = m_device->GetDevice().createSemaphore(&semaphoreCreateInfo, nullptr, &m_isImageAvailableSemaphore[i]);
 			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
@@ -920,7 +830,7 @@ namespace Firefly
 
 	void VulkanContext::DestroySynchronizationPrimitivesForRendering()
 	{
-		for (size_t i = 0; i < m_swapchainImages.size(); i++)
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
 		{
 			m_device->GetDevice().destroyFence(m_isCommandBufferFinishedFences[i]);
 			m_device->GetDevice().destroySemaphore(m_isRenderingFinishedSemaphore[i]);
