@@ -9,6 +9,7 @@
 #include "Rendering/Vulkan/VulkanSurface.h"
 #include "Rendering/Vulkan/VulkanDevice.h"
 #include "Rendering/Vulkan/VulkanSwapchain.h"
+#include "Rendering/Vulkan/VulkanMesh.h"
 
 namespace Firefly
 {
@@ -25,11 +26,25 @@ namespace Firefly
 
 	class VulkanContext
 	{
+	private:
+		VulkanContext();
+		static VulkanContext* m_singleton;
+
 	public:
-		VulkanContext(void* window);
-		~VulkanContext();
+		static VulkanContext* GetSingleton();
+
+		void Init(void* window);
+		void Destroy();
 
 		void Draw();
+
+		vk::CommandBuffer BeginOneTimeCommandBuffer();
+		void EndCommandBuffer(vk::CommandBuffer commandBuffer);
+		void CreateBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags bufferUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
+		void CopyBuffer(vk::Buffer sourceBuffer, vk::Buffer destinationBuffer, vk::DeviceSize size);
+		void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits sampleCount, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags imageUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Image& image, vk::DeviceMemory& imageMemory);
+		vk::ImageView CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags);
+
 
 	private:
 		vk::PhysicalDevice PickPhysicalDevice();
@@ -40,12 +55,6 @@ namespace Firefly
 		void DestroyCommandPool();
 		void AllocateCommandBuffers();
 		void FreeCommandBuffers();
-
-		// Per Mesh
-		void CreateVertexBuffers();
-		void DestroyVertexBuffers();
-		void CreateIndexBuffers();
-		void DestroyIndexBuffers();
 
 		// Per Shader
 		void CreateUniformBuffers();
@@ -70,12 +79,6 @@ namespace Firefly
 		void CreateSynchronizationPrimitivesForRendering();
 		void DestroySynchronizationPrimitivesForRendering();
 
-		vk::CommandBuffer BeginOneTimeCommandBuffer();
-		void EndCommandBuffer(vk::CommandBuffer commandBuffer);
-		void CreateBuffer(vk::DeviceSize bufferSize, vk::BufferUsageFlags bufferUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
-		void CopyBuffer(vk::Buffer sourceBuffer, vk::Buffer destinationBuffer, vk::DeviceSize size);
-		void CreateImage(uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits sampleCount, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags imageUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Image& image, vk::DeviceMemory& imageMemory);
-		vk::ImageView CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags);
 		void TransitionImageLayout(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
 		vk::Format FindSupportedFormat(const std::vector<vk::Format>& formatCandidates, vk::ImageTiling tiling, vk::FormatFeatureFlags formatFeatureFlags);
 		vk::Format FindDepthFormat();
@@ -87,8 +90,8 @@ namespace Firefly
 		constexpr bool AreValidationLayersEnabled() const;
 		static std::vector<char> ReadBinaryFile(const std::string& fileName);
 
-		std::vector<Mesh::Vertex> m_vertices;
-		std::vector<uint32_t> m_indices;
+		VulkanMesh* m_mesh;
+		uint32_t m_objectCount = 1;
 		std::vector<glm::mat4> m_modelMatrices;
 
 		VulkanInstance* m_instance;
@@ -110,12 +113,6 @@ namespace Firefly
 		vk::CommandPool m_commandPool;
 		std::vector<vk::CommandBuffer> m_commandBuffers;
 
-		vk::Buffer m_vertexBuffer;
-		vk::DeviceMemory m_vertexBufferMemory;
-
-		vk::Buffer m_indexBuffer;
-		vk::DeviceMemory m_indexBufferMemory;
-
 		vk::DescriptorPool m_descriptorPool;
 		vk::DescriptorSetLayout m_descriptorSetLayout;
 		std::vector<vk::DescriptorSet> m_descriptorSets;
@@ -128,8 +125,6 @@ namespace Firefly
 		UboPerObject m_uboPerObject;
 		std::vector<vk::Buffer> m_uniformBuffersPerObject;
 		std::vector<vk::DeviceMemory> m_uniformBufferMemoriesPerObject;
-
-		uint32_t m_objectCount = 10;
 
 		uint32_t m_currentFrameIndex = 0;
 		std::vector<vk::Semaphore> m_isImageAvailableSemaphore;

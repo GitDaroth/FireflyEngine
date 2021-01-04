@@ -3,8 +3,6 @@
 #include "Window.h"
 #include <GLFW/glfw3.h>
 
-#include "Rendering/Vulkan/VulkanContext.h"
-
 namespace Firefly
 {
 	class WindowsWindow : public Window
@@ -32,7 +30,5 @@ namespace Firefly
 		GLFWwindow* m_window;
 		static bool s_isWindowInitialized;
 		static int s_windowCount;
-
-		std::shared_ptr<VulkanContext> m_vulkanContext;
 	};
 }

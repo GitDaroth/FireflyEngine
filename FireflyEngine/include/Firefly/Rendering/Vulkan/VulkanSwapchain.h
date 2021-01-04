@@ -19,8 +19,6 @@ namespace Firefly
 		vk::Extent2D GetExtent() const;
 
 	private:
-		vk::ImageView CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags);
-
 		vk::SwapchainKHR m_swapchain;
 		vk::Device m_device;
 		vk::PhysicalDevice m_physicalDevice;

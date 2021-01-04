@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanSwapchain.h"
 
+#include "Rendering/Vulkan/VulkanContext.h"
+
 namespace Firefly
 {
 	VulkanSwapchain::VulkanSwapchain(VulkanDevice* device, VulkanSurface* surface) :
@@ -90,7 +92,7 @@ namespace Firefly
 		m_imageViews.resize(m_images.size());
 		uint32_t mipLevels = 1;
 		for (size_t i = 0; i < m_images.size(); i++)
-			m_imageViews[i] = CreateImageView(m_images[i], mipLevels, m_format.format, vk::ImageAspectFlagBits::eColor);
+			m_imageViews[i] = VulkanContext::GetSingleton()->CreateImageView(m_images[i], mipLevels, m_format.format, vk::ImageAspectFlagBits::eColor);
 	}
 
 	VulkanSwapchain::~VulkanSwapchain()
@@ -128,30 +130,5 @@ namespace Firefly
 	vk::Extent2D VulkanSwapchain::GetExtent() const
 	{
 		return m_extent;
-	}
-
-	vk::ImageView VulkanSwapchain::CreateImageView(vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags)
-	{
-		vk::ImageViewCreateInfo imageViewCreateInfo{};
-		imageViewCreateInfo.pNext = nullptr;
-		imageViewCreateInfo.flags = {};
-		imageViewCreateInfo.image = image;
-		imageViewCreateInfo.viewType = vk::ImageViewType::e2D;
-		imageViewCreateInfo.format = format;
-		imageViewCreateInfo.components.r = vk::ComponentSwizzle::eIdentity;
-		imageViewCreateInfo.components.g = vk::ComponentSwizzle::eIdentity;
-		imageViewCreateInfo.components.b = vk::ComponentSwizzle::eIdentity;
-		imageViewCreateInfo.components.a = vk::ComponentSwizzle::eIdentity;
-		imageViewCreateInfo.subresourceRange.aspectMask = imageAspectFlags;
-		imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-		imageViewCreateInfo.subresourceRange.levelCount = mipLevels;
-		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		imageViewCreateInfo.subresourceRange.layerCount = 1;
-
-		vk::ImageView imageView;
-		vk::Result result = m_device.createImageView(&imageViewCreateInfo, nullptr, &imageView);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan image view!");
-
-		return imageView;
 	}
 }

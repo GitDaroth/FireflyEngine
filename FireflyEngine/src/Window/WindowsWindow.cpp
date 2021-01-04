@@ -5,6 +5,8 @@
 #include "Event/WindowEvent.h"
 #include "Input/Input.h"
 
+#include "Rendering/Vulkan/VulkanContext.h"
+
 namespace Firefly
 {
 	bool WindowsWindow::s_isWindowInitialized = false;
@@ -33,7 +35,7 @@ namespace Firefly
 
 		//m_context = RenderingAPI::CreateContext();
 		//m_context->Init(m_window);
-		m_vulkanContext = std::make_shared<VulkanContext>(m_window);
+		VulkanContext::GetSingleton()->Init(m_window);
 
 		SetupWindowEvents();
 		SetupInputEvents();
@@ -51,7 +53,7 @@ namespace Firefly
 	{
 		glfwPollEvents();
 		PollGamepadEvents();
-		m_vulkanContext->Draw();
+		VulkanContext::GetSingleton()->Draw();
 		//m_context->SwapBuffers();
 	}
 

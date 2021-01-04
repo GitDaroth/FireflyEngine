@@ -82,7 +82,9 @@ set(renderingVulkanFiles
 	include/Firefly/Rendering/Vulkan/VulkanDebugMessenger.h
 	src/Rendering/Vulkan/VulkanDebugMessenger.cpp
 	include/Firefly/Rendering/Vulkan/VulkanSwapchain.h
-	src/Rendering/Vulkan/VulkanSwapchain.cpp)
+	src/Rendering/Vulkan/VulkanSwapchain.cpp
+	include/Firefly/Rendering/Vulkan/VulkanMesh.h
+	src/Rendering/Vulkan/VulkanMesh.cpp)
 
 set(sceneFiles
 	include/Firefly/Scene/Scene.h
