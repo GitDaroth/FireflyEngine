@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Core.h"
 #include "Window/Window.h"
 #include "Event/WindowEvent.h"
 #include "Input/Input.h"
@@ -13,8 +12,11 @@ namespace Firefly
 		Application();
 		virtual ~Application();
 
-		void Run();
+		void Update(float deltaTime);
 		void OnEvent(std::shared_ptr<Event> event);
+
+		void RequestShutdown();
+		bool IsShutdownRequested() const;
 
 	protected:
 		virtual void OnUpdate(float deltaTime) = 0;
@@ -24,7 +26,6 @@ namespace Firefly
 		virtual void OnGamepadEvent(std::shared_ptr<GamepadEvent> event) = 0;
 
 		std::unique_ptr<Window> m_window;
-		bool m_isRunning = true;
-		float m_lastFrameTime;
+		bool m_isShutdownRequested = false;
 	};
 }

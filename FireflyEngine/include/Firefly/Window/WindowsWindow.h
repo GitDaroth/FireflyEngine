@@ -11,7 +11,7 @@ namespace Firefly
 		WindowsWindow(const std::string& title = "Firefly Engine", int width = 1280, int height = 720);
 		virtual ~WindowsWindow();
 
-		virtual void OnUpdate() override;
+		virtual void OnUpdate(float deltaTime) override;
 
 	protected:
 		virtual void OnSetTitle(const std::string& title) override;

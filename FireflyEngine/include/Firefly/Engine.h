@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Core/EntryPoint.h"
+#include "Core/Engine.h"
 
 #include "Scene/Scene.h"
 

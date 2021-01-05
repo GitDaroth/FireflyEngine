@@ -1,15 +1,15 @@
 #include "Core/EntryPoint.h"
 
-#include "Core/Logger.h"
+#include "Core/Engine.h"
 
 #ifdef FIREFLY_WINDOWS
 	int main(int argc, char** argv)
 	{
-		Firefly::Logger::Init();
+		Firefly::Engine engine;
 
-		auto app = Firefly::InstantiateApplication();
-		app->Run();
-		delete app;
+		engine.Init();
+		engine.Run();
+		engine.Shutdown();
 
 		return 0;
 	}

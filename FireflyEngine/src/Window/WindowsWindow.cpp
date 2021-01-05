@@ -49,7 +49,7 @@ namespace Firefly
 			glfwTerminate();
 	}
 
-	void WindowsWindow::OnUpdate()
+	void WindowsWindow::OnUpdate(float deltaTime)
 	{
 		glfwPollEvents();
 		PollGamepadEvents();

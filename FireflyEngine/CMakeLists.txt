@@ -20,6 +20,8 @@ set(miscFiles
 	src/pch.cpp)
 
 set(coreFiles
+	include/Firefly/Core/Engine.h
+	src/Core/Engine.cpp
 	include/Firefly/Core/EntryPoint.h
 	src/Core/EntryPoint.cpp
 	include/Firefly/Core/Core.h

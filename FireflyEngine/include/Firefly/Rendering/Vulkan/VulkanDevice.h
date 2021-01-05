@@ -25,7 +25,10 @@ namespace Firefly
 
 		vk::Device m_device;
 		vk::PhysicalDevice m_physicalDevice;
-		uint32_t m_graphicsQueueFamilyIndex;
-		uint32_t m_presentQueueFamilyIndex;
+
+		uint32_t m_graphicsQueueFamilyIndex = 0;
+		uint32_t m_graphicsQueueIndex = 0;
+		uint32_t m_presentQueueFamilyIndex = 0;
+		uint32_t m_presentQueueIndex = 0;
 	};
 }

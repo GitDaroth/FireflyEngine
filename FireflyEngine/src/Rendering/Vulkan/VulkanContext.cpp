@@ -155,7 +155,7 @@ namespace Firefly
 
 		std::vector<vk::Semaphore> isImageAvailableSemaphores = { m_isImageAvailableSemaphore[m_currentFrameIndex] };
 		std::vector<vk::Semaphore> isRenderingFinishedSemaphores = { m_isRenderingFinishedSemaphore[m_currentFrameIndex] };
-		vk::PipelineStageFlags waitStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+		vk::PipelineStageFlags waitStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput; // ColorAttachmentOutputStage waits for isImageAvailableSemaphore
 		vk::SubmitInfo submitInfo{};
 		submitInfo.waitSemaphoreCount = isImageAvailableSemaphores.size();
 		submitInfo.pWaitSemaphores = isImageAvailableSemaphores.data();
@@ -472,6 +472,7 @@ namespace Firefly
 		subpassDescription.pResolveAttachments = nullptr;
 
 		vk::SubpassDependency subpassDependency{};
+		subpassDependency.dependencyFlags = {};
 		subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
 		subpassDependency.dstSubpass = 0;
 		subpassDependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
@@ -569,7 +570,7 @@ namespace Firefly
 		// VERTEX INPUT STATE --------------------------
 		vk::VertexInputBindingDescription vertexInputBindingDescription{};
 		vertexInputBindingDescription.binding = 0;
-		vertexInputBindingDescription.stride = sizeof(Mesh::Vertex);
+		vertexInputBindingDescription.stride = sizeof(VulkanMesh::Vertex);
 		vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
 
 		std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};

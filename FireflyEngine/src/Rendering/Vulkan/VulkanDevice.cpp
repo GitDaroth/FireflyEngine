@@ -10,22 +10,45 @@ namespace Firefly
 	{
 		FindRequiredQueueFamilyIndices(surface->GetSurface());
 
-		float queuePriority = 1.0f;
-		vk::DeviceQueueCreateInfo graphicsQueueCreateInfo{};
-		graphicsQueueCreateInfo.pNext = nullptr;
-		graphicsQueueCreateInfo.flags = {};
-		graphicsQueueCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
-		graphicsQueueCreateInfo.queueCount = 1;
-		graphicsQueueCreateInfo.pQueuePriorities = &queuePriority;
+		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+		if (m_graphicsQueueFamilyIndex == m_presentQueueFamilyIndex)
+		{
+			m_graphicsQueueIndex = 0;
+			m_presentQueueIndex = 1;
 
-		vk::DeviceQueueCreateInfo presentQueueCreateInfo{};
-		presentQueueCreateInfo.pNext = nullptr;
-		presentQueueCreateInfo.flags = {};
-		presentQueueCreateInfo.queueFamilyIndex = m_presentQueueFamilyIndex;
-		presentQueueCreateInfo.queueCount = 1;
-		presentQueueCreateInfo.pQueuePriorities = &queuePriority;
+			float queuePriorities[2] = { 1.0f, 1.0f };
+			vk::DeviceQueueCreateInfo queueCreateInfo{};
+			queueCreateInfo.pNext = nullptr;
+			queueCreateInfo.flags = {};
+			queueCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+			queueCreateInfo.queueCount = 2;
+			queueCreateInfo.pQueuePriorities = queuePriorities;
 
-		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos = { graphicsQueueCreateInfo, presentQueueCreateInfo };
+			queueCreateInfos.push_back(queueCreateInfo);
+		}
+		else
+		{
+			m_graphicsQueueIndex = 0;
+			m_presentQueueIndex = 0;
+
+			float queuePriority = 1.0f;
+			vk::DeviceQueueCreateInfo graphicsQueueCreateInfo{};
+			graphicsQueueCreateInfo.pNext = nullptr;
+			graphicsQueueCreateInfo.flags = {};
+			graphicsQueueCreateInfo.queueFamilyIndex = m_graphicsQueueFamilyIndex;
+			graphicsQueueCreateInfo.queueCount = 1;
+			graphicsQueueCreateInfo.pQueuePriorities = &queuePriority;
+
+			vk::DeviceQueueCreateInfo presentQueueCreateInfo{};
+			presentQueueCreateInfo.pNext = nullptr;
+			presentQueueCreateInfo.flags = {};
+			presentQueueCreateInfo.queueFamilyIndex = m_presentQueueFamilyIndex;
+			presentQueueCreateInfo.queueCount = 1;
+			presentQueueCreateInfo.pQueuePriorities = &queuePriority;
+
+			queueCreateInfos.push_back(graphicsQueueCreateInfo);
+			queueCreateInfos.push_back(presentQueueCreateInfo);
+		}
 
 		vk::DeviceCreateInfo deviceCreateInfo{};
 		deviceCreateInfo.pNext = nullptr;
@@ -59,12 +82,12 @@ namespace Firefly
 
 	vk::Queue VulkanDevice::GetGraphicsQueue() const
 	{
-		return m_device.getQueue(m_graphicsQueueFamilyIndex, 0);
+		return m_device.getQueue(m_graphicsQueueFamilyIndex, m_graphicsQueueIndex);
 	}
 
 	vk::Queue VulkanDevice::GetPresentQueue() const
 	{
-		return m_device.getQueue(m_presentQueueFamilyIndex, 0);
+		return m_device.getQueue(m_presentQueueFamilyIndex, m_presentQueueIndex);
 	}
 
 	uint32_t VulkanDevice::GetGraphicsQueueFamilyIndex() const

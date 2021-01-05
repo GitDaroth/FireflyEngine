@@ -2,15 +2,11 @@
 #include "Core/Application.h"
 
 #include "Window/WindowsWindow.h"
-#include "Event/WindowEvent.h"
 #include "Rendering/RenderingAPI.h"
-
-#include <GLFW/glfw3.h>
 
 namespace Firefly
 {
-	Application::Application() :
-		m_lastFrameTime(0.f)
+	Application::Application() 
 	{
 #ifdef FIREFLY_WINDOWS
 		m_window = std::make_unique<WindowsWindow>();
@@ -23,20 +19,22 @@ namespace Firefly
 	{
 	}
 
-	void Application::Run()
+	void Application::Update(float deltaTime)
 	{
-		m_lastFrameTime = (float)glfwGetTime();
-		while (m_isRunning)
-		{
-			float time = (float)glfwGetTime();
-			float deltaTime = time - m_lastFrameTime;
-			m_lastFrameTime = time;
+		OnUpdate(deltaTime);
 
-			m_window->SetTitle(std::to_string(1.f / deltaTime));
+		m_window->SetTitle(std::to_string(1.f / deltaTime));
+		m_window->OnUpdate(deltaTime);
+	}
 
-			OnUpdate(deltaTime);
-			m_window->OnUpdate();
-		}
+	void Application::RequestShutdown()
+	{
+		m_isShutdownRequested = true;
+	}
+
+	bool Application::IsShutdownRequested() const
+	{
+		return m_isShutdownRequested;
 	}
 
 	void Application::OnEvent(std::shared_ptr<Event> event)
@@ -49,7 +47,7 @@ namespace Firefly
 
 			if (auto closeEvent = windowEvent->AsType<WindowCloseEvent>())
 			{
-				m_isRunning = false;
+				RequestShutdown();
 			}
 			else if (auto resizeEvent = windowEvent->AsType<WindowResizeEvent>())
 			{

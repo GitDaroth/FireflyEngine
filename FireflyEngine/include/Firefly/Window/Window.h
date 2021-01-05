@@ -27,7 +27,7 @@ namespace Firefly
 		int ToFireflyMouseButtonCode(int keyCode) const;
 		int ToFireflyGamepadButtonCode(int keyCode) const;
 
-		virtual void OnUpdate() = 0;
+		virtual void OnUpdate(float deltaTime) = 0;
 
 	protected:
 		virtual void OnSetTitle(const std::string& title) = 0;
