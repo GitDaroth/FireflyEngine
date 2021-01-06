@@ -7,18 +7,17 @@
 namespace Firefly
 {
 	VulkanMaterial::VulkanMaterial(const std::string& vertexShaderPath, const std::string& fragmentShaderPath, vk::Device device, vk::RenderPass renderPass, vk::Extent2D swapchainExtent) :
-		m_vertexShaderPath(vertexShaderPath),
-		m_fragmentShaderPath(fragmentShaderPath),
-		m_device(device),
-		m_renderPass(renderPass),
-		m_swapchainExtent(swapchainExtent)
+		m_device(device)
 	{
-		CreateGraphicsPipeline();
+		m_shaderStageCreateInfos.push_back(CreateShaderStage(vertexShaderPath, vk::ShaderStageFlagBits::eVertex));
+		m_shaderStageCreateInfos.push_back(CreateShaderStage(fragmentShaderPath, vk::ShaderStageFlagBits::eFragment));
+
+		CreatePipeline(renderPass, swapchainExtent);
 	}
 
 	VulkanMaterial::~VulkanMaterial()
 	{
-		DestroyGraphicsPipeline();
+		DestroyPipeline();
 	}
 
 	vk::Pipeline VulkanMaterial::GetPipeline() const
@@ -31,47 +30,8 @@ namespace Firefly
 		return m_pipelineLayout;
 	}
 
-	void VulkanMaterial::CreateGraphicsPipeline()
+	void VulkanMaterial::CreatePipeline(vk::RenderPass renderPass, vk::Extent2D swapchainExtent)
 	{
-		// SHADER STAGES -------------------------------
-		std::vector<char> vertexShaderCode = ReadBinaryFile(m_vertexShaderPath);
-		vk::ShaderModule vertexShaderModule;
-		vk::ShaderModuleCreateInfo vertexShaderModuleCreateInfo{};
-		vertexShaderModuleCreateInfo.pNext = nullptr;
-		vertexShaderModuleCreateInfo.flags = {};
-		vertexShaderModuleCreateInfo.codeSize = vertexShaderCode.size();
-		vertexShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(vertexShaderCode.data());
-		vk::Result result = m_device.createShaderModule(&vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan vertex shader module!");
-
-		std::vector<char> fragmentShaderCode = ReadBinaryFile(m_fragmentShaderPath);
-		vk::ShaderModule fragmentShaderModule;
-		vk::ShaderModuleCreateInfo fragmentShaderModuleCreateInfo{};
-		fragmentShaderModuleCreateInfo.pNext = nullptr;
-		fragmentShaderModuleCreateInfo.flags = {};
-		fragmentShaderModuleCreateInfo.codeSize = fragmentShaderCode.size();
-		fragmentShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(fragmentShaderCode.data());
-		result = m_device.createShaderModule(&fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan fragment shader module!");
-
-		vk::PipelineShaderStageCreateInfo vertexShaderStageCreateInfo{};
-		vertexShaderStageCreateInfo.pNext = nullptr;
-		vertexShaderStageCreateInfo.flags = {};
-		vertexShaderStageCreateInfo.stage = vk::ShaderStageFlagBits::eVertex;
-		vertexShaderStageCreateInfo.module = vertexShaderModule;
-		vertexShaderStageCreateInfo.pName = "main";
-		vertexShaderStageCreateInfo.pSpecializationInfo = nullptr;
-
-		vk::PipelineShaderStageCreateInfo fragmentShaderStageCreateInfo{};
-		fragmentShaderStageCreateInfo.pNext = nullptr;
-		fragmentShaderStageCreateInfo.flags = {};
-		fragmentShaderStageCreateInfo.stage = vk::ShaderStageFlagBits::eFragment;
-		fragmentShaderStageCreateInfo.module = fragmentShaderModule;
-		fragmentShaderStageCreateInfo.pName = "main";
-		fragmentShaderStageCreateInfo.pSpecializationInfo = nullptr;
-
-		std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos = { vertexShaderStageCreateInfo, fragmentShaderStageCreateInfo };
-		// ---------------------------------------------
 		// VERTEX INPUT STATE --------------------------
 		vk::VertexInputBindingDescription vertexInputBindingDescription{};
 		vertexInputBindingDescription.binding = 0;
@@ -119,14 +79,14 @@ namespace Firefly
 		vk::Viewport viewport{};
 		viewport.x = 0.f;
 		viewport.y = 0.f;
-		viewport.width = (float)m_swapchainExtent.width;
-		viewport.height = (float)m_swapchainExtent.height;
+		viewport.width = (float)swapchainExtent.width;
+		viewport.height = (float)swapchainExtent.height;
 		viewport.minDepth = 0.f;
 		viewport.maxDepth = 1.f;
 
 		vk::Rect2D scissor{};
 		scissor.offset = { 0, 0 };
-		scissor.extent = m_swapchainExtent;
+		scissor.extent = swapchainExtent;
 
 		vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
 		viewportStateCreateInfo.pNext = nullptr;
@@ -212,15 +172,15 @@ namespace Firefly
 		pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
 		pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
-		result = m_device.createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout);
+		vk::Result result = m_device.createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan pipeline layout!");
 		// ---------------------------------------------
 		// GRAPHICS PIPELINE ---------------------------
 		vk::GraphicsPipelineCreateInfo pipelineCreateInfo{};
 		pipelineCreateInfo.pNext = nullptr;
 		pipelineCreateInfo.flags = {};
-		pipelineCreateInfo.stageCount = shaderStageCreateInfos.size();
-		pipelineCreateInfo.pStages = shaderStageCreateInfos.data();
+		pipelineCreateInfo.stageCount = m_shaderStageCreateInfos.size();
+		pipelineCreateInfo.pStages = m_shaderStageCreateInfos.data();
 		pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
 		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyStateCreateInfo;
 		pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
@@ -230,7 +190,7 @@ namespace Firefly
 		pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
 		pipelineCreateInfo.pDynamicState = nullptr;
 		pipelineCreateInfo.layout = m_pipelineLayout;
-		pipelineCreateInfo.renderPass = m_renderPass;
+		pipelineCreateInfo.renderPass = renderPass;
 		pipelineCreateInfo.subpass = 0;
 		pipelineCreateInfo.basePipelineHandle = nullptr;
 		pipelineCreateInfo.basePipelineIndex = -1;
@@ -238,14 +198,35 @@ namespace Firefly
 		result = m_device.createGraphicsPipelines(nullptr, 1, &pipelineCreateInfo, nullptr, &m_pipeline);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan graphics pipeline!");
 		// ---------------------------------------------
-		m_device.destroyShaderModule(vertexShaderModule);
-		m_device.destroyShaderModule(fragmentShaderModule);
 	}
 
-	void VulkanMaterial::DestroyGraphicsPipeline()
+	void VulkanMaterial::DestroyPipeline()
 	{
 		m_device.destroyPipeline(m_pipeline);
 		m_device.destroyPipelineLayout(m_pipelineLayout);
+	}
+
+	vk::PipelineShaderStageCreateInfo VulkanMaterial::CreateShaderStage(const std::string& shaderPath, vk::ShaderStageFlagBits shaderStage)
+	{
+		std::vector<char> shaderCode = ReadBinaryFile(shaderPath);
+		vk::ShaderModule shaderModule;
+		vk::ShaderModuleCreateInfo shaderModuleCreateInfo{};
+		shaderModuleCreateInfo.pNext = nullptr;
+		shaderModuleCreateInfo.flags = {};
+		shaderModuleCreateInfo.codeSize = shaderCode.size();
+		shaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(shaderCode.data());
+		vk::Result result = m_device.createShaderModule(&shaderModuleCreateInfo, nullptr, &shaderModule);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan vertex shader module!");
+
+		vk::PipelineShaderStageCreateInfo shaderStageCreateInfo{};
+		shaderStageCreateInfo.pNext = nullptr;
+		shaderStageCreateInfo.flags = {};
+		shaderStageCreateInfo.stage = shaderStage;
+		shaderStageCreateInfo.module = shaderModule;
+		shaderStageCreateInfo.pName = "main";
+		shaderStageCreateInfo.pSpecializationInfo = nullptr;
+
+		return shaderStageCreateInfo;
 	}
 
 	std::vector<char> VulkanMaterial::ReadBinaryFile(const std::string& fileName)

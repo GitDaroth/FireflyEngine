@@ -227,7 +227,7 @@ namespace Firefly
 			return;
 
 		DestroySynchronizationPrimitivesForRendering();
-		delete m_material;
+		m_material->DestroyPipeline();
 		//DestroyGraphicsPipeline();
 		DestroyFramebuffers();
 		DestroyRenderPass();
@@ -242,7 +242,7 @@ namespace Firefly
 		CreateDepthImage();
 		CreateRenderPass();
 		CreateFramebuffers();
-		m_material = new VulkanMaterial("assets/shaders/triangle.vert.spv", "assets/shaders/triangle.frag.spv", m_device->GetDevice(), m_renderPass, m_swapchain->GetExtent());
+		m_material->CreatePipeline(m_renderPass, m_swapchain->GetExtent());
 		//CreateGraphicsPipeline();
 		CreateSynchronizationPrimitivesForRendering();
 	}
