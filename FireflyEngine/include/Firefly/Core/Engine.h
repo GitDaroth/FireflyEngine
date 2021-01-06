@@ -1,10 +1,11 @@
 #pragma once
 
 #include <chrono>
-#include "Core/Application.h"
 
 namespace Firefly
 {
+	struct Application;
+
 	class Engine
 	{
 	public:
@@ -17,6 +18,7 @@ namespace Firefly
 
 		Application* m_application;
 
+		bool m_isInitialized = false;
 		bool m_isRunning = true;
 		std::chrono::steady_clock::time_point m_lastFrameTime;
 	};

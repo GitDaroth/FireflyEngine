@@ -8,7 +8,7 @@ namespace Firefly
 	class WindowsWindow : public Window
 	{
 	public:
-		WindowsWindow(const std::string& title = "Firefly Engine", int width = 1280, int height = 720);
+		WindowsWindow(const std::string& title, int width, int height);
 		virtual ~WindowsWindow();
 
 		virtual void OnUpdate(float deltaTime) override;

@@ -31,37 +31,47 @@ namespace Firefly
 
 		CreateCommandPool();
 		AllocateCommandBuffers();
-		CreateUniformBuffers();
-		CreateDescriptorPool();
-		AllocateDescriptorSets();
+		//CreateUniformBuffers();
+		//CreateDescriptorPool();
+		//AllocateDescriptorSets();
 		CreateDepthImage();
 		CreateRenderPass();
 		CreateFramebuffers();
-		CreateGraphicsPipeline();
+		//CreateGraphicsPipeline();
 		CreateSynchronizationPrimitivesForRendering();
 
+		m_material = new VulkanMaterial("assets/shaders/triangle.vert.spv", "assets/shaders/triangle.frag.spv", m_device->GetDevice(), m_renderPass, m_swapchain->GetExtent());
 		//m_mesh = new VulkanMesh(m_device, "assets/meshes/pistol.fbx", true);
 		//m_mesh = new VulkanMesh(m_device, "assets/meshes/globe.fbx");
 		m_mesh = new VulkanMesh(m_device, "assets/meshes/armchair.fbx");
 
-		for (size_t i = 0; i < m_objectCount; i++)
-			m_modelMatrices.push_back(glm::translate(glm::mat4(1.0f), glm::vec3(i, i, -(float)i)));
+		for (size_t i = 0; i < 10; i++)
+		{
+			VulkanRenderObject* renderObject = new VulkanRenderObject(m_mesh, m_material);
+			renderObject->SetModelMatrix(glm::translate(glm::mat4(1.0f), glm::vec3(10 * i, 10 * i, -(float)i * 10)));
+			m_renderObjects.push_back(renderObject);
+		}
 	}
 
 	void VulkanContext::Destroy()
 	{
 		m_device->GetDevice().waitIdle();
 		
+		for (size_t i = 0; i < m_renderObjects.size(); i++)
+			delete m_renderObjects[i];
+		m_renderObjects.clear();
+
 		delete m_mesh;
+		delete m_material;
 
 		DestroySynchronizationPrimitivesForRendering();
-		DestroyGraphicsPipeline();
+		//DestroyGraphicsPipeline();
 		DestroyFramebuffers();
 		DestroyRenderPass();
 		DestroyDepthImage();
-		FreeDescriptorSets();
-		DestroyDescriptorPool();
-		DestroyUniformBuffers();
+		//FreeDescriptorSets();
+		//DestroyDescriptorPool();
+		//DestroyUniformBuffers();
 		FreeCommandBuffers();
 		DestroyCommandPool();
 
@@ -112,41 +122,50 @@ namespace Firefly
 		renderPassBeginInfo.pClearValues = clearValues.data();
 
 		m_commandBuffers[currentImageIndex].beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
-		m_commandBuffers[currentImageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
 
-		// update uniform buffer per frame
-		m_uboPerFrame.viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 500.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		m_uboPerFrame.projectionMatrix = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10000.0f);
-		m_uboPerFrame.projectionMatrix[1][1] *= -1; // Vulkan has inverted y axis in comparison to OpenGL
+		glm::mat4 viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 500.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10000.0f);
+		projectionMatrix[1][1] *= -1;
 
-		void* mappedMemoryPerFrame;
-		m_device->GetDevice().mapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex], 0, sizeof(UboPerFrame), {}, &mappedMemoryPerFrame);
-		memcpy(mappedMemoryPerFrame, &m_uboPerFrame, sizeof(UboPerFrame));
-		m_device->GetDevice().unmapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex]);
+		//// update uniform buffer per frame
+		//m_uboPerFrame.viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 500.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		//m_uboPerFrame.projectionMatrix = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10000.0f);
+		//m_uboPerFrame.projectionMatrix[1][1] *= -1; // Vulkan has inverted y axis in comparison to OpenGL
 
-		// update dynamic uniform buffer per object for model matrix
-		for (size_t i = 0; i < m_objectCount; i++)
+		//void* mappedMemoryPerFrame;
+		//m_device->GetDevice().mapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex], 0, sizeof(UboPerFrame), {}, &mappedMemoryPerFrame);
+		//memcpy(mappedMemoryPerFrame, &m_uboPerFrame, sizeof(UboPerFrame));
+		//m_device->GetDevice().unmapMemory(m_uniformBufferMemoriesPerFrame[currentImageIndex]);
+
+		//// update dynamic uniform buffer per object for model matrix
+		//for (size_t i = 0; i < m_objectCount; i++)
+		//{
+		//	glm::mat4* modelMatrix = (glm::mat4*)((uint64_t)m_uboPerObject.modelMatrixData + i * m_modelMatrixUniformAlignment);
+		//	*modelMatrix = m_modelMatrices[i];
+		//}
+		//void* mappedMemoryPerObject;
+		//size_t bufferSize = m_objectCount * m_modelMatrixUniformAlignment;
+		//m_device->GetDevice().mapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex], 0, bufferSize, {}, &mappedMemoryPerObject);
+		//memcpy(mappedMemoryPerObject, m_uboPerObject.modelMatrixData, bufferSize);
+		//vk::MappedMemoryRange memoryRange {};
+		//memoryRange.memory = m_uniformBufferMemoriesPerObject[currentImageIndex];
+		//memoryRange.size = bufferSize;
+		//m_device->GetDevice().flushMappedMemoryRanges(1, &memoryRange);
+		//m_device->GetDevice().unmapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex]);
+
+		for (size_t i = 0; i < m_renderObjects.size(); i++)
 		{
-			glm::mat4* modelMatrix = (glm::mat4*)((uint64_t)m_uboPerObject.modelMatrixData + i * m_modelMatrixUniformAlignment);
-			*modelMatrix = m_modelMatrices[i];
-		}
-		void* mappedMemoryPerObject;
-		size_t bufferSize = m_objectCount * m_modelMatrixUniformAlignment;
-		m_device->GetDevice().mapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex], 0, bufferSize, {}, &mappedMemoryPerObject);
-		memcpy(mappedMemoryPerObject, m_uboPerObject.modelMatrixData, bufferSize);
-		vk::MappedMemoryRange memoryRange {};
-		memoryRange.memory = m_uniformBufferMemoriesPerObject[currentImageIndex];
-		memoryRange.size = bufferSize;
-		m_device->GetDevice().flushMappedMemoryRanges(1, &memoryRange);
-		m_device->GetDevice().unmapMemory(m_uniformBufferMemoriesPerObject[currentImageIndex]);
+			//m_commandBuffers[currentImageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, m_material->GetPipeline());
 
-		for (size_t i = 0; i < m_objectCount; i++)
-		{
-			m_mesh->Bind(m_commandBuffers[currentImageIndex]);
+			//glm::mat4 matrix = projectionMatrix * viewMatrix * m_modelMatrices[i];
+			//m_commandBuffers[currentImageIndex].pushConstants(m_material->GetPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4), &matrix);
 
-			uint32_t dynamicOffset = i * m_modelMatrixUniformAlignment;
-			m_commandBuffers[currentImageIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, 1, &m_descriptorSets[currentImageIndex], 1, &dynamicOffset);
+			//uint32_t dynamicOffset = i * m_modelMatrixUniformAlignment;
+			//m_commandBuffers[currentImageIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, 1, &m_descriptorSets[currentImageIndex], 1, &dynamicOffset);
 
+			//m_mesh->Bind(m_commandBuffers[currentImageIndex]);
+
+			m_renderObjects[i]->Bind(m_commandBuffers[currentImageIndex], viewMatrix, projectionMatrix);
 			m_commandBuffers[currentImageIndex].drawIndexed(m_mesh->GetIndexCount(), 1, 0, 0, 0);
 		}
 
@@ -208,21 +227,23 @@ namespace Firefly
 			return;
 
 		DestroySynchronizationPrimitivesForRendering();
-		DestroyGraphicsPipeline();
+		delete m_material;
+		//DestroyGraphicsPipeline();
 		DestroyFramebuffers();
 		DestroyRenderPass();
 		DestroyDepthImage();
-		FreeDescriptorSets();
+		//FreeDescriptorSets();
 		FreeCommandBuffers();
 		delete m_swapchain;
 
 		m_swapchain = new VulkanSwapchain(m_device, m_surface);
 		AllocateCommandBuffers();
-		AllocateDescriptorSets();
+		//AllocateDescriptorSets();
 		CreateDepthImage();
 		CreateRenderPass();
 		CreateFramebuffers();
-		CreateGraphicsPipeline();
+		m_material = new VulkanMaterial("assets/shaders/triangle.vert.spv", "assets/shaders/triangle.frag.spv", m_device->GetDevice(), m_renderPass, m_swapchain->GetExtent());
+		//CreateGraphicsPipeline();
 		CreateSynchronizationPrimitivesForRendering();
 	}
 
@@ -260,148 +281,148 @@ namespace Firefly
 		m_device->GetDevice().freeCommandBuffers(m_commandPool, m_commandBuffers.size(), m_commandBuffers.data());
 	}
 
-	void VulkanContext::CreateUniformBuffers()
-	{
-		size_t bufferSize = sizeof(UboPerFrame);
-		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
-		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-		m_uniformBuffersPerFrame.resize(m_swapchain->GetImageCount());
-		m_uniformBufferMemoriesPerFrame.resize(m_swapchain->GetImageCount());
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
-			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffersPerFrame[i], m_uniformBufferMemoriesPerFrame[i]);
+	//void VulkanContext::CreateUniformBuffers()
+	//{
+	//	size_t bufferSize = sizeof(UboPerFrame);
+	//	vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
+	//	vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+	//	m_uniformBuffersPerFrame.resize(m_swapchain->GetImageCount());
+	//	m_uniformBufferMemoriesPerFrame.resize(m_swapchain->GetImageCount());
+	//	for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+	//		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffersPerFrame[i], m_uniformBufferMemoriesPerFrame[i]);
 
-		size_t minUniformBufferOffsetAlignment = m_device->GetPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
-		m_modelMatrixUniformAlignment = sizeof(glm::mat4);
-		if (minUniformBufferOffsetAlignment > 0)
-			m_modelMatrixUniformAlignment = (m_modelMatrixUniformAlignment + minUniformBufferOffsetAlignment - 1) & ~(minUniformBufferOffsetAlignment - 1);
+	//	size_t minUniformBufferOffsetAlignment = m_device->GetPhysicalDevice().getProperties().limits.minUniformBufferOffsetAlignment;
+	//	m_modelMatrixUniformAlignment = sizeof(glm::mat4);
+	//	if (minUniformBufferOffsetAlignment > 0)
+	//		m_modelMatrixUniformAlignment = (m_modelMatrixUniformAlignment + minUniformBufferOffsetAlignment - 1) & ~(minUniformBufferOffsetAlignment - 1);
 
-		bufferSize = m_objectCount * m_modelMatrixUniformAlignment;
-		m_uboPerObject.modelMatrixData = (glm::mat4*)_aligned_malloc(bufferSize, m_modelMatrixUniformAlignment);
-		bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
-		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible;// | vk::MemoryPropertyFlagBits::eHostCoherent;
-		m_uniformBuffersPerObject.resize(m_swapchain->GetImageCount());
-		m_uniformBufferMemoriesPerObject.resize(m_swapchain->GetImageCount());
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
-			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffersPerObject[i], m_uniformBufferMemoriesPerObject[i]);
-	}
+	//	bufferSize = m_objectCount * m_modelMatrixUniformAlignment;
+	//	m_uboPerObject.modelMatrixData = (glm::mat4*)_aligned_malloc(bufferSize, m_modelMatrixUniformAlignment);
+	//	bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
+	//	memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible;// | vk::MemoryPropertyFlagBits::eHostCoherent;
+	//	m_uniformBuffersPerObject.resize(m_swapchain->GetImageCount());
+	//	m_uniformBufferMemoriesPerObject.resize(m_swapchain->GetImageCount());
+	//	for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+	//		CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_uniformBuffersPerObject[i], m_uniformBufferMemoriesPerObject[i]);
+	//}
 
-	void VulkanContext::DestroyUniformBuffers()
-	{
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
-		{
-			m_device->GetDevice().destroyBuffer(m_uniformBuffersPerObject[i]);
-			m_device->GetDevice().freeMemory(m_uniformBufferMemoriesPerObject[i]);
-			m_device->GetDevice().destroyBuffer(m_uniformBuffersPerFrame[i]);
-			m_device->GetDevice().freeMemory(m_uniformBufferMemoriesPerFrame[i]);
-		}
-	}
+	//void VulkanContext::DestroyUniformBuffers()
+	//{
+	//	for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+	//	{
+	//		m_device->GetDevice().destroyBuffer(m_uniformBuffersPerObject[i]);
+	//		m_device->GetDevice().freeMemory(m_uniformBufferMemoriesPerObject[i]);
+	//		m_device->GetDevice().destroyBuffer(m_uniformBuffersPerFrame[i]);
+	//		m_device->GetDevice().freeMemory(m_uniformBufferMemoriesPerFrame[i]);
+	//	}
+	//}
 
-	void VulkanContext::CreateDescriptorPool()
-	{
-		vk::DescriptorPoolSize uniformBufferDescriptorPoolSizePerFrame{};
-		uniformBufferDescriptorPoolSizePerFrame.type = vk::DescriptorType::eUniformBuffer;
-		uniformBufferDescriptorPoolSizePerFrame.descriptorCount = m_swapchain->GetImageCount();
+	//void VulkanContext::CreateDescriptorPool()
+	//{
+	//	vk::DescriptorPoolSize uniformBufferDescriptorPoolSizePerFrame{};
+	//	uniformBufferDescriptorPoolSizePerFrame.type = vk::DescriptorType::eUniformBuffer;
+	//	uniformBufferDescriptorPoolSizePerFrame.descriptorCount = m_swapchain->GetImageCount();
 
-		vk::DescriptorPoolSize uniformBufferDescriptorPoolSizePerObject{};
-		uniformBufferDescriptorPoolSizePerObject.type = vk::DescriptorType::eUniformBufferDynamic;
-		uniformBufferDescriptorPoolSizePerObject.descriptorCount = m_swapchain->GetImageCount();
+	//	vk::DescriptorPoolSize uniformBufferDescriptorPoolSizePerObject{};
+	//	uniformBufferDescriptorPoolSizePerObject.type = vk::DescriptorType::eUniformBufferDynamic;
+	//	uniformBufferDescriptorPoolSizePerObject.descriptorCount = m_swapchain->GetImageCount();
 
-		std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = { uniformBufferDescriptorPoolSizePerFrame, uniformBufferDescriptorPoolSizePerObject };
+	//	std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = { uniformBufferDescriptorPoolSizePerFrame, uniformBufferDescriptorPoolSizePerObject };
 
-		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{};
-		descriptorPoolCreateInfo.pNext = nullptr;
-		descriptorPoolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
-		descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
-		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
-		descriptorPoolCreateInfo.maxSets = m_swapchain->GetImageCount();
+	//	vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{};
+	//	descriptorPoolCreateInfo.pNext = nullptr;
+	//	descriptorPoolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+	//	descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
+	//	descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
+	//	descriptorPoolCreateInfo.maxSets = m_swapchain->GetImageCount();
 
-		vk::Result result = m_device->GetDevice().createDescriptorPool(&descriptorPoolCreateInfo, nullptr, &m_descriptorPool);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan descriptor pool!");
-	}
+	//	vk::Result result = m_device->GetDevice().createDescriptorPool(&descriptorPoolCreateInfo, nullptr, &m_descriptorPool);
+	//	FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan descriptor pool!");
+	//}
 
-	void VulkanContext::DestroyDescriptorPool()
-	{
-		m_device->GetDevice().destroyDescriptorPool(m_descriptorPool);
-	}
+	//void VulkanContext::DestroyDescriptorPool()
+	//{
+	//	m_device->GetDevice().destroyDescriptorPool(m_descriptorPool);
+	//}
 
-	void VulkanContext::AllocateDescriptorSets()
-	{
-		// DESCRIPTOR LAYOUT
-		vk::DescriptorSetLayoutBinding uniformBufferObjectLayoutBindingPerFrame{};
-		uniformBufferObjectLayoutBindingPerFrame.binding = 0;
-		uniformBufferObjectLayoutBindingPerFrame.descriptorType = vk::DescriptorType::eUniformBuffer;
-		uniformBufferObjectLayoutBindingPerFrame.descriptorCount = 1;
-		uniformBufferObjectLayoutBindingPerFrame.stageFlags = vk::ShaderStageFlagBits::eVertex;
-		uniformBufferObjectLayoutBindingPerFrame.pImmutableSamplers = nullptr;
+	//void VulkanContext::AllocateDescriptorSets()
+	//{
+	//	// DESCRIPTOR LAYOUT
+	//	vk::DescriptorSetLayoutBinding uniformBufferObjectLayoutBindingPerFrame{};
+	//	uniformBufferObjectLayoutBindingPerFrame.binding = 0;
+	//	uniformBufferObjectLayoutBindingPerFrame.descriptorType = vk::DescriptorType::eUniformBuffer;
+	//	uniformBufferObjectLayoutBindingPerFrame.descriptorCount = 1;
+	//	uniformBufferObjectLayoutBindingPerFrame.stageFlags = vk::ShaderStageFlagBits::eVertex;
+	//	uniformBufferObjectLayoutBindingPerFrame.pImmutableSamplers = nullptr;
 
-		vk::DescriptorSetLayoutBinding uniformBufferObjectLayoutBindingPerObject{};
-		uniformBufferObjectLayoutBindingPerObject.binding = 1;
-		uniformBufferObjectLayoutBindingPerObject.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
-		uniformBufferObjectLayoutBindingPerObject.descriptorCount = 1;
-		uniformBufferObjectLayoutBindingPerObject.stageFlags = vk::ShaderStageFlagBits::eVertex;
-		uniformBufferObjectLayoutBindingPerObject.pImmutableSamplers = nullptr;
+	//	vk::DescriptorSetLayoutBinding uniformBufferObjectLayoutBindingPerObject{};
+	//	uniformBufferObjectLayoutBindingPerObject.binding = 1;
+	//	uniformBufferObjectLayoutBindingPerObject.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+	//	uniformBufferObjectLayoutBindingPerObject.descriptorCount = 1;
+	//	uniformBufferObjectLayoutBindingPerObject.stageFlags = vk::ShaderStageFlagBits::eVertex;
+	//	uniformBufferObjectLayoutBindingPerObject.pImmutableSamplers = nullptr;
 
-		std::vector<vk::DescriptorSetLayoutBinding> bindings = { uniformBufferObjectLayoutBindingPerFrame, uniformBufferObjectLayoutBindingPerObject };
+	//	std::vector<vk::DescriptorSetLayoutBinding> bindings = { uniformBufferObjectLayoutBindingPerFrame, uniformBufferObjectLayoutBindingPerObject };
 
-		vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
-		descriptorSetLayoutCreateInfo.bindingCount = bindings.size();
-		descriptorSetLayoutCreateInfo.pBindings = bindings.data();
+	//	vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
+	//	descriptorSetLayoutCreateInfo.bindingCount = bindings.size();
+	//	descriptorSetLayoutCreateInfo.pBindings = bindings.data();
 
-		vk::Result result = m_device->GetDevice().createDescriptorSetLayout(&descriptorSetLayoutCreateInfo, nullptr, &m_descriptorSetLayout);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+	//	vk::Result result = m_device->GetDevice().createDescriptorSetLayout(&descriptorSetLayoutCreateInfo, nullptr, &m_descriptorSetLayout);
+	//	FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
 
-		// DESCRIPTOR SETS
-		m_descriptorSets.resize(m_swapchain->GetImageCount());
-		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_swapchain->GetImageCount(), m_descriptorSetLayout);
-		vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
-		descriptorSetAllocateInfo.pNext = nullptr;
-		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
-		descriptorSetAllocateInfo.descriptorSetCount = m_swapchain->GetImageCount();
-		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
+	//	// DESCRIPTOR SETS
+	//	m_descriptorSets.resize(m_swapchain->GetImageCount());
+	//	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_swapchain->GetImageCount(), m_descriptorSetLayout);
+	//	vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+	//	descriptorSetAllocateInfo.pNext = nullptr;
+	//	descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+	//	descriptorSetAllocateInfo.descriptorSetCount = m_swapchain->GetImageCount();
+	//	descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
 
-		result = m_device->GetDevice().allocateDescriptorSets(&descriptorSetAllocateInfo, m_descriptorSets.data());
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+	//	result = m_device->GetDevice().allocateDescriptorSets(&descriptorSetAllocateInfo, m_descriptorSets.data());
+	//	FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
 
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
-		{
-			vk::DescriptorBufferInfo descriptorBufferInfoPerFrame{};
-			descriptorBufferInfoPerFrame.buffer = m_uniformBuffersPerFrame[i];
-			descriptorBufferInfoPerFrame.offset = 0;
-			descriptorBufferInfoPerFrame.range = sizeof(UboPerFrame);
+	//	for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+	//	{
+	//		vk::DescriptorBufferInfo descriptorBufferInfoPerFrame{};
+	//		descriptorBufferInfoPerFrame.buffer = m_uniformBuffersPerFrame[i];
+	//		descriptorBufferInfoPerFrame.offset = 0;
+	//		descriptorBufferInfoPerFrame.range = sizeof(UboPerFrame);
 
-			vk::DescriptorBufferInfo descriptorBufferInfoPerObject{};
-			descriptorBufferInfoPerObject.buffer = m_uniformBuffersPerObject[i];
-			descriptorBufferInfoPerObject.offset = 0;
-			descriptorBufferInfoPerObject.range = sizeof(glm::mat4);//m_modelMatrixUniformAlignment;
+	//		vk::DescriptorBufferInfo descriptorBufferInfoPerObject{};
+	//		descriptorBufferInfoPerObject.buffer = m_uniformBuffersPerObject[i];
+	//		descriptorBufferInfoPerObject.offset = 0;
+	//		descriptorBufferInfoPerObject.range = sizeof(glm::mat4);//m_modelMatrixUniformAlignment;
 
-			std::array<vk::WriteDescriptorSet, 2> writeDescriptorSets{};
-			writeDescriptorSets[0].dstSet = m_descriptorSets[i];
-			writeDescriptorSets[0].dstBinding = 0;
-			writeDescriptorSets[0].dstArrayElement = 0;
-			writeDescriptorSets[0].descriptorType = vk::DescriptorType::eUniformBuffer;
-			writeDescriptorSets[0].descriptorCount = 1;
-			writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfoPerFrame;
-			writeDescriptorSets[0].pImageInfo = nullptr;
-			writeDescriptorSets[0].pTexelBufferView = nullptr;
+	//		std::array<vk::WriteDescriptorSet, 2> writeDescriptorSets{};
+	//		writeDescriptorSets[0].dstSet = m_descriptorSets[i];
+	//		writeDescriptorSets[0].dstBinding = 0;
+	//		writeDescriptorSets[0].dstArrayElement = 0;
+	//		writeDescriptorSets[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+	//		writeDescriptorSets[0].descriptorCount = 1;
+	//		writeDescriptorSets[0].pBufferInfo = &descriptorBufferInfoPerFrame;
+	//		writeDescriptorSets[0].pImageInfo = nullptr;
+	//		writeDescriptorSets[0].pTexelBufferView = nullptr;
 
-			writeDescriptorSets[1].dstSet = m_descriptorSets[i];
-			writeDescriptorSets[1].dstBinding = 1;
-			writeDescriptorSets[1].dstArrayElement = 0;
-			writeDescriptorSets[1].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
-			writeDescriptorSets[1].descriptorCount = 1;
-			writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoPerObject;
-			writeDescriptorSets[1].pImageInfo = nullptr;
-			writeDescriptorSets[1].pTexelBufferView = nullptr;
+	//		writeDescriptorSets[1].dstSet = m_descriptorSets[i];
+	//		writeDescriptorSets[1].dstBinding = 1;
+	//		writeDescriptorSets[1].dstArrayElement = 0;
+	//		writeDescriptorSets[1].descriptorType = vk::DescriptorType::eUniformBufferDynamic;
+	//		writeDescriptorSets[1].descriptorCount = 1;
+	//		writeDescriptorSets[1].pBufferInfo = &descriptorBufferInfoPerObject;
+	//		writeDescriptorSets[1].pImageInfo = nullptr;
+	//		writeDescriptorSets[1].pTexelBufferView = nullptr;
 
-			m_device->GetDevice().updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
-		}
-	}
+	//		m_device->GetDevice().updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+	//	}
+	//}
 
-	void VulkanContext::FreeDescriptorSets()
-	{
-		m_device->GetDevice().freeDescriptorSets(m_descriptorPool, m_descriptorSets.size(), m_descriptorSets.data());
-		m_device->GetDevice().destroyDescriptorSetLayout(m_descriptorSetLayout);
-	}
+	//void VulkanContext::FreeDescriptorSets()
+	//{
+	//	m_device->GetDevice().freeDescriptorSets(m_descriptorPool, m_descriptorSets.size(), m_descriptorSets.data());
+	//	m_device->GetDevice().destroyDescriptorSetLayout(m_descriptorSetLayout);
+	//}
 
 	void VulkanContext::CreateDepthImage()
 	{
@@ -526,218 +547,218 @@ namespace Firefly
 			m_device->GetDevice().destroyFramebuffer(framebuffer);
 	}
 
-	void VulkanContext::CreateGraphicsPipeline()
-	{
-		// SHADER STAGES -------------------------------
-		std::vector<char> vertexShaderCode = ReadBinaryFile("assets/shaders/triangle.vert.spv");
-		vk::ShaderModule vertexShaderModule;
-		vk::ShaderModuleCreateInfo vertexShaderModuleCreateInfo{};
-		vertexShaderModuleCreateInfo.pNext = nullptr;
-		vertexShaderModuleCreateInfo.flags = {};
-		vertexShaderModuleCreateInfo.codeSize = vertexShaderCode.size();
-		vertexShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(vertexShaderCode.data());
-		vk::Result result = m_device->GetDevice().createShaderModule(&vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan vertex shader module!");
+	//void VulkanContext::CreateGraphicsPipeline()
+	//{
+	//	// SHADER STAGES -------------------------------
+	//	std::vector<char> vertexShaderCode = ReadBinaryFile("assets/shaders/triangle.vert.spv");
+	//	vk::ShaderModule vertexShaderModule;
+	//	vk::ShaderModuleCreateInfo vertexShaderModuleCreateInfo{};
+	//	vertexShaderModuleCreateInfo.pNext = nullptr;
+	//	vertexShaderModuleCreateInfo.flags = {};
+	//	vertexShaderModuleCreateInfo.codeSize = vertexShaderCode.size();
+	//	vertexShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(vertexShaderCode.data());
+	//	vk::Result result = m_device->GetDevice().createShaderModule(&vertexShaderModuleCreateInfo, nullptr, &vertexShaderModule);
+	//	FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan vertex shader module!");
 
-		std::vector<char> fragmentShaderCode = ReadBinaryFile("assets/shaders/triangle.frag.spv");
-		vk::ShaderModule fragmentShaderModule;
-		vk::ShaderModuleCreateInfo fragmentShaderModuleCreateInfo{};
-		fragmentShaderModuleCreateInfo.pNext = nullptr;
-		fragmentShaderModuleCreateInfo.flags = {};
-		fragmentShaderModuleCreateInfo.codeSize = fragmentShaderCode.size();
-		fragmentShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(fragmentShaderCode.data());
-		result = m_device->GetDevice().createShaderModule(&fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan fragment shader module!");
+	//	std::vector<char> fragmentShaderCode = ReadBinaryFile("assets/shaders/triangle.frag.spv");
+	//	vk::ShaderModule fragmentShaderModule;
+	//	vk::ShaderModuleCreateInfo fragmentShaderModuleCreateInfo{};
+	//	fragmentShaderModuleCreateInfo.pNext = nullptr;
+	//	fragmentShaderModuleCreateInfo.flags = {};
+	//	fragmentShaderModuleCreateInfo.codeSize = fragmentShaderCode.size();
+	//	fragmentShaderModuleCreateInfo.pCode = reinterpret_cast<const uint32_t*>(fragmentShaderCode.data());
+	//	result = m_device->GetDevice().createShaderModule(&fragmentShaderModuleCreateInfo, nullptr, &fragmentShaderModule);
+	//	FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan fragment shader module!");
 
-		vk::PipelineShaderStageCreateInfo vertexShaderStageCreateInfo{};
-		vertexShaderStageCreateInfo.pNext = nullptr;
-		vertexShaderStageCreateInfo.flags = {};
-		vertexShaderStageCreateInfo.stage = vk::ShaderStageFlagBits::eVertex;
-		vertexShaderStageCreateInfo.module = vertexShaderModule;
-		vertexShaderStageCreateInfo.pName = "main";
-		vertexShaderStageCreateInfo.pSpecializationInfo = nullptr;
+	//	vk::PipelineShaderStageCreateInfo vertexShaderStageCreateInfo{};
+	//	vertexShaderStageCreateInfo.pNext = nullptr;
+	//	vertexShaderStageCreateInfo.flags = {};
+	//	vertexShaderStageCreateInfo.stage = vk::ShaderStageFlagBits::eVertex;
+	//	vertexShaderStageCreateInfo.module = vertexShaderModule;
+	//	vertexShaderStageCreateInfo.pName = "main";
+	//	vertexShaderStageCreateInfo.pSpecializationInfo = nullptr;
 
-		vk::PipelineShaderStageCreateInfo fragmentShaderStageCreateInfo{};
-		fragmentShaderStageCreateInfo.pNext = nullptr;
-		fragmentShaderStageCreateInfo.flags = {};
-		fragmentShaderStageCreateInfo.stage = vk::ShaderStageFlagBits::eFragment;
-		fragmentShaderStageCreateInfo.module = fragmentShaderModule;
-		fragmentShaderStageCreateInfo.pName = "main";
-		fragmentShaderStageCreateInfo.pSpecializationInfo = nullptr;
+	//	vk::PipelineShaderStageCreateInfo fragmentShaderStageCreateInfo{};
+	//	fragmentShaderStageCreateInfo.pNext = nullptr;
+	//	fragmentShaderStageCreateInfo.flags = {};
+	//	fragmentShaderStageCreateInfo.stage = vk::ShaderStageFlagBits::eFragment;
+	//	fragmentShaderStageCreateInfo.module = fragmentShaderModule;
+	//	fragmentShaderStageCreateInfo.pName = "main";
+	//	fragmentShaderStageCreateInfo.pSpecializationInfo = nullptr;
 
-		std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos = { vertexShaderStageCreateInfo, fragmentShaderStageCreateInfo };
-		// ---------------------------------------------
-		// VERTEX INPUT STATE --------------------------
-		vk::VertexInputBindingDescription vertexInputBindingDescription{};
-		vertexInputBindingDescription.binding = 0;
-		vertexInputBindingDescription.stride = sizeof(VulkanMesh::Vertex);
-		vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
+	//	std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos = { vertexShaderStageCreateInfo, fragmentShaderStageCreateInfo };
+	//	// ---------------------------------------------
+	//	// VERTEX INPUT STATE --------------------------
+	//	vk::VertexInputBindingDescription vertexInputBindingDescription{};
+	//	vertexInputBindingDescription.binding = 0;
+	//	vertexInputBindingDescription.stride = sizeof(VulkanMesh::Vertex);
+	//	vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
 
-		std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};
-		vertexInputAttributeDescriptions[0].binding = 0;
-		vertexInputAttributeDescriptions[0].location = 0;
-		vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
-		vertexInputAttributeDescriptions[0].offset = offsetof(Mesh::Vertex, position);
-		vertexInputAttributeDescriptions[1].binding = 0;
-		vertexInputAttributeDescriptions[1].location = 1;
-		vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
-		vertexInputAttributeDescriptions[1].offset = offsetof(Mesh::Vertex, normal);
-		vertexInputAttributeDescriptions[2].binding = 0;
-		vertexInputAttributeDescriptions[2].location = 2;
-		vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
-		vertexInputAttributeDescriptions[2].offset = offsetof(Mesh::Vertex, tangent);
-		vertexInputAttributeDescriptions[3].binding = 0;
-		vertexInputAttributeDescriptions[3].location = 3;
-		vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32Sfloat;
-		vertexInputAttributeDescriptions[3].offset = offsetof(Mesh::Vertex, bitangent);
-		vertexInputAttributeDescriptions[4].binding = 0;
-		vertexInputAttributeDescriptions[4].location = 4;
-		vertexInputAttributeDescriptions[4].format = vk::Format::eR32G32Sfloat;
-		vertexInputAttributeDescriptions[4].offset = offsetof(Mesh::Vertex, texCoords);
+	//	std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};
+	//	vertexInputAttributeDescriptions[0].binding = 0;
+	//	vertexInputAttributeDescriptions[0].location = 0;
+	//	vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
+	//	vertexInputAttributeDescriptions[0].offset = offsetof(Mesh::Vertex, position);
+	//	vertexInputAttributeDescriptions[1].binding = 0;
+	//	vertexInputAttributeDescriptions[1].location = 1;
+	//	vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
+	//	vertexInputAttributeDescriptions[1].offset = offsetof(Mesh::Vertex, normal);
+	//	vertexInputAttributeDescriptions[2].binding = 0;
+	//	vertexInputAttributeDescriptions[2].location = 2;
+	//	vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
+	//	vertexInputAttributeDescriptions[2].offset = offsetof(Mesh::Vertex, tangent);
+	//	vertexInputAttributeDescriptions[3].binding = 0;
+	//	vertexInputAttributeDescriptions[3].location = 3;
+	//	vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32Sfloat;
+	//	vertexInputAttributeDescriptions[3].offset = offsetof(Mesh::Vertex, bitangent);
+	//	vertexInputAttributeDescriptions[4].binding = 0;
+	//	vertexInputAttributeDescriptions[4].location = 4;
+	//	vertexInputAttributeDescriptions[4].format = vk::Format::eR32G32Sfloat;
+	//	vertexInputAttributeDescriptions[4].offset = offsetof(Mesh::Vertex, texCoords);
 
-		vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
-		vertexInputStateCreateInfo.pNext = nullptr;
-		vertexInputStateCreateInfo.flags = {};
-		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
-		vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
-		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescriptions.size();
-		vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data();
-		// ---------------------------------------------
-		// INPUT ASSEMBLY STATE ------------------------
-		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
-		inputAssemblyStateCreateInfo.pNext = nullptr;
-		inputAssemblyStateCreateInfo.flags = {};
-		inputAssemblyStateCreateInfo.topology = vk::PrimitiveTopology::eTriangleList;
-		inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
-		// ---------------------------------------------
-		// VIEWPORT STATE ------------------------------
-		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
-		vk::Viewport viewport{};
-		viewport.x = 0.f;
-		viewport.y = 0.f;
-		viewport.width = (float)swapchainExtent.width;
-		viewport.height = (float)swapchainExtent.height;
-		viewport.minDepth = 0.f;
-		viewport.maxDepth = 1.f;
+	//	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
+	//	vertexInputStateCreateInfo.pNext = nullptr;
+	//	vertexInputStateCreateInfo.flags = {};
+	//	vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+	//	vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
+	//	vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescriptions.size();
+	//	vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data();
+	//	// ---------------------------------------------
+	//	// INPUT ASSEMBLY STATE ------------------------
+	//	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
+	//	inputAssemblyStateCreateInfo.pNext = nullptr;
+	//	inputAssemblyStateCreateInfo.flags = {};
+	//	inputAssemblyStateCreateInfo.topology = vk::PrimitiveTopology::eTriangleList;
+	//	inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
+	//	// ---------------------------------------------
+	//	// VIEWPORT STATE ------------------------------
+	//	vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
+	//	vk::Viewport viewport{};
+	//	viewport.x = 0.f;
+	//	viewport.y = 0.f;
+	//	viewport.width = (float)swapchainExtent.width;
+	//	viewport.height = (float)swapchainExtent.height;
+	//	viewport.minDepth = 0.f;
+	//	viewport.maxDepth = 1.f;
 
-		vk::Rect2D scissor{};
-		scissor.offset = { 0, 0 };
-		scissor.extent = swapchainExtent;
+	//	vk::Rect2D scissor{};
+	//	scissor.offset = { 0, 0 };
+	//	scissor.extent = swapchainExtent;
 
-		vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
-		viewportStateCreateInfo.pNext = nullptr;
-		viewportStateCreateInfo.flags = {};
-		viewportStateCreateInfo.viewportCount = 1;
-		viewportStateCreateInfo.pViewports = &viewport;
-		viewportStateCreateInfo.scissorCount = 1;
-		viewportStateCreateInfo.pScissors = &scissor;
-		// ---------------------------------------------
-		// RASTERIZATION STATE -------------------------
-		vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
-		rasterizationStateCreateInfo.pNext = nullptr;
-		rasterizationStateCreateInfo.flags = {};
-		rasterizationStateCreateInfo.depthClampEnable = false;
-		rasterizationStateCreateInfo.rasterizerDiscardEnable = false;
-		rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eFill;
-		rasterizationStateCreateInfo.lineWidth = 1.f;
-		rasterizationStateCreateInfo.cullMode = vk::CullModeFlagBits::eBack;
-		rasterizationStateCreateInfo.frontFace = vk::FrontFace::eCounterClockwise;
-		rasterizationStateCreateInfo.depthBiasEnable = false;
-		rasterizationStateCreateInfo.depthBiasConstantFactor = 0.f;
-		rasterizationStateCreateInfo.depthBiasClamp = 0.f;
-		rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.f;
-		rasterizationStateCreateInfo.depthClampEnable = false;
-		// ---------------------------------------------
-		// MULTISAMPLE STATE ---------------------------
-		vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
-		multisampleStateCreateInfo.pNext = nullptr;
-		multisampleStateCreateInfo.flags = {};
-		multisampleStateCreateInfo.rasterizationSamples = vk::SampleCountFlagBits::e1;
-		multisampleStateCreateInfo.sampleShadingEnable = false;
-		multisampleStateCreateInfo.minSampleShading = 1.0f;
-		multisampleStateCreateInfo.pSampleMask = nullptr;
-		multisampleStateCreateInfo.alphaToCoverageEnable = false;
-		multisampleStateCreateInfo.alphaToOneEnable = false;
-		// ---------------------------------------------
-		// COLOR BLEND STATE ---------------------------
-		vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{};
-		colorBlendAttachmentState.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-		colorBlendAttachmentState.blendEnable = false;
-		colorBlendAttachmentState.srcColorBlendFactor = vk::BlendFactor::eOne;
-		colorBlendAttachmentState.dstColorBlendFactor = vk::BlendFactor::eZero;
-		colorBlendAttachmentState.colorBlendOp = vk::BlendOp::eAdd;
-		colorBlendAttachmentState.srcAlphaBlendFactor = vk::BlendFactor::eOne;
-		colorBlendAttachmentState.dstAlphaBlendFactor = vk::BlendFactor::eZero;
-		colorBlendAttachmentState.alphaBlendOp = vk::BlendOp::eAdd;
+	//	vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
+	//	viewportStateCreateInfo.pNext = nullptr;
+	//	viewportStateCreateInfo.flags = {};
+	//	viewportStateCreateInfo.viewportCount = 1;
+	//	viewportStateCreateInfo.pViewports = &viewport;
+	//	viewportStateCreateInfo.scissorCount = 1;
+	//	viewportStateCreateInfo.pScissors = &scissor;
+	//	// ---------------------------------------------
+	//	// RASTERIZATION STATE -------------------------
+	//	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
+	//	rasterizationStateCreateInfo.pNext = nullptr;
+	//	rasterizationStateCreateInfo.flags = {};
+	//	rasterizationStateCreateInfo.depthClampEnable = false;
+	//	rasterizationStateCreateInfo.rasterizerDiscardEnable = false;
+	//	rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eFill;
+	//	rasterizationStateCreateInfo.lineWidth = 1.f;
+	//	rasterizationStateCreateInfo.cullMode = vk::CullModeFlagBits::eBack;
+	//	rasterizationStateCreateInfo.frontFace = vk::FrontFace::eCounterClockwise;
+	//	rasterizationStateCreateInfo.depthBiasEnable = false;
+	//	rasterizationStateCreateInfo.depthBiasConstantFactor = 0.f;
+	//	rasterizationStateCreateInfo.depthBiasClamp = 0.f;
+	//	rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.f;
+	//	rasterizationStateCreateInfo.depthClampEnable = false;
+	//	// ---------------------------------------------
+	//	// MULTISAMPLE STATE ---------------------------
+	//	vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
+	//	multisampleStateCreateInfo.pNext = nullptr;
+	//	multisampleStateCreateInfo.flags = {};
+	//	multisampleStateCreateInfo.rasterizationSamples = vk::SampleCountFlagBits::e1;
+	//	multisampleStateCreateInfo.sampleShadingEnable = false;
+	//	multisampleStateCreateInfo.minSampleShading = 1.0f;
+	//	multisampleStateCreateInfo.pSampleMask = nullptr;
+	//	multisampleStateCreateInfo.alphaToCoverageEnable = false;
+	//	multisampleStateCreateInfo.alphaToOneEnable = false;
+	//	// ---------------------------------------------
+	//	// COLOR BLEND STATE ---------------------------
+	//	vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{};
+	//	colorBlendAttachmentState.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+	//	colorBlendAttachmentState.blendEnable = false;
+	//	colorBlendAttachmentState.srcColorBlendFactor = vk::BlendFactor::eOne;
+	//	colorBlendAttachmentState.dstColorBlendFactor = vk::BlendFactor::eZero;
+	//	colorBlendAttachmentState.colorBlendOp = vk::BlendOp::eAdd;
+	//	colorBlendAttachmentState.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+	//	colorBlendAttachmentState.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+	//	colorBlendAttachmentState.alphaBlendOp = vk::BlendOp::eAdd;
 
-		vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{};
-		colorBlendStateCreateInfo.logicOpEnable = false;
-		colorBlendStateCreateInfo.logicOp = vk::LogicOp::eCopy;
-		colorBlendStateCreateInfo.attachmentCount = 1;
-		colorBlendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
-		colorBlendStateCreateInfo.blendConstants[0] = 0.f;
-		colorBlendStateCreateInfo.blendConstants[1] = 0.f;
-		colorBlendStateCreateInfo.blendConstants[2] = 0.f;
-		colorBlendStateCreateInfo.blendConstants[3] = 0.f;
-		// ---------------------------------------------
-		// DEPTH STENCIL STATE -------------------------
-		vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
-		depthStencilStateCreateInfo.pNext = nullptr;
-		depthStencilStateCreateInfo.flags = {};
-		depthStencilStateCreateInfo.depthTestEnable = true;
-		depthStencilStateCreateInfo.depthWriteEnable = true;
-		depthStencilStateCreateInfo.depthCompareOp = vk::CompareOp::eLess;
-		depthStencilStateCreateInfo.depthBoundsTestEnable = false;
-		depthStencilStateCreateInfo.minDepthBounds = 0.0f;
-		depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
-		depthStencilStateCreateInfo.stencilTestEnable = false;
-		depthStencilStateCreateInfo.front = {};
-		depthStencilStateCreateInfo.back = {};
-		// ---------------------------------------------
-		// PIPELINE LAYOUT -----------------------------
-		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-		pipelineLayoutCreateInfo.pNext = nullptr;
-		pipelineLayoutCreateInfo.flags = {};
-		pipelineLayoutCreateInfo.setLayoutCount = 1;
-		pipelineLayoutCreateInfo.pSetLayouts = &m_descriptorSetLayout;
-		pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-		pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+	//	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{};
+	//	colorBlendStateCreateInfo.logicOpEnable = false;
+	//	colorBlendStateCreateInfo.logicOp = vk::LogicOp::eCopy;
+	//	colorBlendStateCreateInfo.attachmentCount = 1;
+	//	colorBlendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
+	//	colorBlendStateCreateInfo.blendConstants[0] = 0.f;
+	//	colorBlendStateCreateInfo.blendConstants[1] = 0.f;
+	//	colorBlendStateCreateInfo.blendConstants[2] = 0.f;
+	//	colorBlendStateCreateInfo.blendConstants[3] = 0.f;
+	//	// ---------------------------------------------
+	//	// DEPTH STENCIL STATE -------------------------
+	//	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
+	//	depthStencilStateCreateInfo.pNext = nullptr;
+	//	depthStencilStateCreateInfo.flags = {};
+	//	depthStencilStateCreateInfo.depthTestEnable = true;
+	//	depthStencilStateCreateInfo.depthWriteEnable = true;
+	//	depthStencilStateCreateInfo.depthCompareOp = vk::CompareOp::eLess;
+	//	depthStencilStateCreateInfo.depthBoundsTestEnable = false;
+	//	depthStencilStateCreateInfo.minDepthBounds = 0.0f;
+	//	depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
+	//	depthStencilStateCreateInfo.stencilTestEnable = false;
+	//	depthStencilStateCreateInfo.front = {};
+	//	depthStencilStateCreateInfo.back = {};
+	//	// ---------------------------------------------
+	//	// PIPELINE LAYOUT -----------------------------
+	//	vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+	//	pipelineLayoutCreateInfo.pNext = nullptr;
+	//	pipelineLayoutCreateInfo.flags = {};
+	//	pipelineLayoutCreateInfo.setLayoutCount = 1;
+	//	pipelineLayoutCreateInfo.pSetLayouts = &m_descriptorSetLayout;
+	//	pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+	//	pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-		result = m_device->GetDevice().createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan pipeline layout!");
-		// ---------------------------------------------
-		// GRAPHICS PIPELINE ---------------------------
-		vk::GraphicsPipelineCreateInfo pipelineCreateInfo{};
-		pipelineCreateInfo.pNext = nullptr;
-		pipelineCreateInfo.flags = {};
-		pipelineCreateInfo.stageCount = shaderStageCreateInfos.size();
-		pipelineCreateInfo.pStages = shaderStageCreateInfos.data();
-		pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
-		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyStateCreateInfo;
-		pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
-		pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
-		pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
-		pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
-		pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
-		pipelineCreateInfo.pDynamicState = nullptr;
-		pipelineCreateInfo.layout = m_pipelineLayout;
-		pipelineCreateInfo.renderPass = m_renderPass;
-		pipelineCreateInfo.subpass = 0;
-		pipelineCreateInfo.basePipelineHandle = nullptr;
-		pipelineCreateInfo.basePipelineIndex = -1;
+	//	result = m_device->GetDevice().createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout);
+	//	FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan pipeline layout!");
+	//	// ---------------------------------------------
+	//	// GRAPHICS PIPELINE ---------------------------
+	//	vk::GraphicsPipelineCreateInfo pipelineCreateInfo{};
+	//	pipelineCreateInfo.pNext = nullptr;
+	//	pipelineCreateInfo.flags = {};
+	//	pipelineCreateInfo.stageCount = shaderStageCreateInfos.size();
+	//	pipelineCreateInfo.pStages = shaderStageCreateInfos.data();
+	//	pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
+	//	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyStateCreateInfo;
+	//	pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
+	//	pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+	//	pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
+	//	pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
+	//	pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
+	//	pipelineCreateInfo.pDynamicState = nullptr;
+	//	pipelineCreateInfo.layout = m_pipelineLayout;
+	//	pipelineCreateInfo.renderPass = m_renderPass;
+	//	pipelineCreateInfo.subpass = 0;
+	//	pipelineCreateInfo.basePipelineHandle = nullptr;
+	//	pipelineCreateInfo.basePipelineIndex = -1;
 
-		result = m_device->GetDevice().createGraphicsPipelines(nullptr, 1, &pipelineCreateInfo, nullptr, &m_graphicsPipeline);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan graphics pipeline!");
-		// ---------------------------------------------
-		m_device->GetDevice().destroyShaderModule(vertexShaderModule);
-		m_device->GetDevice().destroyShaderModule(fragmentShaderModule);
-	}
+	//	result = m_device->GetDevice().createGraphicsPipelines(nullptr, 1, &pipelineCreateInfo, nullptr, &m_graphicsPipeline);
+	//	FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan graphics pipeline!");
+	//	// ---------------------------------------------
+	//	m_device->GetDevice().destroyShaderModule(vertexShaderModule);
+	//	m_device->GetDevice().destroyShaderModule(fragmentShaderModule);
+	//}
 
-	void VulkanContext::DestroyGraphicsPipeline()
-	{
-		m_device->GetDevice().destroyPipeline(m_graphicsPipeline);
-		m_device->GetDevice().destroyPipelineLayout(m_pipelineLayout);
-	}
+	//void VulkanContext::DestroyGraphicsPipeline()
+	//{
+	//	m_device->GetDevice().destroyPipeline(m_graphicsPipeline);
+	//	m_device->GetDevice().destroyPipelineLayout(m_pipelineLayout);
+	//}
 
 	void VulkanContext::CreateSynchronizationPrimitivesForRendering()
 	{

@@ -10,19 +10,21 @@
 #include "Rendering/Vulkan/VulkanDevice.h"
 #include "Rendering/Vulkan/VulkanSwapchain.h"
 #include "Rendering/Vulkan/VulkanMesh.h"
+#include "Rendering/Vulkan/VulkanMaterial.h"
+#include "Rendering/Vulkan/VulkanRenderObject.h"
 
 namespace Firefly
 {
-	struct UboPerFrame
-	{
-		glm::mat4 viewMatrix;
-		glm::mat4 projectionMatrix;
-	};
+	//struct UboPerFrame
+	//{
+	//	glm::mat4 viewMatrix;
+	//	glm::mat4 projectionMatrix;
+	//};
 
-	struct UboPerObject
-	{
-		glm::mat4* modelMatrixData; // contains the model matrices of all objects in the scene
-	};
+	//struct UboPerObject
+	//{
+	//	glm::mat4* modelMatrixData; // contains the model matrices of all objects in the scene
+	//};
 
 	class VulkanContext
 	{
@@ -57,12 +59,12 @@ namespace Firefly
 		void FreeCommandBuffers();
 
 		// Per Shader
-		void CreateUniformBuffers();
-		void DestroyUniformBuffers();
-		void CreateDescriptorPool();
-		void DestroyDescriptorPool();
-		void AllocateDescriptorSets();
-		void FreeDescriptorSets();
+		//void CreateUniformBuffers();
+		//void DestroyUniformBuffers();
+		//void CreateDescriptorPool();
+		//void DestroyDescriptorPool();
+		//void AllocateDescriptorSets();
+		//void FreeDescriptorSets();
 
 		void CreateDepthImage();
 		void DestroyDepthImage();
@@ -73,8 +75,8 @@ namespace Firefly
 		void CreateFramebuffers();
 		void DestroyFramebuffers();
 
-		void CreateGraphicsPipeline();
-		void DestroyGraphicsPipeline();
+		//void CreateGraphicsPipeline();
+		//void DestroyGraphicsPipeline();
 
 		void CreateSynchronizationPrimitivesForRendering();
 		void DestroySynchronizationPrimitivesForRendering();
@@ -91,8 +93,10 @@ namespace Firefly
 		static std::vector<char> ReadBinaryFile(const std::string& fileName);
 
 		VulkanMesh* m_mesh;
-		uint32_t m_objectCount = 1;
-		std::vector<glm::mat4> m_modelMatrices;
+		VulkanMaterial* m_material;
+		std::vector<VulkanRenderObject*> m_renderObjects;
+		//uint32_t m_objectCount = 10;
+		//std::vector<glm::mat4> m_modelMatrices;
 
 		VulkanInstance* m_instance;
 		VulkanDebugMessenger* m_debugMessenger;
@@ -107,24 +111,24 @@ namespace Firefly
 		vk::RenderPass m_renderPass;
 		std::vector<vk::Framebuffer> m_framebuffers;
 
-		vk::Pipeline m_graphicsPipeline;
-		vk::PipelineLayout m_pipelineLayout;
+		//vk::Pipeline m_graphicsPipeline;
+		//vk::PipelineLayout m_pipelineLayout;
 
 		vk::CommandPool m_commandPool;
 		std::vector<vk::CommandBuffer> m_commandBuffers;
 
-		vk::DescriptorPool m_descriptorPool;
-		vk::DescriptorSetLayout m_descriptorSetLayout;
-		std::vector<vk::DescriptorSet> m_descriptorSets;
+		//vk::DescriptorPool m_descriptorPool;
+		//vk::DescriptorSetLayout m_descriptorSetLayout;
+		//std::vector<vk::DescriptorSet> m_descriptorSets;
 
-		UboPerFrame m_uboPerFrame;
-		std::vector<vk::Buffer> m_uniformBuffersPerFrame;
-		std::vector<vk::DeviceMemory> m_uniformBufferMemoriesPerFrame;
+		//UboPerFrame m_uboPerFrame;
+		//std::vector<vk::Buffer> m_uniformBuffersPerFrame;
+		//std::vector<vk::DeviceMemory> m_uniformBufferMemoriesPerFrame;
 
-		size_t m_modelMatrixUniformAlignment;
-		UboPerObject m_uboPerObject;
-		std::vector<vk::Buffer> m_uniformBuffersPerObject;
-		std::vector<vk::DeviceMemory> m_uniformBufferMemoriesPerObject;
+		//size_t m_modelMatrixUniformAlignment;
+		//UboPerObject m_uboPerObject;
+		//std::vector<vk::Buffer> m_uniformBuffersPerObject;
+		//std::vector<vk::DeviceMemory> m_uniformBufferMemoriesPerObject;
 
 		uint32_t m_currentFrameIndex = 0;
 		std::vector<vk::Semaphore> m_isImageAvailableSemaphore;

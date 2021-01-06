@@ -9,7 +9,7 @@ namespace Firefly
 	Application::Application() 
 	{
 #ifdef FIREFLY_WINDOWS
-		m_window = std::make_unique<WindowsWindow>();
+		m_window = std::make_unique<WindowsWindow>("Firefly Engine", 1280, 720);
 #endif
 
 		m_window->SetEventCallback(std::bind(&Application::OnEvent, this, std::placeholders::_1));

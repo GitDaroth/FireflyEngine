@@ -26,14 +26,14 @@ namespace Firefly
 		std::vector<vk::PresentModeKHR> surfacePresentModes = m_physicalDevice.getSurfacePresentModesKHR(surface->GetSurface());
 		for (const vk::PresentModeKHR& surfacePresentMode : surfacePresentModes)
 		{
-			if (surfacePresentMode == vk::PresentModeKHR::eMailbox)
+			if (surfacePresentMode == vk::PresentModeKHR::eFifoRelaxed)
 			{
 				m_presentMode = surfacePresentMode;
 				break;
 			}
 			else
 			{
-				m_presentMode = vk::PresentModeKHR::eFifo;
+				m_presentMode = vk::PresentModeKHR::eMailbox;
 			}
 		}
 		

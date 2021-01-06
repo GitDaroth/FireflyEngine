@@ -15,7 +15,7 @@ set_target_properties(glfw uninstall PROPERTIES FOLDER 3rdParty/GLFW)
 set_target_properties(assimp assimp_cmd IrrXML UpdateAssimpLibsDebugSymbolsAndDLLs zlib zlibstatic PROPERTIES FOLDER 3rdParty/assimp)
 
 set(miscFiles
-	include/Firefly/Engine.h
+	include/Firefly/FireflyEngine.h
 	include/Firefly/pch.h
 	src/pch.cpp)
 
@@ -86,7 +86,13 @@ set(renderingVulkanFiles
 	include/Firefly/Rendering/Vulkan/VulkanSwapchain.h
 	src/Rendering/Vulkan/VulkanSwapchain.cpp
 	include/Firefly/Rendering/Vulkan/VulkanMesh.h
-	src/Rendering/Vulkan/VulkanMesh.cpp)
+	src/Rendering/Vulkan/VulkanMesh.cpp
+	include/Firefly/Rendering/Vulkan/VulkanMaterial.h
+	src/Rendering/Vulkan/VulkanMaterial.cpp
+	include/Firefly/Rendering/Vulkan/VulkanRenderObject.h
+	src/Rendering/Vulkan/VulkanRenderObject.cpp
+	include/Firefly/Rendering/Vulkan/VulkanUtils.h
+	src/Rendering/Vulkan/VulkanUtils.cpp)
 
 set(sceneFiles
 	include/Firefly/Scene/Scene.h

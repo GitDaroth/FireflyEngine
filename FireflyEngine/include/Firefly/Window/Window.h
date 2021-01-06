@@ -9,7 +9,7 @@ namespace Firefly
 	class Window
 	{
 	public:
-		Window(const std::string& title = "Firefly Engine", int width = 1280, int height = 720);
+		Window(const std::string& title, int width, int height);
 		virtual ~Window();
 
 		void SetEventCallback(const std::function<void(std::shared_ptr<Event>)>& eventCallback);

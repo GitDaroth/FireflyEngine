@@ -1,18 +1,26 @@
 #include "pch.h"
 #include "Core/Engine.h"
 
-#include <GLFW/glfw3.h>
+#include "Core/Application.h"
 
 namespace Firefly
 {
 	void Engine::Init()
 	{
+		if (m_isInitialized)
+			return;
+
 		Logger::Init();
 		m_application = Firefly::InstantiateApplication();
+
+		m_isInitialized = true;
 	}
 
 	void Engine::Run()
 	{
+		if (!m_isInitialized)
+			return;
+
 		m_lastFrameTime = std::chrono::steady_clock::now();
 		while (m_isRunning)
 		{
@@ -26,6 +34,9 @@ namespace Firefly
 
 	void Engine::Shutdown()
 	{
+		if (!m_isInitialized)
+			return;
+
 		delete m_application;
 	}
 
