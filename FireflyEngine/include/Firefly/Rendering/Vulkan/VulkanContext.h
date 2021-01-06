@@ -92,7 +92,9 @@ namespace Firefly
 		constexpr bool AreValidationLayersEnabled() const;
 		static std::vector<char> ReadBinaryFile(const std::string& fileName);
 
-		VulkanMesh* m_mesh;
+		VulkanMesh* m_armchairMesh;
+		VulkanMesh* m_globeMesh;
+		VulkanMesh* m_pistolMesh;
 		VulkanMaterial* m_material;
 		std::vector<VulkanRenderObject*> m_renderObjects;
 		//uint32_t m_objectCount = 10;

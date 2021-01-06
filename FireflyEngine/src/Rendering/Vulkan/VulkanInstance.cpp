@@ -13,7 +13,7 @@ namespace Firefly
 		applicationInfo.applicationVersion = VK_MAKE_VERSION(appVersion.major, appVersion.minor, appVersion.patch);
 		applicationInfo.pEngineName = ENGINE_NAME;
 		applicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-		applicationInfo.apiVersion = VK_VERSION_1_2;
+		applicationInfo.apiVersion = VK_API_VERSION_1_2;
 
 		// TODO: Check required instance extensions and layers
 		vk::InstanceCreateInfo instanceCreateInfo{};
@@ -28,7 +28,9 @@ namespace Firefly
 		vk::Result result = vk::createInstance(&instanceCreateInfo, nullptr, &m_instance);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan instance!");
 
-		Logger::Info("Vulkan", "API Version: {0}.{1}.{2}", VK_VERSION_MAJOR(applicationInfo.apiVersion), VK_VERSION_MINOR(applicationInfo.apiVersion), VK_VERSION_PATCH(applicationInfo.apiVersion));
+		uint32_t apiVersion;
+		vk::enumerateInstanceVersion(&apiVersion);
+		Logger::Info("Vulkan", "API Version: {0}.{1}.{2}", VK_VERSION_MAJOR(apiVersion), VK_VERSION_MINOR(apiVersion), VK_VERSION_PATCH(apiVersion));
 	}
 
 	VulkanInstance::~VulkanInstance()

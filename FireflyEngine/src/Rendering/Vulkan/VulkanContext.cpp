@@ -41,16 +41,27 @@ namespace Firefly
 		CreateSynchronizationPrimitivesForRendering();
 
 		m_material = new VulkanMaterial("assets/shaders/triangle.vert.spv", "assets/shaders/triangle.frag.spv", m_device->GetDevice(), m_renderPass, m_swapchain->GetExtent());
-		//m_mesh = new VulkanMesh(m_device, "assets/meshes/pistol.fbx", true);
-		//m_mesh = new VulkanMesh(m_device, "assets/meshes/globe.fbx");
-		m_mesh = new VulkanMesh(m_device, "assets/meshes/armchair.fbx");
+		m_pistolMesh = new VulkanMesh(m_device, "assets/meshes/pistol.fbx", true);
+		m_globeMesh = new VulkanMesh(m_device, "assets/meshes/globe.fbx");
+		m_armchairMesh = new VulkanMesh(m_device, "assets/meshes/armchair.fbx");
 
-		for (size_t i = 0; i < 10; i++)
-		{
-			VulkanRenderObject* renderObject = new VulkanRenderObject(m_mesh, m_material);
-			renderObject->SetModelMatrix(glm::translate(glm::mat4(1.0f), glm::vec3(10 * i, 10 * i, -(float)i * 10)));
-			m_renderObjects.push_back(renderObject);
-		}
+		VulkanRenderObject* pistol = new VulkanRenderObject(m_pistolMesh, m_material);
+		pistol->SetModelMatrix(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.01f)), glm::vec3(0.0f, 0.0f, 0.0f)));
+		VulkanRenderObject* globe = new VulkanRenderObject(m_globeMesh, m_material);
+		globe->SetModelMatrix(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.01f)), glm::vec3(-100.0f, 0.0f, 0.0f)));
+		VulkanRenderObject* armchair = new VulkanRenderObject(m_armchairMesh, m_material);
+		armchair->SetModelMatrix(glm::translate(glm::scale(glm::mat4(1.0f), glm::vec3(0.01f)), glm::vec3(100.0f, 0.0f, 0.0f)));
+
+		m_renderObjects.push_back(pistol);
+		m_renderObjects.push_back(globe);
+		m_renderObjects.push_back(armchair);
+
+		//for (size_t i = 0; i < 10; i++)
+		//{
+		//	VulkanRenderObject* renderObject = new VulkanRenderObject(m_armchairMesh, m_material);
+		//	renderObject->SetModelMatrix(glm::translate(glm::mat4(1.0f), glm::vec3(10 * i, 10 * i, -(float)i * 10)));
+		//	m_renderObjects.push_back(renderObject);
+		//}
 	}
 
 	void VulkanContext::Destroy()
@@ -61,7 +72,9 @@ namespace Firefly
 			delete m_renderObjects[i];
 		m_renderObjects.clear();
 
-		delete m_mesh;
+		delete m_pistolMesh;
+		delete m_globeMesh;
+		delete m_armchairMesh;
 		delete m_material;
 
 		DestroySynchronizationPrimitivesForRendering();
@@ -123,9 +136,9 @@ namespace Firefly
 
 		m_commandBuffers[currentImageIndex].beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
 
-		glm::mat4 viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 500.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::mat4 viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10000.0f);
-		projectionMatrix[1][1] *= -1;
+		projectionMatrix[1][1] *= -1; // Vulkan has inverted y axis in comparison to OpenGL
 
 		//// update uniform buffer per frame
 		//m_uboPerFrame.viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 500.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -165,8 +178,7 @@ namespace Firefly
 
 			//m_mesh->Bind(m_commandBuffers[currentImageIndex]);
 
-			m_renderObjects[i]->Bind(m_commandBuffers[currentImageIndex], viewMatrix, projectionMatrix);
-			m_commandBuffers[currentImageIndex].drawIndexed(m_mesh->GetIndexCount(), 1, 0, 0, 0);
+			m_renderObjects[i]->Draw(m_commandBuffers[currentImageIndex], viewMatrix, projectionMatrix);
 		}
 
 		m_commandBuffers[currentImageIndex].endRenderPass();
