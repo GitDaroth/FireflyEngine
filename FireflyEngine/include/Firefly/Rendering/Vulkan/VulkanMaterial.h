@@ -2,6 +2,8 @@
 
 #include "vulkan/vulkan.hpp"
 
+struct SpvReflectTypeDescription;
+
 namespace Firefly
 {
 	class VulkanMaterial
@@ -17,8 +19,10 @@ namespace Firefly
 		vk::PipelineLayout GetPipelineLayout() const;
 
 	private:
-		vk::PipelineShaderStageCreateInfo CreateShaderStage(const std::string& shaderPath, vk::ShaderStageFlagBits shaderStage);
+		vk::PipelineShaderStageCreateInfo CreateShaderStage(const std::vector<char>& shaderCode, vk::ShaderStageFlagBits shaderStage);
 		static std::vector<char> ReadBinaryFile(const std::string& fileName);
+		void PrintShaderReflection(const std::vector<char>& shaderCode);
+		std::string GetDataTypeName(const SpvReflectTypeDescription& typeDescription);
 
 		vk::Device m_device;
 

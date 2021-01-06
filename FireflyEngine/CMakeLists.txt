@@ -8,9 +8,10 @@ add_subdirectory(3rdParty/imgui)
 add_subdirectory(3rdParty/stb_image)
 add_subdirectory(3rdParty/assimp)
 add_subdirectory(3rdParty/EnTT)
+add_subdirectory(3rdParty/SPIRV-Reflect)
 find_package(Vulkan REQUIRED)
 
-set_target_properties(spdlog glad glm_static imgui stb_image PROPERTIES FOLDER 3rdParty)
+set_target_properties(spdlog glad glm_static imgui stb_image spirv_reflect PROPERTIES FOLDER 3rdParty)
 set_target_properties(glfw uninstall PROPERTIES FOLDER 3rdParty/GLFW)
 set_target_properties(assimp assimp_cmd IrrXML UpdateAssimpLibsDebugSymbolsAndDLLs zlib zlibstatic PROPERTIES FOLDER 3rdParty/assimp)
 
@@ -157,7 +158,8 @@ target_link_libraries(FireflyEngine
 		Vulkan::Vulkan
 		imgui
 		stb_image
-		assimp)
+		assimp
+		spirv_reflect)
 
 target_include_directories(FireflyEngine PRIVATE "include/Firefly" INTERFACE "include" "include/Firefly")
 target_precompile_headers(FireflyEngine PRIVATE "include/Firefly/pch.h")
