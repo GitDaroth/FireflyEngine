@@ -4,10 +4,11 @@
 #include <fstream>
 #include <spirv_reflect.h>
 #include "Rendering/Vulkan/VulkanMesh.h"
+#include "Rendering/Vulkan/VulkanContext.h"
 
 namespace Firefly
 {
-	VulkanMaterial::VulkanMaterial(const std::string& vertexShaderPath, const std::string& fragmentShaderPath, vk::Device device, vk::RenderPass renderPass, vk::Extent2D swapchainExtent) :
+	VulkanMaterial::VulkanMaterial(const std::string& vertexShaderPath, const std::string& fragmentShaderPath, vk::Device device, vk::RenderPass renderPass, VulkanSwapchain* swapchain) :
 		m_device(device)
 	{
 		std::vector<char> vertexShaderCode = ReadBinaryFile(vertexShaderPath);
@@ -19,7 +20,7 @@ namespace Firefly
 		m_shaderStageCreateInfos.push_back(CreateShaderStage(vertexShaderCode, vk::ShaderStageFlagBits::eVertex));
 		m_shaderStageCreateInfos.push_back(CreateShaderStage(fragmentShaderCode, vk::ShaderStageFlagBits::eFragment));
 
-		CreatePipeline(renderPass, swapchainExtent);
+		CreatePipeline(renderPass, swapchain);
 	}
 
 	VulkanMaterial::~VulkanMaterial()
@@ -37,8 +38,30 @@ namespace Firefly
 		return m_pipelineLayout;
 	}
 
-	void VulkanMaterial::CreatePipeline(vk::RenderPass renderPass, vk::Extent2D swapchainExtent)
+	vk::DescriptorSetLayout VulkanMaterial::GetGlobalDescriptorSetLayout() const
 	{
+		return m_globalDescriptorSetLayout;
+	}
+
+	void VulkanMaterial::CreatePipeline(vk::RenderPass renderPass, VulkanSwapchain* swapchain)
+	{
+		// DESCRIPTOR LAYOUT
+		vk::DescriptorSetLayoutBinding cameraDataLayoutBinding{};
+		cameraDataLayoutBinding.binding = 0;
+		cameraDataLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+		cameraDataLayoutBinding.descriptorCount = 1;
+		cameraDataLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+		cameraDataLayoutBinding.pImmutableSamplers = nullptr;
+
+		std::vector<vk::DescriptorSetLayoutBinding> bindings = { cameraDataLayoutBinding };
+
+		vk::DescriptorSetLayoutCreateInfo globalDescriptorSetLayoutCreateInfo{};
+		globalDescriptorSetLayoutCreateInfo.bindingCount = bindings.size();
+		globalDescriptorSetLayoutCreateInfo.pBindings = bindings.data();
+
+		vk::Result result = m_device.createDescriptorSetLayout(&globalDescriptorSetLayoutCreateInfo, nullptr, &m_globalDescriptorSetLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+
 		// VERTEX INPUT STATE --------------------------
 		vk::VertexInputBindingDescription vertexInputBindingDescription{};
 		vertexInputBindingDescription.binding = 0;
@@ -83,6 +106,7 @@ namespace Firefly
 		inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
 		// ---------------------------------------------
 		// VIEWPORT STATE ------------------------------
+		vk::Extent2D swapchainExtent = swapchain->GetExtent();
 		vk::Viewport viewport{};
 		viewport.x = 0.f;
 		viewport.y = 0.f;
@@ -174,12 +198,12 @@ namespace Firefly
 		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 		pipelineLayoutCreateInfo.pNext = nullptr;
 		pipelineLayoutCreateInfo.flags = {};
-		pipelineLayoutCreateInfo.setLayoutCount = 0;
-		pipelineLayoutCreateInfo.pSetLayouts = nullptr;
+		pipelineLayoutCreateInfo.setLayoutCount = 1;
+		pipelineLayoutCreateInfo.pSetLayouts = &m_globalDescriptorSetLayout;
 		pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
 		pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
-		vk::Result result = m_device.createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout);
+		result = m_device.createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan pipeline layout!");
 		// ---------------------------------------------
 		// GRAPHICS PIPELINE ---------------------------
@@ -211,6 +235,8 @@ namespace Firefly
 	{
 		m_device.destroyPipeline(m_pipeline);
 		m_device.destroyPipelineLayout(m_pipelineLayout);
+
+		m_device.destroyDescriptorSetLayout(m_globalDescriptorSetLayout);
 	}
 
 	vk::PipelineShaderStageCreateInfo VulkanMaterial::CreateShaderStage(const std::vector<char>& shaderCode, vk::ShaderStageFlagBits shaderStage)
@@ -233,20 +259,6 @@ namespace Firefly
 		shaderStageCreateInfo.pSpecializationInfo = nullptr;
 
 		return shaderStageCreateInfo;
-	}
-
-	std::vector<char> VulkanMaterial::ReadBinaryFile(const std::string& fileName)
-	{
-		std::ifstream file(fileName, std::ios::ate | std::ios::binary);
-		FIREFLY_ASSERT(file.is_open(), "Failed to open binary file: {0}!", fileName);
-
-		size_t fileSize = (size_t)file.tellg();
-		std::vector<char> fileBytes(fileSize);
-		file.seekg(0);
-		file.read(fileBytes.data(), fileSize);
-		file.close();
-
-		return fileBytes;
 	}
 
 	void VulkanMaterial::PrintShaderReflection(const std::vector<char>& shaderCode)

@@ -40,7 +40,7 @@ namespace Firefly
 		//CreateGraphicsPipeline();
 		CreateSynchronizationPrimitivesForRendering();
 
-		m_material = new VulkanMaterial("assets/shaders/triangle.vert.spv", "assets/shaders/triangle.frag.spv", m_device->GetDevice(), m_renderPass, m_swapchain->GetExtent());
+		m_material = new VulkanMaterial("assets/shaders/triangle.vert.spv", "assets/shaders/triangle.frag.spv", m_device->GetDevice(), m_renderPass, m_swapchain);
 		m_pistolMesh = new VulkanMesh(m_device, "assets/meshes/pistol.fbx", true);
 		m_globeMesh = new VulkanMesh(m_device, "assets/meshes/globe.fbx");
 		m_armchairMesh = new VulkanMesh(m_device, "assets/meshes/armchair.fbx");
@@ -62,12 +62,20 @@ namespace Firefly
 		//	renderObject->SetModelMatrix(glm::translate(glm::mat4(1.0f), glm::vec3(10 * i, 10 * i, -(float)i * 10)));
 		//	m_renderObjects.push_back(renderObject);
 		//}
+
+		CreateDescriptorPool();
+		CreateCameraDataUniformBuffers();
+		AllocateGlobalDescriptorSets();
 	}
 
 	void VulkanContext::Destroy()
 	{
 		m_device->GetDevice().waitIdle();
 		
+		FreeGlobalDescriptorSets();
+		DestroyCameraDataUniformBuffers();
+		DestroyDescriptorPool();
+
 		for (size_t i = 0; i < m_renderObjects.size(); i++)
 			delete m_renderObjects[i];
 		m_renderObjects.clear();
@@ -136,9 +144,21 @@ namespace Firefly
 
 		m_commandBuffers[currentImageIndex].beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
 
-		glm::mat4 viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+		glm::vec3 cameraPosition = glm::vec3(0.0f, 0.0f, 5.0f);
+		glm::mat4 viewMatrix = glm::lookAt(cameraPosition, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 		glm::mat4 projectionMatrix = glm::perspective(glm::radians(45.0f), swapchainExtent.width / (float)swapchainExtent.height, 0.1f, 10000.0f);
 		projectionMatrix[1][1] *= -1; // Vulkan has inverted y axis in comparison to OpenGL
+
+		CameraData cameraData;
+		cameraData.position = glm::vec4(cameraPosition, 1.0f);
+		cameraData.viewMatrix = viewMatrix;
+		cameraData.projectionMatrix = projectionMatrix;
+		cameraData.viewProjectionMatrix = projectionMatrix * viewMatrix;
+
+		void* mappedMemory;
+		m_device->GetDevice().mapMemory(m_cameraDataUniformBufferMemories[currentImageIndex], 0, sizeof(CameraData), {}, &mappedMemory);
+		memcpy(mappedMemory, &cameraData, sizeof(CameraData));
+		m_device->GetDevice().unmapMemory(m_cameraDataUniformBufferMemories[currentImageIndex]);
 
 		//// update uniform buffer per frame
 		//m_uboPerFrame.viewMatrix = glm::lookAt(glm::vec3(0.0f, 0.0f, 500.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -178,7 +198,17 @@ namespace Firefly
 
 			//m_mesh->Bind(m_commandBuffers[currentImageIndex]);
 
-			m_renderObjects[i]->Draw(m_commandBuffers[currentImageIndex], viewMatrix, projectionMatrix);
+			m_commandBuffers[currentImageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, m_renderObjects[i]->GetMaterial()->GetPipeline());
+
+			std::vector<vk::DescriptorSet> descriptorSets = { m_globalDescriptorSets[currentImageIndex] };
+			m_commandBuffers[currentImageIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_renderObjects[i]->GetMaterial()->GetPipelineLayout(), 0, descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+
+			glm::mat4 modelMatrix = m_renderObjects[i]->GetModelMatrix();
+			m_commandBuffers[currentImageIndex].pushConstants(m_material->GetPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4), &modelMatrix);
+
+			m_renderObjects[i]->GetMesh()->Bind(m_commandBuffers[currentImageIndex]);
+
+			m_commandBuffers[currentImageIndex].drawIndexed(m_renderObjects[i]->GetMesh()->GetIndexCount(), 1, 0, 0, 0);
 		}
 
 		m_commandBuffers[currentImageIndex].endRenderPass();
@@ -238,6 +268,10 @@ namespace Firefly
 		if (m_surface->GetWidth() == 0 && m_surface->GetHeight() == 0)
 			return;
 
+		FreeGlobalDescriptorSets();
+		DestroyCameraDataUniformBuffers();
+		DestroyDescriptorPool();
+
 		DestroySynchronizationPrimitivesForRendering();
 		m_material->DestroyPipeline();
 		//DestroyGraphicsPipeline();
@@ -254,9 +288,13 @@ namespace Firefly
 		CreateDepthImage();
 		CreateRenderPass();
 		CreateFramebuffers();
-		m_material->CreatePipeline(m_renderPass, m_swapchain->GetExtent());
+		m_material->CreatePipeline(m_renderPass, m_swapchain);
 		//CreateGraphicsPipeline();
 		CreateSynchronizationPrimitivesForRendering();
+
+		CreateDescriptorPool();
+		CreateCameraDataUniformBuffers();
+		AllocateGlobalDescriptorSets();
 	}
 
 	void VulkanContext::CreateCommandPool()
@@ -291,6 +329,106 @@ namespace Firefly
 	void VulkanContext::FreeCommandBuffers()
 	{
 		m_device->GetDevice().freeCommandBuffers(m_commandPool, m_commandBuffers.size(), m_commandBuffers.data());
+	}
+
+	void VulkanContext::CreateCameraDataUniformBuffers()
+	{
+		size_t bufferSize = sizeof(CameraData);
+		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+		m_cameraDataUniformBuffers.resize(m_swapchain->GetImageCount());
+		m_cameraDataUniformBufferMemories.resize(m_swapchain->GetImageCount());
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+			CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_cameraDataUniformBuffers[i], m_cameraDataUniformBufferMemories[i]);
+	}
+
+	void VulkanContext::DestroyCameraDataUniformBuffers()
+	{
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		{
+			m_device->GetDevice().destroyBuffer(m_cameraDataUniformBuffers[i]);
+			m_device->GetDevice().freeMemory(m_cameraDataUniformBufferMemories[i]);
+		}
+	}
+
+	void VulkanContext::CreateDescriptorPool()
+	{
+		vk::DescriptorPoolSize uniformBufferDescriptorPoolSize{};
+		uniformBufferDescriptorPoolSize.type = vk::DescriptorType::eUniformBuffer;
+		uniformBufferDescriptorPoolSize.descriptorCount = 100;
+
+		std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = { uniformBufferDescriptorPoolSize };
+
+		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{};
+		descriptorPoolCreateInfo.pNext = nullptr;
+		descriptorPoolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+		descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
+		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
+		descriptorPoolCreateInfo.maxSets = 4 * m_swapchain->GetImageCount();
+
+		vk::Result result = m_device->GetDevice().createDescriptorPool(&descriptorPoolCreateInfo, nullptr, &m_descriptorPool);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan descriptor pool!");
+	}
+
+	void VulkanContext::DestroyDescriptorPool()
+	{
+		m_device->GetDevice().destroyDescriptorPool(m_descriptorPool);
+	}
+
+	void VulkanContext::AllocateGlobalDescriptorSets()
+	{
+		// DESCRIPTOR SETS
+		m_globalDescriptorSets.resize(m_swapchain->GetImageCount());
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_swapchain->GetImageCount(), m_material->GetGlobalDescriptorSetLayout());
+		vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+		descriptorSetAllocateInfo.pNext = nullptr;
+		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+		descriptorSetAllocateInfo.descriptorSetCount = m_swapchain->GetImageCount();
+		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
+
+		vk::Result result = m_device->GetDevice().allocateDescriptorSets(&descriptorSetAllocateInfo, m_globalDescriptorSets.data());
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		{
+			vk::DescriptorBufferInfo cameraDataDescriptorBufferInfo{};
+			cameraDataDescriptorBufferInfo.buffer = m_cameraDataUniformBuffers[i];
+			cameraDataDescriptorBufferInfo.offset = 0;
+			cameraDataDescriptorBufferInfo.range = sizeof(CameraData);
+
+			vk::WriteDescriptorSet cameraDataWriteDescriptorSet{};
+			cameraDataWriteDescriptorSet.dstSet = m_globalDescriptorSets[i];
+			cameraDataWriteDescriptorSet.dstBinding = 0;
+			cameraDataWriteDescriptorSet.dstArrayElement = 0;
+			cameraDataWriteDescriptorSet.descriptorType = vk::DescriptorType::eUniformBuffer;
+			cameraDataWriteDescriptorSet.descriptorCount = 1;
+			cameraDataWriteDescriptorSet.pBufferInfo = &cameraDataDescriptorBufferInfo;
+			cameraDataWriteDescriptorSet.pImageInfo = nullptr;
+			cameraDataWriteDescriptorSet.pTexelBufferView = nullptr;
+
+			std::vector<vk::WriteDescriptorSet> writeDescriptorSets = { cameraDataWriteDescriptorSet };
+
+			m_device->GetDevice().updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+		}
+	}
+
+	void VulkanContext::FreeGlobalDescriptorSets()
+	{
+		m_device->GetDevice().freeDescriptorSets(m_descriptorPool, m_globalDescriptorSets.size(), m_globalDescriptorSets.data());
+	}
+
+	std::vector<char> VulkanMaterial::ReadBinaryFile(const std::string& fileName)
+	{
+		std::ifstream file(fileName, std::ios::ate | std::ios::binary);
+		FIREFLY_ASSERT(file.is_open(), "Failed to open binary file: {0}!", fileName);
+
+		size_t fileSize = (size_t)file.tellg();
+		std::vector<char> fileBytes(fileSize);
+		file.seekg(0);
+		file.read(fileBytes.data(), fileSize);
+		file.close();
+
+		return fileBytes;
 	}
 
 	//void VulkanContext::CreateUniformBuffers()

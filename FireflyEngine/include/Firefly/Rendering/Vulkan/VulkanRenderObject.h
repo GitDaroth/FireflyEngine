@@ -10,8 +10,9 @@ namespace Firefly
 	public:
 		VulkanRenderObject(VulkanMesh* mesh, VulkanMaterial* material);
 
-		void Draw(vk::CommandBuffer commandBuffer, glm::mat4 viewMatrix, glm::mat4 projectionMatrix);
-
+		VulkanMaterial* GetMaterial();
+		VulkanMesh* GetMesh();
+		glm::mat4 GetModelMatrix() const;
 		void SetModelMatrix(glm::mat4 modelMatrix);
 
 	private:

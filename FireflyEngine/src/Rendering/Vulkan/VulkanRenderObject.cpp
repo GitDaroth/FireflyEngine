@@ -10,16 +10,19 @@ namespace Firefly
 	{
 	}
 
-	void VulkanRenderObject::Draw(vk::CommandBuffer commandBuffer, glm::mat4 viewMatrix, glm::mat4 projectionMatrix)
+	VulkanMaterial* VulkanRenderObject::GetMaterial()
 	{
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_material->GetPipeline());
+		return m_material;
+	}
 
-		glm::mat4 matrix = projectionMatrix * viewMatrix * m_modelMatrix;
-		commandBuffer.pushConstants(m_material->GetPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, sizeof(glm::mat4), &matrix);
+	VulkanMesh* VulkanRenderObject::GetMesh()
+	{
+		return m_mesh;
+	}
 
-		m_mesh->Bind(commandBuffer);
-
-		commandBuffer.drawIndexed(m_mesh->GetIndexCount(), 1, 0, 0, 0);
+	glm::mat4 VulkanRenderObject::GetModelMatrix() const
+	{
+		return m_modelMatrix;
 	}
 
 	void VulkanRenderObject::SetModelMatrix(glm::mat4 modelMatrix)

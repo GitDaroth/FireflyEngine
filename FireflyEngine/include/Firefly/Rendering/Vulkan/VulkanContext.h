@@ -26,6 +26,14 @@ namespace Firefly
 	//	glm::mat4* modelMatrixData; // contains the model matrices of all objects in the scene
 	//};
 
+	struct CameraData
+	{
+		glm::vec4 position;
+		glm::mat4 viewMatrix;
+		glm::mat4 projectionMatrix;
+		glm::mat4 viewProjectionMatrix;
+	};
+
 	class VulkanContext
 	{
 	private:
@@ -57,6 +65,13 @@ namespace Firefly
 		void DestroyCommandPool();
 		void AllocateCommandBuffers();
 		void FreeCommandBuffers();
+
+		void CreateCameraDataUniformBuffers();
+		void DestroyCameraDataUniformBuffers();
+		void CreateDescriptorPool();
+		void DestroyDescriptorPool();
+		void AllocateGlobalDescriptorSets();
+		void FreeGlobalDescriptorSets();
 
 		// Per Shader
 		//void CreateUniformBuffers();
@@ -118,6 +133,11 @@ namespace Firefly
 
 		vk::CommandPool m_commandPool;
 		std::vector<vk::CommandBuffer> m_commandBuffers;
+
+		vk::DescriptorPool m_descriptorPool;
+		std::vector<vk::DescriptorSet> m_globalDescriptorSets;
+		std::vector<vk::Buffer> m_cameraDataUniformBuffers;
+		std::vector<vk::DeviceMemory> m_cameraDataUniformBufferMemories;
 
 		//vk::DescriptorPool m_descriptorPool;
 		//vk::DescriptorSetLayout m_descriptorSetLayout;
