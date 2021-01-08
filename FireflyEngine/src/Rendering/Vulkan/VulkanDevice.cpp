@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanDevice.h"
 
+#include "Rendering/Vulkan/VulkanUtils.h"
+
 namespace Firefly
 {
 	VulkanDevice::VulkanDevice(vk::PhysicalDevice physicalDevice, VulkanSurface* surface, 
@@ -50,19 +52,7 @@ namespace Firefly
 			queueCreateInfos.push_back(presentQueueCreateInfo);
 		}
 
-		vk::DeviceCreateInfo deviceCreateInfo{};
-		deviceCreateInfo.pNext = nullptr;
-		deviceCreateInfo.flags = {};
-		deviceCreateInfo.enabledExtensionCount = requiredDeviceExtensions.size();
-		deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
-		deviceCreateInfo.enabledLayerCount = requiredDeviceLayers.size();
-		deviceCreateInfo.ppEnabledLayerNames = requiredDeviceLayers.data();
-		deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
-		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-		deviceCreateInfo.pEnabledFeatures = nullptr;
-
-		vk::Result result = m_physicalDevice.createDevice(&deviceCreateInfo, nullptr, &m_device);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan logical device!");
+		m_device = VulkanUtils::CreateDevice(physicalDevice, requiredDeviceExtensions, requiredDeviceLayers, queueCreateInfos);
 	}
 
 	VulkanDevice::~VulkanDevice()

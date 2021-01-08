@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanSurface.h"
 
-#include "Rendering/Vulkan/VulkanDevice.h"
+#include "Rendering/Vulkan/VulkanUtils.h"
 #include <GLFW/glfw3.h>
 
 namespace Firefly
@@ -12,10 +12,7 @@ namespace Firefly
 		m_glfwWindow = (GLFWwindow*)(window);
 		FIREFLY_ASSERT(m_glfwWindow, "Vulkan requires a GLFWwindow pointer!");
 
-		VkSurfaceKHR surface;
-		vk::Result result = vk::Result(glfwCreateWindowSurface(m_instance, m_glfwWindow, nullptr, &surface));
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan window surface!");
-		m_surface = vk::SurfaceKHR(surface);
+		m_surface = VulkanUtils::CreateSurface(m_instance, m_glfwWindow);
 	}
 
 	VulkanSurface::~VulkanSurface()

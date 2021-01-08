@@ -361,7 +361,7 @@ namespace Firefly
 
 		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{};
 		descriptorPoolCreateInfo.pNext = nullptr;
-		descriptorPoolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet;
+		descriptorPoolCreateInfo.flags = {};
 		descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
 		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
 		descriptorPoolCreateInfo.maxSets = 4 * m_swapchain->GetImageCount();
@@ -372,6 +372,7 @@ namespace Firefly
 
 	void VulkanContext::DestroyDescriptorPool()
 	{
+		m_device->GetDevice().resetDescriptorPool(m_descriptorPool, {});
 		m_device->GetDevice().destroyDescriptorPool(m_descriptorPool);
 	}
 
@@ -414,7 +415,7 @@ namespace Firefly
 
 	void VulkanContext::FreeGlobalDescriptorSets()
 	{
-		m_device->GetDevice().freeDescriptorSets(m_descriptorPool, m_globalDescriptorSets.size(), m_globalDescriptorSets.data());
+		//m_device->GetDevice().freeDescriptorSets(m_descriptorPool, m_globalDescriptorSets.size(), m_globalDescriptorSets.data());
 	}
 
 	std::vector<char> VulkanMaterial::ReadBinaryFile(const std::string& fileName)
@@ -602,7 +603,7 @@ namespace Firefly
 	{
 		vk::AttachmentDescription colorAttachmentDescription{};
 		colorAttachmentDescription.flags = {};
-		colorAttachmentDescription.format = m_swapchain->GetFormat().format;
+		colorAttachmentDescription.format = m_swapchain->GetImageFormat();
 		colorAttachmentDescription.samples = vk::SampleCountFlagBits::e1;
 		colorAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
 		colorAttachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
