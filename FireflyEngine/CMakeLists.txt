@@ -76,14 +76,8 @@ set(renderingOpenGLFiles
 set(renderingVulkanFiles
 	include/Firefly/Rendering/Vulkan/VulkanContext.h
 	src/Rendering/Vulkan/VulkanContext.cpp
-	include/Firefly/Rendering/Vulkan/VulkanInstance.h
-	src/Rendering/Vulkan/VulkanInstance.cpp
-	include/Firefly/Rendering/Vulkan/VulkanSurface.h
-	src/Rendering/Vulkan/VulkanSurface.cpp
 	include/Firefly/Rendering/Vulkan/VulkanDevice.h
 	src/Rendering/Vulkan/VulkanDevice.cpp
-	include/Firefly/Rendering/Vulkan/VulkanDebugMessenger.h
-	src/Rendering/Vulkan/VulkanDebugMessenger.cpp
 	include/Firefly/Rendering/Vulkan/VulkanSwapchain.h
 	src/Rendering/Vulkan/VulkanSwapchain.cpp
 	include/Firefly/Rendering/Vulkan/VulkanMesh.h
@@ -93,7 +87,9 @@ set(renderingVulkanFiles
 	include/Firefly/Rendering/Vulkan/VulkanRenderObject.h
 	src/Rendering/Vulkan/VulkanRenderObject.cpp
 	include/Firefly/Rendering/Vulkan/VulkanUtils.h
-	src/Rendering/Vulkan/VulkanUtils.cpp)
+	src/Rendering/Vulkan/VulkanUtils.cpp
+	include/Firefly/Rendering/Vulkan/VulkanRenderer.h
+	src/Rendering/Vulkan/VulkanRenderer.cpp)
 
 set(sceneFiles
 	include/Firefly/Scene/Scene.h

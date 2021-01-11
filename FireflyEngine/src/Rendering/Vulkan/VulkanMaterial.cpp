@@ -26,6 +26,10 @@ namespace Firefly
 	VulkanMaterial::~VulkanMaterial()
 	{
 		DestroyPipeline();
+	
+		for (auto shaderModule : m_shaderModules)
+			m_device.destroyShaderModule(shaderModule);
+		m_shaderModules.clear();
 	}
 
 	vk::Pipeline VulkanMaterial::GetPipeline() const
@@ -250,6 +254,8 @@ namespace Firefly
 		vk::Result result = m_device.createShaderModule(&shaderModuleCreateInfo, nullptr, &shaderModule);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan vertex shader module!");
 
+		m_shaderModules.push_back(shaderModule);
+
 		vk::PipelineShaderStageCreateInfo shaderStageCreateInfo{};
 		shaderStageCreateInfo.pNext = nullptr;
 		shaderStageCreateInfo.flags = {};
@@ -259,6 +265,22 @@ namespace Firefly
 		shaderStageCreateInfo.pSpecializationInfo = nullptr;
 
 		return shaderStageCreateInfo;
+	}
+
+	std::vector<char> VulkanMaterial::ReadBinaryFile(const std::string& fileName)
+	{
+		std::ifstream file(fileName, std::ios::ate | std::ios::binary);
+
+		if (!file.is_open())
+			throw std::runtime_error("Failed to open binary file!");
+
+		size_t fileSize = (size_t)file.tellg();
+		std::vector<char> fileBytes(fileSize);
+		file.seekg(0);
+		file.read(fileBytes.data(), fileSize);
+		file.close();
+
+		return fileBytes;
 	}
 
 	void VulkanMaterial::PrintShaderReflection(const std::vector<char>& shaderCode)

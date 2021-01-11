@@ -15,13 +15,11 @@ namespace Firefly
 		void SetEventCallback(const std::function<void(std::shared_ptr<Event>)>& eventCallback);
 		void SetTitle(const std::string& title);
 		void SetSize(int width, int height);
-		void EnableVSync(bool enabled);
 
 		const std::function<void(std::shared_ptr<Event>)>& GetEventCallback();
 		const std::string& GetTitle() const;
-		int GetWidth() const;
-		int GetHeight() const;
-		bool IsVSyncEnabled() const;
+		virtual int GetWidth() const = 0;
+		virtual int GetHeight() const = 0;
 
 		int ToFireflyKeyCode(int keyCode) const;
 		int ToFireflyMouseButtonCode(int keyCode) const;
@@ -32,7 +30,6 @@ namespace Firefly
 	protected:
 		virtual void OnSetTitle(const std::string& title) = 0;
 		virtual void OnSetSize(int width, int height) = 0;
-		virtual void OnEnableVSync(bool enabled) = 0;
 		virtual void SetupKeyCodeConversionMap() = 0;
 		virtual void SetupMouseButtonCodeConversionMap() = 0;
 		virtual void SetupGamepadButtonCodeConversionMap() = 0;
@@ -40,9 +37,6 @@ namespace Firefly
 		std::function<void(std::shared_ptr<Event>)> m_eventCallback;
 		std::shared_ptr<GraphicsContext> m_context;
 		std::string m_title;
-		int m_width;
-		int m_height;
-		bool m_isVSyncEnabled;
 		std::unordered_map<int, int> m_keyCodeConversionMap; // SpecificKeyCode, FireflyKeyCode
 		std::unordered_map<int, int> m_mouseButtonCodeConversionMap; // SpecificMouseButtonCode, FireflyMouseButtonCode
 		std::unordered_map<int, int> m_gamepadButtonCodeConversionMap; // SpecificGamepadButtonCode, FireflyGamepadButtonCode

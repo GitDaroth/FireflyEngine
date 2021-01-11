@@ -9,33 +9,22 @@
 
 namespace Firefly
 {
-	bool WindowsWindow::s_isWindowInitialized = false;
-	int WindowsWindow::s_windowCount = 0;
-
 	WindowsWindow::WindowsWindow(const std::string& title, int width, int height) :
 		Window(title, width, height)
 	{
-		if (!s_isWindowInitialized)
+		int success = glfwInit();
+		FIREFLY_ASSERT(success, "Unable to initialize GLFW!");
+
+		glfwSetErrorCallback([](int code, const char* description)
 		{
-			int success = glfwInit();
-			FIREFLY_ASSERT(success, "Unable to initialize GLFW!");
-			s_isWindowInitialized = true;
+			Logger::Error("FireflyEngine", "GLFW error [{0}]: {1}", code, description);
+		});
 
-			glfwSetErrorCallback([](int code, const char* description)
-			{
-				Logger::Error("FireflyEngine", "GLFW error [{0}]: {1}", code, description);
-			});
-		}
+		if(RenderingAPI::GetType() == RenderingAPI::Type::Vulkan)
+			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // tell GLFW not to use OpenGL for context creation
 
-		//glfwWindowHint(GLFW_SAMPLES, 8);
-		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // tell GLFW not to use OpenGL for context creation
 		m_window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
 		FIREFLY_ASSERT(m_window, "Unable to create window with GLFW!");
-		s_windowCount++;
-
-		//m_context = RenderingAPI::CreateContext();
-		//m_context->Init(m_window);
-		VulkanContext::GetSingleton()->Init(m_window);
 
 		SetupWindowEvents();
 		SetupInputEvents();
@@ -44,17 +33,32 @@ namespace Firefly
 	WindowsWindow::~WindowsWindow()
 	{
 		glfwDestroyWindow(m_window);
-		s_windowCount--;
-		if (s_windowCount == 0)
-			glfwTerminate();
+		glfwTerminate();
 	}
 
 	void WindowsWindow::OnUpdate(float deltaTime)
 	{
 		glfwPollEvents();
 		PollGamepadEvents();
-		VulkanContext::GetSingleton()->Draw();
-		//m_context->SwapBuffers();
+	}
+
+	int WindowsWindow::GetHeight() const
+	{
+		int windowWidth, windowHeight;
+		glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
+		return windowHeight;
+	}
+
+	int WindowsWindow::GetWidth() const
+	{
+		int windowWidth, windowHeight;
+		glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
+		return windowWidth;
+	}
+
+	GLFWwindow* WindowsWindow::GetGlfwWindow()
+	{
+		return m_window;
 	}
 
 	void WindowsWindow::OnSetTitle(const std::string& title)
@@ -68,14 +72,6 @@ namespace Firefly
 		glfwGetWindowSize(m_window, &windowWidth, &windowHeight);
 		if(width != windowWidth || height != windowHeight)
 			glfwSetWindowSize(m_window, width, height);
-	}
-
-	void WindowsWindow::OnEnableVSync(bool enabled)
-	{
-		//if (enabled)
-		//	glfwSwapInterval(1);
-		//else
-		//	glfwSwapInterval(0);
 	}
 
 	void WindowsWindow::SetupWindowEvents()

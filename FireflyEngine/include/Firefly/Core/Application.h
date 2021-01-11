@@ -1,8 +1,12 @@
 #pragma once
 
 #include "Window/Window.h"
+#include "Rendering/RenderingAPI.h"
+
 #include "Event/WindowEvent.h"
-#include "Input/Input.h"
+#include "Event/KeyEvent.h"
+#include "Event/MouseEvent.h"
+#include "Event/GamepadEvent.h"
 
 namespace Firefly
 {
@@ -25,7 +29,8 @@ namespace Firefly
 		virtual void OnMouseEvent(std::shared_ptr<MouseEvent> event) = 0;
 		virtual void OnGamepadEvent(std::shared_ptr<GamepadEvent> event) = 0;
 
-		std::unique_ptr<Window> m_window;
+		std::shared_ptr<Window> m_window;
+		std::shared_ptr<GraphicsContext> m_graphicsContext;
 		bool m_isShutdownRequested = false;
 	};
 }

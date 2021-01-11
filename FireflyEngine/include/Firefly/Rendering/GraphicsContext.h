@@ -2,13 +2,12 @@
 
 namespace Firefly
 {
+	class Window;
+
 	class GraphicsContext
 	{
 	public:
-		GraphicsContext() {}
-		virtual ~GraphicsContext() {}
-
-		virtual void Init(void* window) = 0;
-		virtual void SwapBuffers() = 0;
+		virtual void Init(std::shared_ptr<Window> window) = 0;
+		virtual void Destroy() = 0;
 	};
 }

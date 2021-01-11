@@ -27,6 +27,7 @@ namespace Firefly
 			float deltaTime = CalculateDeltaTime();
 
 			m_application->Update(deltaTime);
+
 			if (m_application->IsShutdownRequested())
 				m_isRunning = false;
 		}

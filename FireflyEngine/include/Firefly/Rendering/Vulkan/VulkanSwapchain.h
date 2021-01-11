@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Rendering/Vulkan/VulkanDevice.h"
+#include "Rendering/Vulkan/VulkanContext.h"
 #include "Rendering/Vulkan/VulkanUtils.h"
 
 namespace Firefly
@@ -8,8 +8,8 @@ namespace Firefly
 	class VulkanSwapchain
 	{
 	public:
-		VulkanSwapchain(VulkanDevice* device, VulkanSurface* surface);
-		~VulkanSwapchain();
+		void Init(std::shared_ptr<VulkanContext> context);
+		void Destroy();
 
 		vk::SwapchainKHR GetSwapchain() const;
 		uint32_t GetImageCount() const;

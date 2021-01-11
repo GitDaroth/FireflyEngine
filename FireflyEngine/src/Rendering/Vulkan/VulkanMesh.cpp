@@ -1,7 +1,7 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanMesh.h"
 
-#include "Rendering/Vulkan/VulkanContext.h"
+#include "Rendering/Vulkan/VulkanUtils.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -9,14 +9,20 @@
 
 namespace Firefly
 {
-	VulkanMesh::VulkanMesh(VulkanDevice* device, const std::string& path, bool flipTexCoords) :
-		m_device(device->GetDevice())
+	VulkanMesh::VulkanMesh(VulkanDevice* device, vk::CommandPool commandPool, vk::Queue queue, const std::string& path, bool flipTexCoords) :
+		m_device(device->GetDevice()),
+		m_physicalDevice(device->GetPhysicalDevice()),
+		m_commandPool(commandPool),
+		m_queue(queue)
 	{
 		Load(path, flipTexCoords);
 	}
 
-	VulkanMesh::VulkanMesh(VulkanDevice* device, std::vector<Vertex> vertices, std::vector<uint32_t> indices) :
-		m_device(device->GetDevice())
+	VulkanMesh::VulkanMesh(VulkanDevice* device, vk::CommandPool commandPool, vk::Queue queue, std::vector<Vertex> vertices, std::vector<uint32_t> indices) :
+		m_device(device->GetDevice()),
+		m_physicalDevice(device->GetPhysicalDevice()),
+		m_commandPool(commandPool),
+		m_queue(queue)
 	{
 		Init(vertices, indices);
 	}
@@ -59,7 +65,7 @@ namespace Firefly
 
 		vk::Buffer stagingVertexBuffer;
 		vk::DeviceMemory stagingVertexBufferMemory;
-		VulkanContext::GetSingleton()->CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingVertexBuffer, stagingVertexBufferMemory);
+		VulkanUtils::CreateBuffer(m_device, m_physicalDevice, bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingVertexBuffer, stagingVertexBufferMemory);
 
 		void* mappedMemory;
 		m_device.mapMemory(stagingVertexBufferMemory, 0, bufferSize, {}, &mappedMemory);
@@ -68,9 +74,9 @@ namespace Firefly
 
 		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eVertexBuffer;
 		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		VulkanContext::GetSingleton()->CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_vertexBuffer, m_vertexBufferMemory);
+		VulkanUtils::CreateBuffer(m_device, m_physicalDevice, bufferSize, bufferUsageFlags, memoryPropertyFlags, m_vertexBuffer, m_vertexBufferMemory);
 
-		VulkanContext::GetSingleton()->CopyBuffer(stagingVertexBuffer, m_vertexBuffer, bufferSize);
+		VulkanUtils::CopyBuffer(m_device, m_commandPool, m_queue, stagingVertexBuffer, m_vertexBuffer, bufferSize);
 
 		m_device.destroyBuffer(stagingVertexBuffer);
 		m_device.freeMemory(stagingVertexBufferMemory);
@@ -82,7 +88,7 @@ namespace Firefly
 
 		vk::Buffer stagingIndexBuffer;
 		vk::DeviceMemory stagingIndexBufferMemory;
-		VulkanContext::GetSingleton()->CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingIndexBuffer, stagingIndexBufferMemory);
+		VulkanUtils::CreateBuffer(m_device, m_physicalDevice, bufferSize, bufferUsageFlags, memoryPropertyFlags, stagingIndexBuffer, stagingIndexBufferMemory);
 
 		m_device.mapMemory(stagingIndexBufferMemory, 0, bufferSize, {}, &mappedMemory);
 		memcpy(mappedMemory, indices.data(), bufferSize);
@@ -90,9 +96,9 @@ namespace Firefly
 
 		bufferUsageFlags = vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eIndexBuffer;
 		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		VulkanContext::GetSingleton()->CreateBuffer(bufferSize, bufferUsageFlags, memoryPropertyFlags, m_indexBuffer, m_indexBufferMemory);
+		VulkanUtils::CreateBuffer(m_device, m_physicalDevice, bufferSize, bufferUsageFlags, memoryPropertyFlags, m_indexBuffer, m_indexBufferMemory);
 
-		VulkanContext::GetSingleton()->CopyBuffer(stagingIndexBuffer, m_indexBuffer, bufferSize);
+		VulkanUtils::CopyBuffer(m_device, m_commandPool, m_queue, stagingIndexBuffer, m_indexBuffer, bufferSize);
 
 		m_device.destroyBuffer(stagingIndexBuffer);
 		m_device.freeMemory(stagingIndexBufferMemory);

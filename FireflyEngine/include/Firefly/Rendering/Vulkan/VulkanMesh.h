@@ -17,8 +17,8 @@ namespace Firefly
 			glm::vec2 texCoords;
 		};
 
-		VulkanMesh(VulkanDevice* device, const std::string& path, bool flipTexCoords = false);
-		VulkanMesh(VulkanDevice* device, std::vector<Vertex> vertices, std::vector<uint32_t> indices);
+		VulkanMesh(VulkanDevice* device, vk::CommandPool commandPool, vk::Queue queue, const std::string& path, bool flipTexCoords = false);
+		VulkanMesh(VulkanDevice* device, vk::CommandPool commandPool, vk::Queue queue, std::vector<Vertex> vertices, std::vector<uint32_t> indices);
 		~VulkanMesh();
 
 		void Bind(vk::CommandBuffer commandBuffer);
@@ -39,5 +39,8 @@ namespace Firefly
 		vk::DeviceMemory m_indexBufferMemory;
 
 		vk::Device m_device;
+		vk::PhysicalDevice m_physicalDevice;
+		vk::CommandPool m_commandPool;
+		vk::Queue m_queue;
 	};
 }

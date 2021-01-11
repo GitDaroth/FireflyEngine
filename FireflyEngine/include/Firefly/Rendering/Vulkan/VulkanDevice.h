@@ -1,16 +1,16 @@
 #pragma once
 
-#include "Rendering/Vulkan/VulkanSurface.h"
+#include <vulkan/vulkan.hpp>
 
 namespace Firefly
 {
 	class VulkanDevice
 	{
 	public:
-		VulkanDevice(vk::PhysicalDevice physicalDevice, VulkanSurface* surface,
-					 const std::vector<const char*>& requiredDeviceExtensions,
-					 const std::vector<const char*>& requiredDeviceLayers);
-		~VulkanDevice();
+		void Init(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface,
+			const std::vector<const char*>& requiredDeviceExtensions,
+			const std::vector<const char*>& requiredDeviceLayers);
+		void Destroy();
 
 		vk::Device GetDevice() const;
 		vk::PhysicalDevice GetPhysicalDevice() const;
@@ -19,6 +19,8 @@ namespace Firefly
 		vk::Queue GetPresentQueue() const;
 		uint32_t GetGraphicsQueueFamilyIndex() const;
 		uint32_t GetPresentQueueFamilyIndex() const;
+
+		void WaitIdle();
 
 	private:
 		void FindRequiredQueueFamilyIndices(vk::SurfaceKHR surface);

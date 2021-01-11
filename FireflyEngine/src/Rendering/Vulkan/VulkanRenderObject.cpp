@@ -10,12 +10,12 @@ namespace Firefly
 	{
 	}
 
-	VulkanMaterial* VulkanRenderObject::GetMaterial()
+	VulkanMaterial* VulkanRenderObject::GetMaterial() const
 	{
 		return m_material;
 	}
 
-	VulkanMesh* VulkanRenderObject::GetMesh()
+	VulkanMesh* VulkanRenderObject::GetMesh() const
 	{
 		return m_mesh;
 	}

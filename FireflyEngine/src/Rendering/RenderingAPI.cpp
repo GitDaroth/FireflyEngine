@@ -1,26 +1,48 @@
 #include "pch.h"
 #include "Rendering/RenderingAPI.h"
 
-#include "Rendering/OpenGL/OpenGLContext.h"
-#include "Rendering/OpenGL/OpenGLShader.h"
-#include "Rendering/OpenGL/OpenGLTexture.h"
-#include "Rendering/OpenGL/OpenGLVertexArray.h"
-#include "Rendering/OpenGL/OpenGLVertexBuffer.h"
-#include "Rendering/OpenGL/OpenGLIndexBuffer.h"
-#include "Rendering/OpenGL/OpenGLRenderFunctions.h"
+//#include "Rendering/OpenGL/OpenGLContext.h"
+//#include "Rendering/OpenGL/OpenGLShader.h"
+//#include "Rendering/OpenGL/OpenGLTexture.h"
+//#include "Rendering/OpenGL/OpenGLVertexArray.h"
+//#include "Rendering/OpenGL/OpenGLVertexBuffer.h"
+//#include "Rendering/OpenGL/OpenGLIndexBuffer.h"
+//#include "Rendering/OpenGL/OpenGLRenderFunctions.h"
+
+#include "Rendering/Vulkan/VulkanContext.h"
+#include "Rendering/Vulkan/VulkanRenderer.h"
 
 namespace Firefly
 {
-	RenderingAPI::Type RenderingAPI::s_type = RenderingAPI::Type::OpenGL;
+	RenderingAPI::Type RenderingAPI::s_type = RenderingAPI::Type::Vulkan;
 
 	std::shared_ptr<GraphicsContext> RenderingAPI::CreateContext()
 	{
 		switch (s_type)
 		{
 		case RenderingAPI::Type::OpenGL:
-			return std::make_shared<OpenGLContext>();
-			break;
+			//return std::make_shared<OpenGLContext>();
+			//break;
 		case RenderingAPI::Type::Vulkan:
+			return std::make_shared<VulkanContext>();
+			break;
+		case RenderingAPI::Type::DirectX12:
+		case RenderingAPI::Type::Metal:
+		case RenderingAPI::Type::None:
+		default:
+			return nullptr;
+			break;
+		}
+	}
+
+	std::shared_ptr<Renderer> RenderingAPI::CreateRenderer()
+	{
+		switch (s_type)
+		{
+		case RenderingAPI::Type::OpenGL:
+		case RenderingAPI::Type::Vulkan:
+			return std::make_shared<VulkanRenderer>();
+			break;
 		case RenderingAPI::Type::DirectX12:
 		case RenderingAPI::Type::Metal:
 		case RenderingAPI::Type::None:
@@ -35,8 +57,8 @@ namespace Firefly
 		switch (s_type)
 		{
 		case RenderingAPI::Type::OpenGL:
-			return std::make_shared<OpenGLShader>();
-			break;
+			//return std::make_shared<OpenGLShader>();
+			//break;
 		case RenderingAPI::Type::Vulkan:
 		case RenderingAPI::Type::DirectX12:
 		case RenderingAPI::Type::Metal:
@@ -52,8 +74,8 @@ namespace Firefly
 		switch (s_type)
 		{
 		case RenderingAPI::Type::OpenGL:
-			return std::make_shared<OpenGLTexture2D>();
-			break;
+			//return std::make_shared<OpenGLTexture2D>();
+			//break;
 		case RenderingAPI::Type::Vulkan:
 		case RenderingAPI::Type::DirectX12:
 		case RenderingAPI::Type::Metal:
@@ -69,8 +91,8 @@ namespace Firefly
 		switch (s_type)
 		{
 		case RenderingAPI::Type::OpenGL:
-			return std::make_shared<OpenGLVertexArray>();
-			break;
+			//return std::make_shared<OpenGLVertexArray>();
+			//break;
 		case RenderingAPI::Type::Vulkan:
 		case RenderingAPI::Type::DirectX12:
 		case RenderingAPI::Type::Metal:
@@ -86,8 +108,8 @@ namespace Firefly
 		switch (s_type)
 		{
 		case RenderingAPI::Type::OpenGL:
-			return std::make_shared<OpenGLVertexBuffer>();
-			break;
+			//return std::make_shared<OpenGLVertexBuffer>();
+			//break;
 		case RenderingAPI::Type::Vulkan:
 		case RenderingAPI::Type::DirectX12:
 		case RenderingAPI::Type::Metal:
@@ -103,8 +125,8 @@ namespace Firefly
 		switch (s_type)
 		{
 		case RenderingAPI::Type::OpenGL:
-			return std::make_shared<OpenGLIndexBuffer>();
-			break;
+			//return std::make_shared<OpenGLIndexBuffer>();
+			//break;
 		case RenderingAPI::Type::Vulkan:
 		case RenderingAPI::Type::DirectX12:
 		case RenderingAPI::Type::Metal:
@@ -120,8 +142,8 @@ namespace Firefly
 		switch (s_type)
 		{
 		case RenderingAPI::Type::OpenGL:
-			return std::make_shared<OpenGLRenderFunctions>();
-			break;
+			//return std::make_shared<OpenGLRenderFunctions>();
+			//break;
 		case RenderingAPI::Type::Vulkan:
 		case RenderingAPI::Type::DirectX12:
 		case RenderingAPI::Type::Metal:

@@ -8,13 +8,14 @@
 
 SandboxApp::SandboxApp()
 {
-	//m_renderer = std::make_shared<Firefly::Renderer>();
+	m_renderer = Firefly::RenderingAPI::CreateRenderer();
+	m_renderer->Init(m_graphicsContext);
 
 	//m_scene = std::make_shared<Firefly::Scene>();
 
-	//m_camera = std::make_shared<Firefly::Camera>(m_window->GetWidth(), m_window->GetHeight());
-	//m_camera->SetPosition(glm::vec3(0.f, 0.f, 2.f));
-	//m_cameraController = std::make_shared<CameraController>(m_camera);
+	m_camera = std::make_shared<Firefly::Camera>(m_window->GetWidth(), m_window->GetHeight());
+	m_camera->SetPosition(glm::vec3(0.f, 0.f, 2.f));
+	m_cameraController = std::make_shared<CameraController>(m_camera);
 
 	//std::shared_ptr<Firefly::Shader> shader = Firefly::RenderingAPI::CreateShader();
 	//shader->Init("assets/shaders/pbr.glsl");
@@ -139,31 +140,34 @@ SandboxApp::SandboxApp()
 
 SandboxApp::~SandboxApp()
 {
+	m_renderer->Destroy();
 }
 
 void SandboxApp::OnUpdate(float deltaTime)
 {
-	//m_cameraController->OnUpdate(deltaTime);
+	m_cameraController->OnUpdate(deltaTime);
 
-	//Firefly::RenderingAPI::GetRenderFunctions()->SetClearColor(glm::vec4(0.1f, 0.1f, 0.1f, 1.f));
-	//Firefly::RenderingAPI::GetRenderFunctions()->Clear();
-
-	//m_renderer->DrawScene(m_scene, m_camera);
+	//m_renderer->BeginDrawRecording();
+	//m_renderer->RecordDraw(Object1);
+	//m_renderer->RecordDraw(Object2);
+	//m_renderer->RecordDraw(Object3);
+	//m_renderer->EndDrawRecording();
+	m_renderer->SubmitDraw(m_camera);
 }
 
 void SandboxApp::OnWindowEvent(std::shared_ptr<Firefly::WindowEvent> event)
 {
-	//if (auto resizeEvent = event->AsType<Firefly::WindowResizeEvent>())
-	//{
-	//	int width = resizeEvent->GetWidth();
-	//	int height = resizeEvent->GetHeight();
+	if (auto resizeEvent = event->AsType<Firefly::WindowResizeEvent>())
+	{
+		int width = resizeEvent->GetWidth();
+		int height = resizeEvent->GetHeight();
 
-	//	if (width != 0 && height != 0)
-	//	{
-	//		m_camera->SetWidth(width);
-	//		m_camera->SetHeight(height);
-	//	}
-	//}
+		if (width != 0 && height != 0)
+		{
+			m_camera->SetWidth(width);
+			m_camera->SetHeight(height);
+		}
+	}
 }
 
 void SandboxApp::OnKeyEvent(std::shared_ptr<Firefly::KeyEvent> event)
@@ -220,7 +224,7 @@ void SandboxApp::OnKeyEvent(std::shared_ptr<Firefly::KeyEvent> event)
 
 void SandboxApp::OnMouseEvent(std::shared_ptr<Firefly::MouseEvent> event)
 {
-	//m_cameraController->OnMouseEvent(event);
+	m_cameraController->OnMouseEvent(event);
 }
 
 void SandboxApp::OnGamepadEvent(std::shared_ptr<Firefly::GamepadEvent> event)

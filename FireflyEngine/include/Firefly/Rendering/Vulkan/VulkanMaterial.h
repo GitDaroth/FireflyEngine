@@ -33,6 +33,7 @@ namespace Firefly
 		vk::PipelineLayout m_pipelineLayout;
 		vk::Pipeline m_pipeline;
 		std::vector<vk::PipelineShaderStageCreateInfo> m_shaderStageCreateInfos;
+		std::vector<vk::ShaderModule> m_shaderModules;
 
 		vk::DescriptorSetLayout m_globalDescriptorSetLayout;
 	};

@@ -2,29 +2,29 @@
 #include "Core/Application.h"
 
 #include "Window/WindowsWindow.h"
-#include "Rendering/RenderingAPI.h"
+#include "Input/Input.h"
 
 namespace Firefly
 {
 	Application::Application() 
 	{
-#ifdef FIREFLY_WINDOWS
-		m_window = std::make_unique<WindowsWindow>("Firefly Engine", 1280, 720);
-#endif
-
+		m_window = std::make_shared<WindowsWindow>("Firefly Engine", 1280, 720);
 		m_window->SetEventCallback(std::bind(&Application::OnEvent, this, std::placeholders::_1));
+
+		m_graphicsContext = RenderingAPI::CreateContext();
+		m_graphicsContext->Init(m_window);
 	}
 
 	Application::~Application()
 	{
+		m_graphicsContext->Destroy();
 	}
 
 	void Application::Update(float deltaTime)
 	{
-		OnUpdate(deltaTime);
-
 		m_window->SetTitle(std::to_string(1.f / deltaTime));
 		m_window->OnUpdate(deltaTime);
+		OnUpdate(deltaTime);
 	}
 
 	void Application::RequestShutdown()
@@ -53,9 +53,6 @@ namespace Firefly
 			{
 				int width = resizeEvent->GetWidth();
 				int height = resizeEvent->GetHeight();
-
-				//if (width != 0 && height != 0)
-				//	RenderingAPI::GetRenderFunctions()->SetViewport(0, 0, width, height);
 			}
 		}
 		else if (auto keyEvent = event->AsType<KeyEvent>())

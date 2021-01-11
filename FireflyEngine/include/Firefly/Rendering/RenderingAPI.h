@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Rendering/GraphicsContext.h"
+#include "Rendering/Renderer.h"
 #include "Rendering/Shader.h"
 #include "Rendering/VertexArray.h"
 #include "Rendering/VertexBuffer.h"
@@ -23,6 +24,7 @@ namespace Firefly
 		};  
 
 		static std::shared_ptr<GraphicsContext> CreateContext();
+		static std::shared_ptr<Renderer> CreateRenderer();
 		static std::shared_ptr<Shader> CreateShader();
 		static std::shared_ptr<Texture2D> CreateTexture2D();
 		static std::shared_ptr<VertexArray> CreateVertexArray();

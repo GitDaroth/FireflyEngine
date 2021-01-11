@@ -29,4 +29,15 @@ namespace Firefly::VulkanUtils
 
 	vk::SwapchainKHR CreateSwapchain(vk::Device device, vk::PhysicalDevice physicalDevice, 
 									 vk::SurfaceKHR surface, SwapchainData& swapchainData);
+
+	vk::CommandBuffer BeginOneTimeCommandBuffer(vk::Device device, vk::CommandPool commandPool);
+	void EndCommandBuffer(vk::Device device, vk::CommandBuffer commandBuffer, vk::CommandPool commandPool, vk::Queue queue);
+	void CreateBuffer(vk::Device device, vk::PhysicalDevice physicalDevice, vk::DeviceSize bufferSize, vk::BufferUsageFlags bufferUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Buffer& buffer, vk::DeviceMemory& bufferMemory);
+	void CopyBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Buffer sourceBuffer, vk::Buffer destinationBuffer, vk::DeviceSize size);
+	void CreateImage(vk::Device device, vk::PhysicalDevice physicalDevice, uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits sampleCount, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags imageUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Image& image, vk::DeviceMemory& imageMemory);
+	vk::ImageView CreateImageView(vk::Device device, vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags);
+	void TransitionImageLayout(vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+	vk::Format FindSupportedFormat(vk::PhysicalDevice physicalDevice, const std::vector<vk::Format>& formatCandidates, vk::ImageTiling tiling, vk::FormatFeatureFlags formatFeatureFlags);
+	vk::Format FindDepthFormat(vk::PhysicalDevice physicalDevice);
+	bool HasStencilComponent(vk::Format format);
 }

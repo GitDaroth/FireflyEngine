@@ -5,12 +5,13 @@
 
 namespace Firefly
 {
-	VulkanDevice::VulkanDevice(vk::PhysicalDevice physicalDevice, VulkanSurface* surface, 
-							   const std::vector<const char*>& requiredDeviceExtensions, 
-							   const std::vector<const char*>& requiredDeviceLayers) :
-		m_physicalDevice(physicalDevice)
+	void VulkanDevice::Init(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface,
+							const std::vector<const char*>& requiredDeviceExtensions, 
+							const std::vector<const char*>& requiredDeviceLayers)
 	{
-		FindRequiredQueueFamilyIndices(surface->GetSurface());
+		m_physicalDevice = physicalDevice;
+
+		FindRequiredQueueFamilyIndices(surface);
 
 		std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 		if (m_graphicsQueueFamilyIndex == m_presentQueueFamilyIndex)
@@ -55,7 +56,7 @@ namespace Firefly
 		m_device = VulkanUtils::CreateDevice(physicalDevice, requiredDeviceExtensions, requiredDeviceLayers, queueCreateInfos);
 	}
 
-	VulkanDevice::~VulkanDevice()
+	void VulkanDevice::Destroy()
 	{
 		m_device.destroy();
 	}
@@ -88,6 +89,11 @@ namespace Firefly
 	uint32_t VulkanDevice::GetPresentQueueFamilyIndex() const
 	{
 		return m_presentQueueFamilyIndex;
+	}
+
+	void VulkanDevice::WaitIdle()
+	{
+		m_device.waitIdle();
 	}
 
 	void VulkanDevice::FindRequiredQueueFamilyIndices(vk::SurfaceKHR surface)

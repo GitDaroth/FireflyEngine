@@ -13,10 +13,13 @@ namespace Firefly
 
 		virtual void OnUpdate(float deltaTime) override;
 
+		virtual int GetHeight() const override;
+		virtual int GetWidth() const override;
+		GLFWwindow* GetGlfwWindow();
+
 	protected:
 		virtual void OnSetTitle(const std::string& title) override;
 		virtual void OnSetSize(int width, int height) override;
-		virtual void OnEnableVSync(bool enabled) override;
 		virtual void SetupKeyCodeConversionMap() override;
 		virtual void SetupMouseButtonCodeConversionMap() override;
 		virtual void SetupGamepadButtonCodeConversionMap() override;
@@ -28,7 +31,5 @@ namespace Firefly
 		float ApplyGamepadAxisDeadZone(float axisValue);
 
 		GLFWwindow* m_window;
-		static bool s_isWindowInitialized;
-		static int s_windowCount;
 	};
 }
