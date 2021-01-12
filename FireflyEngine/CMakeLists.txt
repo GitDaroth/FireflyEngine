@@ -82,6 +82,8 @@ set(renderingVulkanFiles
 	src/Rendering/Vulkan/VulkanSwapchain.cpp
 	include/Firefly/Rendering/Vulkan/VulkanMesh.h
 	src/Rendering/Vulkan/VulkanMesh.cpp
+	include/Firefly/Rendering/Vulkan/VulkanShader.h
+	src/Rendering/Vulkan/VulkanShader.cpp
 	include/Firefly/Rendering/Vulkan/VulkanMaterial.h
 	src/Rendering/Vulkan/VulkanMaterial.cpp
 	include/Firefly/Rendering/Vulkan/VulkanRenderObject.h

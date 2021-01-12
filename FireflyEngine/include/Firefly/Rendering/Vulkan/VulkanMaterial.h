@@ -1,40 +1,23 @@
 #pragma once
 
-#include "vulkan/vulkan.hpp"
-
-#include "Rendering/Vulkan/VulkanSwapchain.h"
-
-struct SpvReflectTypeDescription;
+#include "Rendering/Vulkan/VulkanShader.h"
+#include <glm/glm.hpp>
 
 namespace Firefly
 {
 	class VulkanMaterial
 	{
 	public:
-		VulkanMaterial(const std::string& vertexShaderPath, const std::string& fragmentShaderPath, vk::Device device, vk::RenderPass renderPass, VulkanSwapchain* swapchain);
+		VulkanMaterial(std::shared_ptr<VulkanShader> shader);
 		~VulkanMaterial();
 
-		void CreatePipeline(vk::RenderPass renderPass, VulkanSwapchain* swapchain);
-		void DestroyPipeline();
+		std::shared_ptr<VulkanShader> GetShader() const;
 
-		vk::Pipeline GetPipeline() const;
-		vk::PipelineLayout GetPipelineLayout() const;
-		vk::DescriptorSetLayout GetGlobalDescriptorSetLayout() const;
+		void SetColor(const glm::vec4& color);
+		glm::vec4 GetColor() const;
 
 	private:
-		vk::PipelineShaderStageCreateInfo CreateShaderStage(const std::vector<char>& shaderCode, vk::ShaderStageFlagBits shaderStage);
-
-		static std::vector<char> ReadBinaryFile(const std::string& fileName);
-		void PrintShaderReflection(const std::vector<char>& shaderCode);
-		std::string GetDataTypeName(const SpvReflectTypeDescription& typeDescription);
-
-		vk::Device m_device;
-
-		vk::PipelineLayout m_pipelineLayout;
-		vk::Pipeline m_pipeline;
-		std::vector<vk::PipelineShaderStageCreateInfo> m_shaderStageCreateInfos;
-		std::vector<vk::ShaderModule> m_shaderModules;
-
-		vk::DescriptorSetLayout m_globalDescriptorSetLayout;
+		std::shared_ptr<VulkanShader> m_shader;
+		glm::vec4 m_color;
 	};
 }

@@ -2,6 +2,7 @@
 
 #include "Rendering/Renderer.h"
 #include "Rendering/Vulkan/VulkanSwapchain.h"
+#include <unordered_map>
 
 #include "Rendering/Vulkan/VulkanMesh.h"
 #include "Rendering/Vulkan/VulkanMaterial.h"
@@ -9,12 +10,23 @@
 
 namespace Firefly
 {
-	struct CameraData
+	struct SceneData
 	{
-		glm::vec4 position;
 		glm::mat4 viewMatrix;
 		glm::mat4 projectionMatrix;
 		glm::mat4 viewProjectionMatrix;
+		glm::vec3 cameraPosition;
+	};
+
+	struct MaterialData
+	{
+		glm::vec4 color;
+	};
+
+	struct ObjectData
+	{
+		glm::mat4 modelMatrix;
+		glm::mat3 normalMatrix;
 	};
 
 	class VulkanRenderer : public Renderer
@@ -31,7 +43,8 @@ namespace Firefly
 		virtual void SubmitDraw(std::shared_ptr<Camera> camera) override;
 
 	private:
-		
+		void UpdateUniformBuffers(std::shared_ptr<Camera> camera);
+
 		void RecreateSwapchain();
 		void CreateSwapchain();
 		void DestroySwapchain();
@@ -40,12 +53,6 @@ namespace Firefly
 		void DestroyCommandPool();
 		void AllocateCommandBuffers();
 		void FreeCommandBuffers();
-
-		void CreateCameraDataUniformBuffers();
-		void DestroyCameraDataUniformBuffers();
-		void CreateDescriptorPool();
-		void DestroyDescriptorPool();
-		void AllocateGlobalDescriptorSets();
 
 		void CreateDepthImage();
 		void DestroyDepthImage();
@@ -58,10 +65,32 @@ namespace Firefly
 
 		void CreateSynchronizationPrimitivesForRendering();
 		void DestroySynchronizationPrimitivesForRendering();
+
+		void CreateUniformBuffers();
+		void DestroyUniformBuffers();
+		void CreateDescriptorPool();
+		void DestroyDescriptorPool();
+		void CreateDescriptorSetLayouts();
+		void DestroyDescriptorSetLayouts();
+		void AllocateDescriptorSets();
+
+		void CreateSceneDataUniformBuffers();
+		void CreateMaterialDataUniformBuffers();
+		void CreateObjectDataUniformBuffers();
+
+		void AllocateSceneDataDescriptorSets();
+		void AllocateMaterialDataDescriptorSets();
+		void AllocateObjectDataDescriptorSets();
+
+		void CreatePipelines();
+		void DestroyPipelines();
 		
 		std::shared_ptr<VulkanContext> m_context;
 		std::shared_ptr<VulkanDevice> m_device;
 		std::shared_ptr<VulkanSwapchain> m_swapchain;
+
+		std::unordered_map<std::string, vk::Pipeline> m_pipelines;
+		std::unordered_map<std::string, vk::PipelineLayout> m_pipelineLayouts;
 
 		vk::RenderPass m_renderPass;
 		std::vector<vk::Framebuffer> m_framebuffers;
@@ -70,9 +99,27 @@ namespace Firefly
 		std::vector<vk::CommandBuffer> m_commandBuffers;
 
 		vk::DescriptorPool m_descriptorPool;
-		std::vector<vk::DescriptorSet> m_globalDescriptorSets;
-		std::vector<vk::Buffer> m_cameraDataUniformBuffers;
-		std::vector<vk::DeviceMemory> m_cameraDataUniformBufferMemories;
+
+		vk::DescriptorSetLayout m_sceneDataDescriptorSetLayout;
+		std::vector<vk::DescriptorSet> m_sceneDataDescriptorSets;
+		std::vector<vk::Buffer> m_sceneDataUniformBuffers;
+		std::vector<vk::DeviceMemory> m_sceneDataUniformBufferMemories;
+
+		vk::DescriptorSetLayout m_materialDataDescriptorSetLayout;
+		std::vector<vk::DescriptorSet> m_materialDataDescriptorSets;
+		std::vector<vk::Buffer> m_materialDataUniformBuffers;
+		std::vector<vk::DeviceMemory> m_materialDataUniformBufferMemories;
+		MaterialData* m_materialData;
+		size_t m_materialDataCount = 100;
+		size_t m_materialDataDynamicAlignment;
+
+		vk::DescriptorSetLayout m_objectDataDescriptorSetLayout;
+		std::vector<vk::DescriptorSet> m_objectDataDescriptorSets;
+		std::vector<vk::Buffer> m_objectDataUniformBuffers;
+		std::vector<vk::DeviceMemory> m_objectDataUniformBufferMemories;
+		ObjectData* m_objectData;
+		size_t m_objectDataCount = 100;
+		size_t m_objectDataDynamicAlignment;
 
 		vk::Image m_depthImage;
 		vk::DeviceMemory m_depthImageMemory;
@@ -85,11 +132,12 @@ namespace Firefly
 		std::vector<vk::Semaphore> m_isRenderedImageAvailableSemaphores;
 		std::vector<vk::Fence> m_isCommandBufferAvailableFences;
 
-
+		std::shared_ptr<VulkanShader> m_shader;
 		VulkanMesh* m_armchairMesh;
 		VulkanMesh* m_globeMesh;
 		VulkanMesh* m_pistolMesh;
-		VulkanMaterial* m_material;
+		std::vector<VulkanMaterial*> m_materials;
 		std::vector<VulkanRenderObject*> m_renderObjects;
+		std::vector<size_t> m_objectMaterialIndices;
 	};
 }
