@@ -4,34 +4,45 @@
 #include <Firefly/Scene/Components/MeshComponent.h>
 #include <Firefly/Scene/Components/MaterialComponent.h>
 #include <Firefly/Scene/Components/TransformComponent.h>
+#include <Firefly/Core/ResourceRegistry.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 SandboxApp::SandboxApp()
 {
-	m_renderer = Firefly::RenderingAPI::CreateRenderer();
-	m_renderer->Init(m_graphicsContext);
-
-	//m_scene = std::make_shared<Firefly::Scene>();
-
+	m_scene = std::make_shared<Firefly::Scene>();
 	m_camera = std::make_shared<Firefly::Camera>(m_window->GetWidth(), m_window->GetHeight());
 	m_camera->SetPosition(glm::vec3(0.f, 0.f, 2.f));
 	m_cameraController = std::make_shared<CameraController>(m_camera);
 
-	//std::shared_ptr<Firefly::Shader> shader = Firefly::RenderingAPI::CreateShader();
-	//shader->Init("assets/shaders/pbr.glsl");
+	Firefly::ShaderCode shaderCode{};
+	shaderCode.vertex = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/triangle.vert.spv");
+	shaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/triangle.frag.spv");
+	std::shared_ptr<Firefly::Shader> defaultShader = Firefly::RenderingAPI::CreateShader(m_graphicsContext);
+	defaultShader->Init("Lit", shaderCode);
+	Firefly::ShaderRegistry::Instance().Insert(defaultShader->GetTag(), defaultShader);
 
-	//std::vector<Firefly::Mesh::Vertex> vertices = 
-	//{
-	//	{ {-1.f, 0.f,  1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {0.f, 0.f} },
-	//	{ { 1.f, 0.f,  1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {2.f, 0.f} },
-	//	{ { 1.f, 0.f, -1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {2.f, 2.f} },
-	//	{ {-1.f, 0.f, -1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {0.f, 2.f} }
-	//};
-	//std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
-	//std::shared_ptr<Firefly::Mesh> floorMesh = std::make_shared<Firefly::Mesh>(vertices, indices);
-	//std::shared_ptr<Firefly::Mesh> pistolMesh = std::make_shared<Firefly::Mesh>("assets/meshes/pistol.fbx", true);
-	//std::shared_ptr<Firefly::Mesh> globeMesh = std::make_shared<Firefly::Mesh>("assets/meshes/globe.fbx");
-	//std::shared_ptr<Firefly::Mesh> armchairMesh = std::make_shared<Firefly::Mesh>("assets/meshes/armchair.fbx");
+	std::vector<Firefly::Mesh::Vertex> vertices = 
+	{
+		{ {-1.f, 0.f,  1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {0.f, 0.f} },
+		{ { 1.f, 0.f,  1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {2.f, 0.f} },
+		{ { 1.f, 0.f, -1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {2.f, 2.f} },
+		{ {-1.f, 0.f, -1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {0.f, 2.f} }
+	};
+	std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
+
+	std::shared_ptr<Firefly::Mesh> floorMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
+	floorMesh->Init(vertices, indices);
+	std::shared_ptr<Firefly::Mesh> pistolMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
+	pistolMesh->Init("assets/meshes/pistol.fbx", true);
+	std::shared_ptr<Firefly::Mesh> globeMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
+	globeMesh->Init("assets/meshes/globe.fbx");
+	std::shared_ptr<Firefly::Mesh> armchairMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
+	armchairMesh->Init("assets/meshes/armchair.fbx");
+
+	Firefly::MeshRegistry::Instance().Insert("Floor", floorMesh);
+	Firefly::MeshRegistry::Instance().Insert("Pistol", pistolMesh);
+	Firefly::MeshRegistry::Instance().Insert("Globe", globeMesh);
+	Firefly::MeshRegistry::Instance().Insert("Armchair", armchairMesh);
 
 	//std::shared_ptr<Firefly::Texture2D> pistolAlbedoTexture = Firefly::RenderingAPI::CreateTexture2D();
 	//pistolAlbedoTexture->Init("assets/textures/pistol/albedo.jpg");
@@ -43,7 +54,8 @@ SandboxApp::SandboxApp()
 	//pistolMetalnessTexture->Init("assets/textures/pistol/metalness.jpg");
 	//std::shared_ptr<Firefly::Texture2D> pistolOcclusionTexture = Firefly::RenderingAPI::CreateTexture2D();
 	//pistolOcclusionTexture->Init("assets/textures/pistol/occlusion.jpg");
-	//std::shared_ptr<Firefly::Material> pistolMaterial = std::make_shared<Firefly::Material>(shader);
+	std::shared_ptr<Firefly::Material> pistolMaterial = std::make_shared<Firefly::Material>(defaultShader);
+	pistolMaterial->SetColor(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
 	//pistolMaterial->SetAlbedoMap(pistolAlbedoTexture);
 	//pistolMaterial->SetNormalMap(pistolNormalTexture);
 	//pistolMaterial->SetRoughnessMap(pistolRoughnessTexture);
@@ -58,7 +70,8 @@ SandboxApp::SandboxApp()
 	//globeMetalnessTexture->Init("assets/textures/globe/metalness.png");
 	//std::shared_ptr<Firefly::Texture2D> globeOcclusionTexture = Firefly::RenderingAPI::CreateTexture2D();
 	//globeOcclusionTexture->Init("assets/textures/globe/occlusion.png");
-	//std::shared_ptr<Firefly::Material> globeMaterial = std::make_shared<Firefly::Material>(shader);
+	std::shared_ptr<Firefly::Material> globeMaterial = std::make_shared<Firefly::Material>(defaultShader);
+	globeMaterial->SetColor(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
 	//globeMaterial->SetAlbedoMap(globeAlbedoTexture);
 	//globeMaterial->SetRoughnessMap(globeRoughnessTexture);
 	//globeMaterial->SetMetalnessMap(globeMetalnessTexture);
@@ -72,7 +85,8 @@ SandboxApp::SandboxApp()
 	//armchairNormalTexture->Init("assets/textures/armchair/normal.png");
 	//std::shared_ptr<Firefly::Texture2D> armchairOcclusionTexture = Firefly::RenderingAPI::CreateTexture2D();
 	//armchairOcclusionTexture->Init("assets/textures/armchair/occlusion.png");
-	//std::shared_ptr<Firefly::Material> armchairMaterial = std::make_shared<Firefly::Material>(shader);
+	std::shared_ptr<Firefly::Material> armchairMaterial = std::make_shared<Firefly::Material>(defaultShader);
+	armchairMaterial->SetColor(glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
 	//armchairMaterial->SetAlbedoMap(armchairAlbedoTexture);
 	//armchairMaterial->SetRoughnessMap(armchairRoughnessTexture);
 	//armchairMaterial->SetNormalMap(armchairNormalTexture);
@@ -107,35 +121,42 @@ SandboxApp::SandboxApp()
 	//floor2Material->SetNormalMap(floor2NormalTexture);
 	//floor2Material->SetRoughnessMap(floor2RoughnessTexture);
 
-	//Firefly::Entity pistol(m_scene);
-	//pistol.AddComponent<Firefly::TagComponent>("Pistol");
-	//pistol.AddComponent<Firefly::TransformComponent>(glm::rotate(glm::scale(glm::mat4(1), glm::vec3(0.01f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
-	//pistol.AddComponent<Firefly::MeshComponent>(pistolMesh);
-	//pistol.AddComponent<Firefly::MaterialComponent>(pistolMaterial);
+	Firefly::MaterialRegistry::Instance().Insert("Pistol", pistolMaterial);
+	Firefly::MaterialRegistry::Instance().Insert("Globe", globeMaterial);
+	Firefly::MaterialRegistry::Instance().Insert("Armchair", armchairMaterial);
 
-	//Firefly::Entity globe(m_scene);
-	//globe.AddComponent<Firefly::TagComponent>("Globe");
-	//globe.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(-1.5f, -0.5f, -1.5f)), glm::vec3(0.0075f)));
-	//globe.AddComponent<Firefly::MeshComponent>(globeMesh);
-	//globe.AddComponent<Firefly::MaterialComponent>(globeMaterial);
+	Firefly::Entity pistol(m_scene);
+	pistol.AddComponent<Firefly::TagComponent>("Pistol");
+	pistol.AddComponent<Firefly::TransformComponent>(glm::rotate(glm::scale(glm::mat4(1), glm::vec3(0.01f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
+	pistol.AddComponent<Firefly::MeshComponent>(pistolMesh);
+	pistol.AddComponent<Firefly::MaterialComponent>(pistolMaterial);
 
-	//Firefly::Entity armchair(m_scene);
-	//armchair.AddComponent<Firefly::TagComponent>("Armchair");
-	//armchair.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::rotate(glm::mat4(1), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)), glm::vec3(1.5f, 1.5f, -0.55f)), glm::vec3(0.01f)));
-	//armchair.AddComponent<Firefly::MeshComponent>(armchairMesh);
-	//armchair.AddComponent<Firefly::MaterialComponent>(armchairMaterial);
+	Firefly::Entity globe(m_scene);
+	globe.AddComponent<Firefly::TagComponent>("Globe");
+	globe.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(-1.5f, -0.5f, -1.5f)), glm::vec3(0.0075f)));
+	globe.AddComponent<Firefly::MeshComponent>(globeMesh);
+	globe.AddComponent<Firefly::MaterialComponent>(globeMaterial);
 
-	//Firefly::Entity floor(m_scene);
-	//floor.AddComponent<Firefly::TagComponent>("Floor");
-	//floor.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 8.f)), glm::vec3(4.f)));
-	//floor.AddComponent<Firefly::MeshComponent>(floorMesh);
-	//floor.AddComponent<Firefly::MaterialComponent>(floorMaterial);
+	Firefly::Entity armchair(m_scene);
+	armchair.AddComponent<Firefly::TagComponent>("Armchair");
+	armchair.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::rotate(glm::mat4(1), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)), glm::vec3(1.5f, 1.5f, -0.55f)), glm::vec3(0.01f)));
+	armchair.AddComponent<Firefly::MeshComponent>(armchairMesh);
+	armchair.AddComponent<Firefly::MaterialComponent>(armchairMaterial);
 
-	//Firefly::Entity floor2(m_scene);
-	//floor2.AddComponent<Firefly::TagComponent>("Floor2");
-	//floor2.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 0.f)), glm::vec3(4.f)));
-	//floor2.AddComponent<Firefly::MeshComponent>(floorMesh);
-	//floor2.AddComponent<Firefly::MaterialComponent>(floor2Material);
+	Firefly::Entity floor(m_scene);
+	floor.AddComponent<Firefly::TagComponent>("Floor");
+	floor.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 8.f)), glm::vec3(4.f)));
+	floor.AddComponent<Firefly::MeshComponent>(floorMesh);
+	floor.AddComponent<Firefly::MaterialComponent>(pistolMaterial);
+
+	Firefly::Entity floor2(m_scene);
+	floor2.AddComponent<Firefly::TagComponent>("Floor2");
+	floor2.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 0.f)), glm::vec3(4.f)));
+	floor2.AddComponent<Firefly::MeshComponent>(floorMesh);
+	floor2.AddComponent<Firefly::MaterialComponent>(globeMaterial);
+
+	m_renderer = Firefly::RenderingAPI::CreateRenderer(m_graphicsContext);
+	m_renderer->Init();
 }
 
 SandboxApp::~SandboxApp()
@@ -147,11 +168,10 @@ void SandboxApp::OnUpdate(float deltaTime)
 {
 	m_cameraController->OnUpdate(deltaTime);
 
-	//m_renderer->BeginDrawRecording();
-	//m_renderer->RecordDraw(Object1);
-	//m_renderer->RecordDraw(Object2);
-	//m_renderer->RecordDraw(Object3);
-	//m_renderer->EndDrawRecording();
+	m_renderer->BeginDrawRecording();
+	for(auto entity : m_scene->GetEntities())
+		m_renderer->RecordDraw(entity);
+	m_renderer->EndDrawRecording();
 	m_renderer->SubmitDraw(m_camera);
 }
 

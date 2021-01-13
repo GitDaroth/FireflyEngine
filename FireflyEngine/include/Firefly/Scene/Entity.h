@@ -16,7 +16,6 @@ namespace Firefly
 		Entity(std::shared_ptr<Scene> scene);
 		~Entity();
 
-		Entity Clone();
 		void RemoveFromScene();
 
 		template<typename Component, typename... Args>
@@ -32,17 +31,23 @@ namespace Firefly
 		}
 
 		template<typename Component>
-		Component& GetComponent()
+		Component& GetComponent() const
 		{
 			auto view = m_entityRegistry->view<Component>();
 			return view.get<Component>(m_id);
 		}
 
 		template<typename... Components>
-		std::tuple<Components&...> GetComponents()
+		std::tuple<Components&...> GetComponents() const
 		{
 			auto view = m_entityRegistry->view<Components...>();
 			return view.get<Components...>(m_id);
+		}
+
+		template<typename... Components>
+		bool HasComponents() const
+		{
+			return m_entityRegistry->has<Components...>(m_id);
 		}
 
 	private:

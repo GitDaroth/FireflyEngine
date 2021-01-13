@@ -1,26 +1,36 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include <string>
+#include "Rendering/GraphicsContext.h"
 
 namespace Firefly
 {
+	struct ShaderCode
+	{
+		std::vector<char> vertex;
+		std::vector<char> tesselationControl;
+		std::vector<char> tesselationEvaluation;
+		std::vector<char> geometry;
+		std::vector<char> fragment;
+		std::vector<char> compute;
+	};
+
 	class Shader
 	{
 	public:
-		Shader() {}
-		virtual ~Shader() {}
+		Shader(std::shared_ptr<GraphicsContext> context);
 
-		virtual void Init(const std::string& vertexShaderSource, const std::string& fragmentShaderSource) = 0;
-		virtual void Init(const std::string& path) = 0;
-		virtual void Bind() = 0;
-		virtual void Unbind() = 0;
+		void Init(const std::string& tag, const ShaderCode& shaderCode);
+		virtual void Destroy() = 0;
 
-		virtual void SetUniformInt(const std::string& name, const int value) = 0;
-		virtual void SetUniformFloat(const std::string& name, const float value) = 0;
-		virtual void SetUniformFloat2(const std::string& name, const glm::vec2& value) = 0;
-		virtual void SetUniformFloat3(const std::string& name, const glm::vec3& value) = 0;
-		virtual void SetUniformFloat4(const std::string& name, const glm::vec4& value) = 0;
-		virtual void SetUniformMatrix3(const std::string& name, const glm::mat3& matrix) = 0;
-		virtual void SetUniformMatrix4(const std::string& name, const glm::mat4& matrix) = 0;
+		std::string GetTag() const;
+
+		static std::vector<char> ReadShaderCodeFromFile(const std::string& path);
+
+	protected:
+		virtual void OnInit(const ShaderCode& shaderCode) = 0;
+
+		std::shared_ptr<GraphicsContext> m_context;
+		std::string m_tag;
 	};
 }

@@ -1,63 +1,35 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanRenderer.h"
 
-#include "Rendering/Vulkan/VulkanContext.h"
-#include "Rendering/Vulkan/VulkanUtils.h"
-#include <glm/gtc/matrix_transform.hpp>
+#include "Core/ResourceRegistry.h"
+#include "Rendering/Vulkan/VulkanMesh.h"
 #include "Rendering/Vulkan/VulkanShader.h"
+#include "Rendering/Vulkan/VulkanUtils.h"
+#include "Scene/Components/TransformComponent.h"
+#include "Scene/Components/MeshComponent.h"
+#include "Scene/Components/MaterialComponent.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Firefly
 {
-	VulkanRenderer::VulkanRenderer()
+	VulkanRenderer::VulkanRenderer(std::shared_ptr<GraphicsContext> context) :
+		Renderer(context)
 	{
+		m_vkContext = std::dynamic_pointer_cast<VulkanContext>(context);
+		m_device = m_vkContext->GetDevice();
+		m_commandPool = m_vkContext->GetCommandPool();
 	}
 
-	void VulkanRenderer::Init(std::shared_ptr<GraphicsContext> context)
+	void VulkanRenderer::Init()
 	{
-		m_context = std::dynamic_pointer_cast<VulkanContext>(context);
-		m_device = m_context->GetDevice();
-
 		CreateSwapchain();
 
-		CreateCommandPool();
 		AllocateCommandBuffers();
 
 		CreateDepthImage();
 		CreateRenderPass();
 		CreateFramebuffers();
 		CreateSynchronizationPrimitivesForRendering();
-
-		ShaderCodePath shaderCodePath{};
-		shaderCodePath.vertexShaderPath = "assets/shaders/triangle.vert.spv";
-		shaderCodePath.fragmentShaderPath = "assets/shaders/triangle.frag.spv";
-		m_shader = std::make_shared<VulkanShader>();
-		m_shader->Init(m_device->GetDevice(), "Lit", shaderCodePath);
-
-		VulkanMaterial* redMaterial = new VulkanMaterial(m_shader);
-		redMaterial->SetColor(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
-		VulkanMaterial* blueMaterial = new VulkanMaterial(m_shader);
-		blueMaterial->SetColor(glm::vec4(0.0f, 0.0f, 1.0f, 1.0f));
-		VulkanMaterial* greenMaterial = new VulkanMaterial(m_shader);
-		greenMaterial->SetColor(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-		m_materials.push_back(redMaterial);
-		m_materials.push_back(blueMaterial);
-		m_materials.push_back(greenMaterial);
-
-		m_pistolMesh = new VulkanMesh(m_device.get(), m_commandPool, m_device->GetGraphicsQueue(), "assets/meshes/pistol.fbx", true);
-		m_globeMesh = new VulkanMesh(m_device.get(), m_commandPool, m_device->GetGraphicsQueue(), "assets/meshes/globe.fbx");
-		m_armchairMesh = new VulkanMesh(m_device.get(), m_commandPool, m_device->GetGraphicsQueue(), "assets/meshes/armchair.fbx");
-		VulkanRenderObject* pistol = new VulkanRenderObject(m_pistolMesh, redMaterial);
-		VulkanRenderObject* globe = new VulkanRenderObject(m_globeMesh, blueMaterial);
-		VulkanRenderObject* armchair = new VulkanRenderObject(m_armchairMesh, greenMaterial);
-		pistol->SetModelMatrix(glm::rotate(glm::scale(glm::mat4(1), glm::vec3(0.01f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
-		globe->SetModelMatrix(glm::scale(glm::translate(glm::mat4(1), glm::vec3(-1.5f, -0.5f, -1.5f)), glm::vec3(0.0075f)));
-		armchair->SetModelMatrix(glm::scale(glm::translate(glm::rotate(glm::mat4(1), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)), glm::vec3(1.5f, 1.5f, -0.55f)), glm::vec3(0.01f)));
-		m_renderObjects.push_back(pistol);
-		m_renderObjects.push_back(globe);
-		m_renderObjects.push_back(armchair);
-		m_objectMaterialIndices.push_back(0);
-		m_objectMaterialIndices.push_back(1);
-		m_objectMaterialIndices.push_back(2);
 
 		CreateUniformBuffers();
 		CreateDescriptorPool();
@@ -75,41 +47,52 @@ namespace Firefly
 		DestroyDescriptorPool();
 		DestroyUniformBuffers();
 
-		for (auto object : m_renderObjects)
-			delete object;
-		m_renderObjects.clear();
-
-		delete m_armchairMesh;
-		delete m_globeMesh;
-		delete m_pistolMesh;
-
-		for (auto material : m_materials)
-			delete material;
-		m_materials.clear();
-
-		m_shader->Destroy();
-
 		DestroySynchronizationPrimitivesForRendering();
 		DestroyFramebuffers();
 		DestroyRenderPass();
 		DestroyDepthImage();
 
 		FreeCommandBuffers();
-		DestroyCommandPool();
 
 		DestroySwapchain();
 	}
 
 	void VulkanRenderer::BeginDrawRecording()
 	{
+		m_entities.clear();
+		m_materials.clear();
+		m_entityMaterialIndices.clear();
 	}
 
 	void VulkanRenderer::RecordDraw(const Entity& entity)
 	{
+		if(entity.HasComponents<MeshComponent, MaterialComponent, TransformComponent>())
+			m_entities.push_back(entity);
 	}
 
 	void VulkanRenderer::EndDrawRecording()
 	{
+		for (size_t i = 0; i < m_entities.size(); i++)
+		{
+			std::shared_ptr<Material> entityMaterial = m_entities[i].GetComponent<MaterialComponent>().m_material;
+			bool foundMaterial = false;
+			size_t entityMaterialIndex = 0;
+			for (size_t j = 0; j < m_materials.size(); j++)
+			{
+				if (m_materials[j] == entityMaterial)
+				{
+					entityMaterialIndex = j;
+					foundMaterial = true;
+					break;
+				}
+			}
+			if (!foundMaterial)
+			{
+				entityMaterialIndex = m_materials.size();
+				m_materials.push_back(entityMaterial);
+			}
+			m_entityMaterialIndices.push_back(entityMaterialIndex);
+		}
 	}
 
 	void VulkanRenderer::SubmitDraw(std::shared_ptr<Camera> camera)
@@ -153,9 +136,11 @@ namespace Firefly
 
 		UpdateUniformBuffers(camera);
 
-		for (size_t i = 0; i < m_renderObjects.size(); i++)
+		for (size_t i = 0; i < m_entities.size(); i++)
 		{
-			std::string shaderTag = m_renderObjects[i]->GetMaterial()->GetShader()->GetTag();
+			std::shared_ptr<Material> material = m_materials[m_entityMaterialIndices[i]];
+			std::shared_ptr<VulkanMesh> mesh = std::dynamic_pointer_cast<VulkanMesh>(m_entities[i].GetComponent<MeshComponent>().m_mesh);
+			std::string shaderTag = material->GetShader()->GetTag();
 
 			m_commandBuffers[m_currentImageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines[shaderTag]);
 
@@ -167,16 +152,19 @@ namespace Firefly
 			};
 			std::vector<uint32_t> dynamicOffsets =
 			{
-				static_cast<uint32_t>(m_objectMaterialIndices[i] * m_materialDataDynamicAlignment),
+				static_cast<uint32_t>(m_entityMaterialIndices[i] * m_materialDataDynamicAlignment),
 				static_cast<uint32_t>(i * m_objectDataDynamicAlignment)
 			};
 			m_commandBuffers[m_currentImageIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayouts[shaderTag], 0, 
 																	 descriptorSets.size(), descriptorSets.data(), 
 																	 dynamicOffsets.size(), dynamicOffsets.data());
 
-			m_renderObjects[i]->GetMesh()->Bind(m_commandBuffers[m_currentImageIndex]);
+			std::vector<vk::Buffer> vertexBuffers = { mesh->GetVertexBuffer() };
+			vk::DeviceSize offsets[] = { 0 };
+			m_commandBuffers[m_currentImageIndex].bindVertexBuffers(0, vertexBuffers.size(), vertexBuffers.data(), offsets);
+			m_commandBuffers[m_currentImageIndex].bindIndexBuffer(mesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
 
-			m_commandBuffers[m_currentImageIndex].drawIndexed(m_renderObjects[i]->GetMesh()->GetIndexCount(), 1, 0, 0, 0);
+			m_commandBuffers[m_currentImageIndex].drawIndexed(mesh->GetIndexCount(), 1, 0, 0, 0);
 		}
 
 		m_commandBuffers[m_currentImageIndex].endRenderPass();
@@ -249,11 +237,12 @@ namespace Firefly
 		m_device->GetDevice().unmapMemory(m_materialDataUniformBufferMemories[m_currentImageIndex]);
 		// --------------------
 		// Object Data --------
-		for (size_t i = 0; i < m_renderObjects.size(); i++)
+		for (size_t i = 0; i < m_entities.size(); i++)
 		{
+			glm::mat4 modelMatrix = m_entities[i].GetComponent<TransformComponent>().m_transform;
 			ObjectData* objectData = (ObjectData*)((uint64_t)m_objectData + (i * m_objectDataDynamicAlignment));
-			(*objectData).modelMatrix = m_renderObjects[i]->GetModelMatrix();
-			(*objectData).normalMatrix = glm::transpose(glm::inverse(glm::mat3(m_renderObjects[i]->GetModelMatrix())));
+			(*objectData).modelMatrix = modelMatrix;
+			(*objectData).normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelMatrix)));
 		}
 
 		m_device->GetDevice().mapMemory(m_objectDataUniformBufferMemories[m_currentImageIndex], 0, m_objectDataCount * m_objectDataDynamicAlignment, {}, &mappedMemory);
@@ -266,7 +255,7 @@ namespace Firefly
 	{
 		m_device->WaitIdle();
 
-		if (m_context->GetWidth() == 0 && m_context->GetHeight() == 0)
+		if (m_vkContext->GetWidth() == 0 && m_vkContext->GetHeight() == 0)
 			return;
 
 		DestroyPipelines();
@@ -296,28 +285,12 @@ namespace Firefly
 	void VulkanRenderer::CreateSwapchain()
 	{
 		m_swapchain = std::make_shared<VulkanSwapchain>();
-		m_swapchain->Init(m_context);
+		m_swapchain->Init(m_vkContext);
 	}
 
 	void VulkanRenderer::DestroySwapchain()
 	{
 		m_swapchain->Destroy();
-	}
-
-	void VulkanRenderer::CreateCommandPool()
-	{
-		vk::CommandPoolCreateInfo commandPoolCreateInfo{};
-		commandPoolCreateInfo.pNext = nullptr;
-		commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
-		commandPoolCreateInfo.queueFamilyIndex = m_device->GetGraphicsQueueFamilyIndex();
-
-		vk::Result result = m_device->GetDevice().createCommandPool(&commandPoolCreateInfo, nullptr, &m_commandPool);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command pool!");
-	}
-
-	void VulkanRenderer::DestroyCommandPool()
-	{
-		m_device->GetDevice().destroyCommandPool(m_commandPool);
 	}
 
 	void VulkanRenderer::AllocateCommandBuffers()
@@ -770,182 +743,187 @@ namespace Firefly
 
 	void VulkanRenderer::CreatePipelines()
 	{
-		// VERTEX INPUT STATE --------------------------
-		vk::VertexInputBindingDescription vertexInputBindingDescription{};
-		vertexInputBindingDescription.binding = 0;
-		vertexInputBindingDescription.stride = sizeof(VulkanMesh::Vertex);
-		vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
+		std::vector<std::shared_ptr<Shader>> shaders = ShaderRegistry::Instance().GetAll();
+		for (auto shader : shaders)
+		{
+			std::shared_ptr<VulkanShader> vkShader = std::dynamic_pointer_cast<VulkanShader>(shader);
+			// VERTEX INPUT STATE --------------------------
+			vk::VertexInputBindingDescription vertexInputBindingDescription{};
+			vertexInputBindingDescription.binding = 0;
+			vertexInputBindingDescription.stride = sizeof(Mesh::Vertex);
+			vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
 
-		std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};
-		vertexInputAttributeDescriptions[0].binding = 0;
-		vertexInputAttributeDescriptions[0].location = 0;
-		vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
-		vertexInputAttributeDescriptions[0].offset = offsetof(VulkanMesh::Vertex, position);
-		vertexInputAttributeDescriptions[1].binding = 0;
-		vertexInputAttributeDescriptions[1].location = 1;
-		vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
-		vertexInputAttributeDescriptions[1].offset = offsetof(VulkanMesh::Vertex, normal);
-		vertexInputAttributeDescriptions[2].binding = 0;
-		vertexInputAttributeDescriptions[2].location = 2;
-		vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
-		vertexInputAttributeDescriptions[2].offset = offsetof(VulkanMesh::Vertex, tangent);
-		vertexInputAttributeDescriptions[3].binding = 0;
-		vertexInputAttributeDescriptions[3].location = 3;
-		vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32Sfloat;
-		vertexInputAttributeDescriptions[3].offset = offsetof(VulkanMesh::Vertex, bitangent);
-		vertexInputAttributeDescriptions[4].binding = 0;
-		vertexInputAttributeDescriptions[4].location = 4;
-		vertexInputAttributeDescriptions[4].format = vk::Format::eR32G32Sfloat;
-		vertexInputAttributeDescriptions[4].offset = offsetof(VulkanMesh::Vertex, texCoords);
+			std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};
+			vertexInputAttributeDescriptions[0].binding = 0;
+			vertexInputAttributeDescriptions[0].location = 0;
+			vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
+			vertexInputAttributeDescriptions[0].offset = offsetof(Mesh::Vertex, position);
+			vertexInputAttributeDescriptions[1].binding = 0;
+			vertexInputAttributeDescriptions[1].location = 1;
+			vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
+			vertexInputAttributeDescriptions[1].offset = offsetof(Mesh::Vertex, normal);
+			vertexInputAttributeDescriptions[2].binding = 0;
+			vertexInputAttributeDescriptions[2].location = 2;
+			vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
+			vertexInputAttributeDescriptions[2].offset = offsetof(Mesh::Vertex, tangent);
+			vertexInputAttributeDescriptions[3].binding = 0;
+			vertexInputAttributeDescriptions[3].location = 3;
+			vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32Sfloat;
+			vertexInputAttributeDescriptions[3].offset = offsetof(Mesh::Vertex, bitangent);
+			vertexInputAttributeDescriptions[4].binding = 0;
+			vertexInputAttributeDescriptions[4].location = 4;
+			vertexInputAttributeDescriptions[4].format = vk::Format::eR32G32Sfloat;
+			vertexInputAttributeDescriptions[4].offset = offsetof(Mesh::Vertex, texCoords);
 
-		vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
-		vertexInputStateCreateInfo.pNext = nullptr;
-		vertexInputStateCreateInfo.flags = {};
-		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
-		vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
-		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescriptions.size();
-		vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data();
-		// ---------------------------------------------
-		// INPUT ASSEMBLY STATE ------------------------
-		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
-		inputAssemblyStateCreateInfo.pNext = nullptr;
-		inputAssemblyStateCreateInfo.flags = {};
-		inputAssemblyStateCreateInfo.topology = vk::PrimitiveTopology::eTriangleList;
-		inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
-		// ---------------------------------------------
-		// VIEWPORT STATE ------------------------------
-		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
-		vk::Viewport viewport{};
-		viewport.x = 0.f;
-		viewport.y = 0.f;
-		viewport.width = (float)swapchainExtent.width;
-		viewport.height = (float)swapchainExtent.height;
-		viewport.minDepth = 0.f;
-		viewport.maxDepth = 1.f;
+			vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
+			vertexInputStateCreateInfo.pNext = nullptr;
+			vertexInputStateCreateInfo.flags = {};
+			vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+			vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
+			vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescriptions.size();
+			vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data();
+			// ---------------------------------------------
+			// INPUT ASSEMBLY STATE ------------------------
+			vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
+			inputAssemblyStateCreateInfo.pNext = nullptr;
+			inputAssemblyStateCreateInfo.flags = {};
+			inputAssemblyStateCreateInfo.topology = vk::PrimitiveTopology::eTriangleList;
+			inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
+			// ---------------------------------------------
+			// VIEWPORT STATE ------------------------------
+			vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
+			vk::Viewport viewport{};
+			viewport.x = 0.f;
+			viewport.y = 0.f;
+			viewport.width = (float)swapchainExtent.width;
+			viewport.height = (float)swapchainExtent.height;
+			viewport.minDepth = 0.f;
+			viewport.maxDepth = 1.f;
 
-		vk::Rect2D scissor{};
-		scissor.offset = { 0, 0 };
-		scissor.extent = swapchainExtent;
+			vk::Rect2D scissor{};
+			scissor.offset = { 0, 0 };
+			scissor.extent = swapchainExtent;
 
-		vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
-		viewportStateCreateInfo.pNext = nullptr;
-		viewportStateCreateInfo.flags = {};
-		viewportStateCreateInfo.viewportCount = 1;
-		viewportStateCreateInfo.pViewports = &viewport;
-		viewportStateCreateInfo.scissorCount = 1;
-		viewportStateCreateInfo.pScissors = &scissor;
-		// ---------------------------------------------
-		// RASTERIZATION STATE -------------------------
-		vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
-		rasterizationStateCreateInfo.pNext = nullptr;
-		rasterizationStateCreateInfo.flags = {};
-		rasterizationStateCreateInfo.depthClampEnable = false;
-		rasterizationStateCreateInfo.rasterizerDiscardEnable = false;
-		rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eFill;
-		rasterizationStateCreateInfo.lineWidth = 1.f;
-		rasterizationStateCreateInfo.cullMode = vk::CullModeFlagBits::eBack;
-		rasterizationStateCreateInfo.frontFace = vk::FrontFace::eCounterClockwise;
-		rasterizationStateCreateInfo.depthBiasEnable = false;
-		rasterizationStateCreateInfo.depthBiasConstantFactor = 0.f;
-		rasterizationStateCreateInfo.depthBiasClamp = 0.f;
-		rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.f;
-		rasterizationStateCreateInfo.depthClampEnable = false;
-		// ---------------------------------------------
-		// MULTISAMPLE STATE ---------------------------
-		vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
-		multisampleStateCreateInfo.pNext = nullptr;
-		multisampleStateCreateInfo.flags = {};
-		multisampleStateCreateInfo.rasterizationSamples = vk::SampleCountFlagBits::e1;
-		multisampleStateCreateInfo.sampleShadingEnable = false;
-		multisampleStateCreateInfo.minSampleShading = 1.0f;
-		multisampleStateCreateInfo.pSampleMask = nullptr;
-		multisampleStateCreateInfo.alphaToCoverageEnable = false;
-		multisampleStateCreateInfo.alphaToOneEnable = false;
-		// ---------------------------------------------
-		// COLOR BLEND STATE ---------------------------
-		vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{};
-		colorBlendAttachmentState.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-		colorBlendAttachmentState.blendEnable = false;
-		colorBlendAttachmentState.srcColorBlendFactor = vk::BlendFactor::eOne;
-		colorBlendAttachmentState.dstColorBlendFactor = vk::BlendFactor::eZero;
-		colorBlendAttachmentState.colorBlendOp = vk::BlendOp::eAdd;
-		colorBlendAttachmentState.srcAlphaBlendFactor = vk::BlendFactor::eOne;
-		colorBlendAttachmentState.dstAlphaBlendFactor = vk::BlendFactor::eZero;
-		colorBlendAttachmentState.alphaBlendOp = vk::BlendOp::eAdd;
+			vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
+			viewportStateCreateInfo.pNext = nullptr;
+			viewportStateCreateInfo.flags = {};
+			viewportStateCreateInfo.viewportCount = 1;
+			viewportStateCreateInfo.pViewports = &viewport;
+			viewportStateCreateInfo.scissorCount = 1;
+			viewportStateCreateInfo.pScissors = &scissor;
+			// ---------------------------------------------
+			// RASTERIZATION STATE -------------------------
+			vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
+			rasterizationStateCreateInfo.pNext = nullptr;
+			rasterizationStateCreateInfo.flags = {};
+			rasterizationStateCreateInfo.depthClampEnable = false;
+			rasterizationStateCreateInfo.rasterizerDiscardEnable = false;
+			rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eFill;
+			rasterizationStateCreateInfo.lineWidth = 1.f;
+			rasterizationStateCreateInfo.cullMode = vk::CullModeFlagBits::eBack;
+			rasterizationStateCreateInfo.frontFace = vk::FrontFace::eCounterClockwise;
+			rasterizationStateCreateInfo.depthBiasEnable = false;
+			rasterizationStateCreateInfo.depthBiasConstantFactor = 0.f;
+			rasterizationStateCreateInfo.depthBiasClamp = 0.f;
+			rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.f;
+			rasterizationStateCreateInfo.depthClampEnable = false;
+			// ---------------------------------------------
+			// MULTISAMPLE STATE ---------------------------
+			vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
+			multisampleStateCreateInfo.pNext = nullptr;
+			multisampleStateCreateInfo.flags = {};
+			multisampleStateCreateInfo.rasterizationSamples = vk::SampleCountFlagBits::e1;
+			multisampleStateCreateInfo.sampleShadingEnable = false;
+			multisampleStateCreateInfo.minSampleShading = 1.0f;
+			multisampleStateCreateInfo.pSampleMask = nullptr;
+			multisampleStateCreateInfo.alphaToCoverageEnable = false;
+			multisampleStateCreateInfo.alphaToOneEnable = false;
+			// ---------------------------------------------
+			// COLOR BLEND STATE ---------------------------
+			vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{};
+			colorBlendAttachmentState.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+			colorBlendAttachmentState.blendEnable = false;
+			colorBlendAttachmentState.srcColorBlendFactor = vk::BlendFactor::eOne;
+			colorBlendAttachmentState.dstColorBlendFactor = vk::BlendFactor::eZero;
+			colorBlendAttachmentState.colorBlendOp = vk::BlendOp::eAdd;
+			colorBlendAttachmentState.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+			colorBlendAttachmentState.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+			colorBlendAttachmentState.alphaBlendOp = vk::BlendOp::eAdd;
 
-		vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{};
-		colorBlendStateCreateInfo.logicOpEnable = false;
-		colorBlendStateCreateInfo.logicOp = vk::LogicOp::eCopy;
-		colorBlendStateCreateInfo.attachmentCount = 1;
-		colorBlendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
-		colorBlendStateCreateInfo.blendConstants[0] = 0.f;
-		colorBlendStateCreateInfo.blendConstants[1] = 0.f;
-		colorBlendStateCreateInfo.blendConstants[2] = 0.f;
-		colorBlendStateCreateInfo.blendConstants[3] = 0.f;
-		// ---------------------------------------------
-		// DEPTH STENCIL STATE -------------------------
-		vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
-		depthStencilStateCreateInfo.pNext = nullptr;
-		depthStencilStateCreateInfo.flags = {};
-		depthStencilStateCreateInfo.depthTestEnable = true;
-		depthStencilStateCreateInfo.depthWriteEnable = true;
-		depthStencilStateCreateInfo.depthCompareOp = vk::CompareOp::eLess;
-		depthStencilStateCreateInfo.depthBoundsTestEnable = false;
-		depthStencilStateCreateInfo.minDepthBounds = 0.0f;
-		depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
-		depthStencilStateCreateInfo.stencilTestEnable = false;
-		depthStencilStateCreateInfo.front = {};
-		depthStencilStateCreateInfo.back = {};
-		// ---------------------------------------------
-		// PIPELINE LAYOUT -----------------------------
-		//vk::PushConstantRange pushConstantRange{};
-		//pushConstantRange.offset = 0;
-		//pushConstantRange.size = sizeof(glm::mat4);
-		//pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
+			vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{};
+			colorBlendStateCreateInfo.logicOpEnable = false;
+			colorBlendStateCreateInfo.logicOp = vk::LogicOp::eCopy;
+			colorBlendStateCreateInfo.attachmentCount = 1;
+			colorBlendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
+			colorBlendStateCreateInfo.blendConstants[0] = 0.f;
+			colorBlendStateCreateInfo.blendConstants[1] = 0.f;
+			colorBlendStateCreateInfo.blendConstants[2] = 0.f;
+			colorBlendStateCreateInfo.blendConstants[3] = 0.f;
+			// ---------------------------------------------
+			// DEPTH STENCIL STATE -------------------------
+			vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
+			depthStencilStateCreateInfo.pNext = nullptr;
+			depthStencilStateCreateInfo.flags = {};
+			depthStencilStateCreateInfo.depthTestEnable = true;
+			depthStencilStateCreateInfo.depthWriteEnable = true;
+			depthStencilStateCreateInfo.depthCompareOp = vk::CompareOp::eLess;
+			depthStencilStateCreateInfo.depthBoundsTestEnable = false;
+			depthStencilStateCreateInfo.minDepthBounds = 0.0f;
+			depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
+			depthStencilStateCreateInfo.stencilTestEnable = false;
+			depthStencilStateCreateInfo.front = {};
+			depthStencilStateCreateInfo.back = {};
+			// ---------------------------------------------
+			// PIPELINE LAYOUT -----------------------------
+			//vk::PushConstantRange pushConstantRange{};
+			//pushConstantRange.offset = 0;
+			//pushConstantRange.size = sizeof(glm::mat4);
+			//pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
 
-		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = { m_sceneDataDescriptorSetLayout, m_materialDataDescriptorSetLayout , m_objectDataDescriptorSetLayout};
+			std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = { m_sceneDataDescriptorSetLayout, m_materialDataDescriptorSetLayout , m_objectDataDescriptorSetLayout };
 
-		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-		pipelineLayoutCreateInfo.pNext = nullptr;
-		pipelineLayoutCreateInfo.flags = {};
-		pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayouts.size();
-		pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
-		pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-		pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+			vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+			pipelineLayoutCreateInfo.pNext = nullptr;
+			pipelineLayoutCreateInfo.flags = {};
+			pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayouts.size();
+			pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
+			pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+			pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
 
-		vk::PipelineLayout pipelineLayout;
-		vk::Result result = m_device->GetDevice().createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan pipeline layout!");
-		// ---------------------------------------------
-		// SHADER STAGE STATE --------------------------
-		std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos = m_shader->GetShaderStageCreateInfos();
-		// ---------------------------------------------
-		// GRAPHICS PIPELINE ---------------------------
-		vk::GraphicsPipelineCreateInfo pipelineCreateInfo{};
-		pipelineCreateInfo.pNext = nullptr;
-		pipelineCreateInfo.flags = {};
-		pipelineCreateInfo.stageCount = shaderStageCreateInfos.size();
-		pipelineCreateInfo.pStages = shaderStageCreateInfos.data();
-		pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
-		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyStateCreateInfo;
-		pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
-		pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
-		pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
-		pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
-		pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
-		pipelineCreateInfo.pDynamicState = nullptr;
-		pipelineCreateInfo.layout = pipelineLayout;
-		pipelineCreateInfo.renderPass = m_renderPass;
-		pipelineCreateInfo.subpass = 0;
-		pipelineCreateInfo.basePipelineHandle = nullptr;
-		pipelineCreateInfo.basePipelineIndex = -1;
+			vk::PipelineLayout pipelineLayout;
+			vk::Result result = m_device->GetDevice().createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
+			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan pipeline layout!");
+			// ---------------------------------------------
+			// SHADER STAGE STATE --------------------------
+			std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos = vkShader->GetShaderStageCreateInfos();
+			// ---------------------------------------------
+			// GRAPHICS PIPELINE ---------------------------
+			vk::GraphicsPipelineCreateInfo pipelineCreateInfo{};
+			pipelineCreateInfo.pNext = nullptr;
+			pipelineCreateInfo.flags = {};
+			pipelineCreateInfo.stageCount = shaderStageCreateInfos.size();
+			pipelineCreateInfo.pStages = shaderStageCreateInfos.data();
+			pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
+			pipelineCreateInfo.pInputAssemblyState = &inputAssemblyStateCreateInfo;
+			pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
+			pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+			pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
+			pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
+			pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
+			pipelineCreateInfo.pDynamicState = nullptr;
+			pipelineCreateInfo.layout = pipelineLayout;
+			pipelineCreateInfo.renderPass = m_renderPass;
+			pipelineCreateInfo.subpass = 0;
+			pipelineCreateInfo.basePipelineHandle = nullptr;
+			pipelineCreateInfo.basePipelineIndex = -1;
 
-		vk::Pipeline pipeline;
-		result = m_device->GetDevice().createGraphicsPipelines(nullptr, 1, &pipelineCreateInfo, nullptr, &pipeline);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan graphics pipeline!");
-		// ---------------------------------------------
-		m_pipelineLayouts[m_shader->GetTag()] = pipelineLayout;
-		m_pipelines[m_shader->GetTag()] = pipeline;
+			vk::Pipeline pipeline;
+			result = m_device->GetDevice().createGraphicsPipelines(nullptr, 1, &pipelineCreateInfo, nullptr, &pipeline);
+			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan graphics pipeline!");
+			// ---------------------------------------------
+			m_pipelineLayouts[vkShader->GetTag()] = pipelineLayout;
+			m_pipelines[vkShader->GetTag()] = pipeline;
+		}
 	}
 
 	void VulkanRenderer::DestroyPipelines()

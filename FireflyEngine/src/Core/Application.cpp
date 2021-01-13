@@ -3,6 +3,7 @@
 
 #include "Window/WindowsWindow.h"
 #include "Input/Input.h"
+#include "Core/ResourceRegistry.h"
 
 namespace Firefly
 {
@@ -17,6 +18,9 @@ namespace Firefly
 
 	Application::~Application()
 	{
+		MeshRegistry::Instance().DestroyResources();
+		ShaderRegistry::Instance().DestroyResources();
+		MaterialRegistry::Instance().DestroyResources();
 		m_graphicsContext->Destroy();
 	}
 

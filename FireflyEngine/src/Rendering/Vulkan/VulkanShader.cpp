@@ -1,47 +1,32 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanShader.h"
 
-#include <fstream>
+#include "Rendering/Vulkan/VulkanContext.h"
 #include <spirv_reflect.h>
-#include "Rendering/Vulkan/VulkanMesh.h"
 
 namespace Firefly
 {
-	void VulkanShader::Init(vk::Device device, const std::string& tag, const ShaderCodePath& shaderCodePath)
+	VulkanShader::VulkanShader(std::shared_ptr<GraphicsContext> context) :
+		Shader(context)
 	{
-		m_device = device;
-		m_tag = tag;
+		std::shared_ptr<VulkanContext> vkContext = std::dynamic_pointer_cast<VulkanContext>(context);
+		m_device = vkContext->GetDevice()->GetDevice();
+	}
 
-		if (!shaderCodePath.vertexShaderPath.empty())
-		{
-			std::vector<char> shaderCode = ReadBinaryFile(shaderCodePath.vertexShaderPath);
-			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode, vk::ShaderStageFlagBits::eVertex));
-		}
-		if (!shaderCodePath.tesselationControlShaderPath.empty())
-		{
-			std::vector<char> shaderCode = ReadBinaryFile(shaderCodePath.tesselationControlShaderPath);
-			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode, vk::ShaderStageFlagBits::eTessellationControl));
-		}
-		if (!shaderCodePath.tesselationEvaluationShaderPath.empty())
-		{
-			std::vector<char> shaderCode = ReadBinaryFile(shaderCodePath.tesselationEvaluationShaderPath);
-			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode, vk::ShaderStageFlagBits::eTessellationEvaluation));
-		}
-		if (!shaderCodePath.geometryShaderPath.empty())
-		{
-			std::vector<char> shaderCode = ReadBinaryFile(shaderCodePath.geometryShaderPath);
-			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode, vk::ShaderStageFlagBits::eGeometry));
-		}
-		if (!shaderCodePath.fragmentShaderPath.empty())
-		{
-			std::vector<char> shaderCode = ReadBinaryFile(shaderCodePath.fragmentShaderPath);
-			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode, vk::ShaderStageFlagBits::eFragment));
-		}
-		if (!shaderCodePath.computeShaderPath.empty())
-		{
-			std::vector<char> shaderCode = ReadBinaryFile(shaderCodePath.computeShaderPath);
-			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode, vk::ShaderStageFlagBits::eCompute));
-		}
+	void VulkanShader::OnInit(const ShaderCode& shaderCode)
+	{
+		if (!shaderCode.vertex.empty())
+			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode.vertex, vk::ShaderStageFlagBits::eVertex));
+		if (!shaderCode.tesselationControl.empty())
+			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode.tesselationControl, vk::ShaderStageFlagBits::eTessellationControl));
+		if (!shaderCode.tesselationEvaluation.empty())
+			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode.tesselationEvaluation, vk::ShaderStageFlagBits::eTessellationEvaluation));
+		if (!shaderCode.geometry.empty())
+			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode.geometry, vk::ShaderStageFlagBits::eGeometry));
+		if (!shaderCode.fragment.empty())
+			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode.fragment, vk::ShaderStageFlagBits::eFragment));
+		if (!shaderCode.compute.empty())
+			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode.compute, vk::ShaderStageFlagBits::eCompute));
 	}
 
 	void VulkanShader::Destroy()
@@ -51,11 +36,6 @@ namespace Firefly
 		for (auto shaderModule : m_shaderModules)
 			m_device.destroyShaderModule(shaderModule);
 		m_shaderModules.clear();
-	}
-
-	std::string VulkanShader::GetTag() const
-	{
-		return m_tag;
 	}
 
 	std::vector<vk::PipelineShaderStageCreateInfo> VulkanShader::GetShaderStageCreateInfos() const
@@ -85,22 +65,6 @@ namespace Firefly
 		shaderStageCreateInfo.pSpecializationInfo = nullptr;
 
 		return shaderStageCreateInfo;
-	}
-
-	std::vector<char> VulkanShader::ReadBinaryFile(const std::string& fileName)
-	{
-		std::ifstream file(fileName, std::ios::ate | std::ios::binary);
-
-		if (!file.is_open())
-			throw std::runtime_error("Failed to open binary file!");
-
-		size_t fileSize = (size_t)file.tellg();
-		std::vector<char> fileBytes(fileSize);
-		file.seekg(0);
-		file.read(fileBytes.data(), fileSize);
-		file.close();
-
-		return fileBytes;
 	}
 
 	void VulkanShader::PrintShaderReflection(const std::vector<char>& shaderCode)

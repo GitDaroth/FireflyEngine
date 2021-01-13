@@ -1,38 +1,24 @@
 #pragma once
 
-#include "Rendering/Vulkan/VulkanDevice.h"
-#include <glm/glm.hpp>
+#include "Rendering/Mesh.h"
+#include <vulkan/vulkan.hpp>
 
 namespace Firefly
 {
-	class VulkanMesh
+	class VulkanMesh : public Mesh
 	{
 	public:
-		struct Vertex
-		{
-			glm::vec3 position;
-			glm::vec3 normal;
-			glm::vec3 tangent;
-			glm::vec3 bitangent;
-			glm::vec2 texCoords;
-		};
+		VulkanMesh(std::shared_ptr<GraphicsContext> context);
 
-		VulkanMesh(VulkanDevice* device, vk::CommandPool commandPool, vk::Queue queue, const std::string& path, bool flipTexCoords = false);
-		VulkanMesh(VulkanDevice* device, vk::CommandPool commandPool, vk::Queue queue, std::vector<Vertex> vertices, std::vector<uint32_t> indices);
-		~VulkanMesh();
+		virtual void Destroy() override;
 
-		void Bind(vk::CommandBuffer commandBuffer);
+		vk::Buffer GetVertexBuffer() const;
+		vk::Buffer GetIndexBuffer() const;
 
-		uint32_t GetVertexCount() const;
-		uint32_t GetIndexCount() const;
+	protected:
+		virtual void OnInit(std::vector<Vertex> vertices, std::vector<uint32_t> indices) override;
 
 	private:
-		void Init(std::vector<Vertex> vertices, std::vector<uint32_t> indices);
-		void Load(const std::string& path, bool flipTexCoords);
-
-		uint32_t m_vertexCount = 0;
-		uint32_t m_indexCount = 0;
-
 		vk::Buffer m_vertexBuffer;
 		vk::DeviceMemory m_vertexBufferMemory;
 		vk::Buffer m_indexBuffer;

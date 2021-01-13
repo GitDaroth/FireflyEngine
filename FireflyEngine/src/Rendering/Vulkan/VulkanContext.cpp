@@ -13,6 +13,7 @@ namespace Firefly
 			CreateDebugMessenger();
 		CreateSurface();
 		CreateDevice();
+		CreateCommandPool();
 
 		PrintGpuInfo();
 	}
@@ -21,6 +22,7 @@ namespace Firefly
 	{
 		m_device->WaitIdle();
 
+		DestroyCommandPool();
 		DestroyDevice();
 		DestroySurface();
 		if (AreValidationLayersEnabled())
@@ -36,6 +38,11 @@ namespace Firefly
 	vk::SurfaceKHR VulkanContext::GetSurface() const
 	{
 		return m_surface;
+	}
+
+	vk::CommandPool VulkanContext::GetCommandPool() const
+	{
+		return m_commandPool;
 	}
 
 	size_t VulkanContext::GetWidth() const
@@ -148,6 +155,22 @@ namespace Firefly
 	void VulkanContext::DestroyDevice()
 	{
 		m_device->Destroy();
+	}
+
+	void VulkanContext::CreateCommandPool()
+	{
+		vk::CommandPoolCreateInfo commandPoolCreateInfo{};
+		commandPoolCreateInfo.pNext = nullptr;
+		commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
+		commandPoolCreateInfo.queueFamilyIndex = m_device->GetGraphicsQueueFamilyIndex();
+
+		vk::Result result = m_device->GetDevice().createCommandPool(&commandPoolCreateInfo, nullptr, &m_commandPool);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command pool!");
+	}
+
+	void VulkanContext::DestroyCommandPool()
+	{
+		m_device->GetDevice().destroyCommandPool(m_commandPool);
 	}
 
 	void VulkanContext::PrintGpuInfo()

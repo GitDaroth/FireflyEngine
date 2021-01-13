@@ -1,54 +1,25 @@
 #include "pch.h"
 #include "Rendering/Mesh.h"
 
-#include "Rendering/RenderingAPI.h"
-
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
 namespace Firefly
 {
-	Mesh::Mesh(const std::string& path, bool flipTexCoords)
-	{
-		Load(path, flipTexCoords);
-	}
-
-	Mesh::Mesh(std::vector<Vertex> vertices, std::vector<uint32_t> indices)
-	{
-		Init(vertices, indices);
-	}
-
-	Mesh::~Mesh()
+	Mesh::Mesh(std::shared_ptr<GraphicsContext> context) :
+		m_context(context)
 	{
 	}
 
 	void Mesh::Init(std::vector<Vertex> vertices, std::vector<uint32_t> indices)
 	{
-		m_vertexArray = RenderingAPI::CreateVertexArray();
-		m_vertexArray->Init();
-		m_vertexArray->Bind();
-
-		std::shared_ptr<VertexBuffer> vertexBuffer = RenderingAPI::CreateVertexBuffers();
-		vertexBuffer->Init((float*)vertices.data(), vertices.size() * sizeof(Vertex));
-
-		VertexBuffer::Layout layout = {
-			{ ShaderDataType::Float3, "a_position" },
-			{ ShaderDataType::Float3, "a_normal" },
-			{ ShaderDataType::Float3, "a_tangent" },
-			{ ShaderDataType::Float3, "a_bitangent" },
-			{ ShaderDataType::Float2, "a_texCoords" }
-		};
-		vertexBuffer->SetLayout(layout);
-
-		std::shared_ptr<IndexBuffer> indexBuffer = RenderingAPI::CreateIndexBuffers();
-		indexBuffer->Init(indices.data(), indices.size() * sizeof(uint32_t));
-
-		m_vertexArray->AddVertexBuffer(vertexBuffer);
-		m_vertexArray->SetIndexBuffer(indexBuffer);
+		m_vertexCount = vertices.size();
+		m_indexCount = indices.size();
+		OnInit(vertices, indices);
 	}
 
-	void Mesh::Load(const std::string& path, bool flipTexCoords)
+	void Mesh::Init(const std::string& path, bool flipTexCoords)
 	{
 		Assimp::Importer importer;
 		auto importFlags = aiProcess_Triangulate | aiProcess_GenNormals | aiProcess_CalcTangentSpace;
@@ -118,13 +89,13 @@ namespace Firefly
 		}
 	}
 
-	void Mesh::Bind()
+	uint32_t Mesh::GetVertexCount() const
 	{
-		m_vertexArray->Bind();
+		return m_vertexCount;
 	}
 
 	uint32_t Mesh::GetIndexCount() const
 	{
-		return m_vertexArray->GetIndexBuffer()->GetCount();
+		return m_indexCount;
 	}
 }

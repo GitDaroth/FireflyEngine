@@ -2,11 +2,8 @@
 
 #include "Rendering/Renderer.h"
 #include "Rendering/Vulkan/VulkanSwapchain.h"
+#include "Rendering/Material.h"
 #include <unordered_map>
-
-#include "Rendering/Vulkan/VulkanMesh.h"
-#include "Rendering/Vulkan/VulkanMaterial.h"
-#include "Rendering/Vulkan/VulkanRenderObject.h"
 
 namespace Firefly
 {
@@ -32,9 +29,9 @@ namespace Firefly
 	class VulkanRenderer : public Renderer
 	{
 	public:
-		VulkanRenderer();
+		VulkanRenderer(std::shared_ptr<GraphicsContext> context);
 
-		virtual void Init(std::shared_ptr<GraphicsContext> context) override;
+		virtual void Init() override;
 		virtual void Destroy() override;
 
 		virtual void BeginDrawRecording() override;
@@ -49,8 +46,6 @@ namespace Firefly
 		void CreateSwapchain();
 		void DestroySwapchain();
 
-		void CreateCommandPool();
-		void DestroyCommandPool();
 		void AllocateCommandBuffers();
 		void FreeCommandBuffers();
 
@@ -85,7 +80,7 @@ namespace Firefly
 		void CreatePipelines();
 		void DestroyPipelines();
 		
-		std::shared_ptr<VulkanContext> m_context;
+		std::shared_ptr<VulkanContext> m_vkContext;
 		std::shared_ptr<VulkanDevice> m_device;
 		std::shared_ptr<VulkanSwapchain> m_swapchain;
 
@@ -132,12 +127,8 @@ namespace Firefly
 		std::vector<vk::Semaphore> m_isRenderedImageAvailableSemaphores;
 		std::vector<vk::Fence> m_isCommandBufferAvailableFences;
 
-		std::shared_ptr<VulkanShader> m_shader;
-		VulkanMesh* m_armchairMesh;
-		VulkanMesh* m_globeMesh;
-		VulkanMesh* m_pistolMesh;
-		std::vector<VulkanMaterial*> m_materials;
-		std::vector<VulkanRenderObject*> m_renderObjects;
-		std::vector<size_t> m_objectMaterialIndices;
+		std::vector<Entity> m_entities;
+		std::vector<std::shared_ptr<Material>> m_materials;
+		std::vector<size_t> m_entityMaterialIndices;
 	};
 }
