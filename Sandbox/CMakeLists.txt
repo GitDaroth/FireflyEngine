@@ -6,9 +6,8 @@ set(sources
 	src/CameraController.cpp)
 
 set(shaders 
-	#assets/shaders/pbr.glsl
-	assets/shaders/triangle.vert
-	assets/shaders/triangle.frag
+	assets/shaders/pbr.vert
+	assets/shaders/pbr.frag
 	assets/shaders/drawNormals.vert
 	assets/shaders/drawNormals.frag
 	assets/shaders/drawNormals.geom)

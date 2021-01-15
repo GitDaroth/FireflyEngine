@@ -15,18 +15,18 @@ SandboxApp::SandboxApp()
 	m_cameraController = std::make_shared<CameraController>(m_camera);
 
 	Firefly::ShaderCode shaderCode{};
-	shaderCode.vertex = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/triangle.vert.spv");
-	shaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/triangle.frag.spv");
+	shaderCode.vertex = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/pbr.vert.spv");
+	shaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/pbr.frag.spv");
 	std::shared_ptr<Firefly::Shader> defaultShader = Firefly::RenderingAPI::CreateShader(m_graphicsContext);
-	defaultShader->Init("Lit", shaderCode);
+	defaultShader->Init("PBR", shaderCode);
 	Firefly::ShaderRegistry::Instance().Insert(defaultShader->GetTag(), defaultShader);
 
 	std::vector<Firefly::Mesh::Vertex> vertices = 
 	{
-		{ {-1.f, 0.f,  1.f, 1.f}, {0.f, 1.f, 0.f, 0.f}, {1.f, 0.f, 0.f, 0.f}, {0.f, 0.f, -1.f, 0.f}, {0.f, 0.f} },
-		{ { 1.f, 0.f,  1.f, 1.f}, {0.f, 1.f, 0.f, 0.f}, {1.f, 0.f, 0.f, 0.f}, {0.f, 0.f, -1.f, 0.f}, {2.f, 0.f} },
-		{ { 1.f, 0.f, -1.f, 1.f}, {0.f, 1.f, 0.f, 0.f}, {1.f, 0.f, 0.f, 0.f}, {0.f, 0.f, -1.f, 0.f}, {2.f, 2.f} },
-		{ {-1.f, 0.f, -1.f, 1.f}, {0.f, 1.f, 0.f, 0.f}, {1.f, 0.f, 0.f, 0.f}, {0.f, 0.f, -1.f, 0.f}, {0.f, 2.f} }
+		{ {-1.f, 0.f,  1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {0.f, 0.f} },
+		{ { 1.f, 0.f,  1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {2.f, 0.f} },
+		{ { 1.f, 0.f, -1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {2.f, 2.f} },
+		{ {-1.f, 0.f, -1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {0.f, 2.f} }
 	};
 	std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
 

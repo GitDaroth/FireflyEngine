@@ -21,15 +21,12 @@ namespace Firefly
 		float roughness;
 		float metalness;
 		float heightScale;
-		float dummy1;
 		float hasAlbedoTexture;
 		float hasNormalTexture;
 		float hasRoughnessTexture;
 		float hasMetalnessTexture;
 		float hasOcclusionTexture;
 		float hasHeightTexture;
-		float dummy2;
-		float dummy3;
 	};
 
 	struct ObjectData
