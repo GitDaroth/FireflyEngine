@@ -58,6 +58,9 @@ namespace Firefly
 		void AllocateCommandBuffers();
 		void FreeCommandBuffers();
 
+		void CreateColorImage();
+		void DestroyColorImage();
+
 		void CreateDepthImage();
 		void DestroyDepthImage();
 
@@ -124,6 +127,12 @@ namespace Firefly
 		ObjectData* m_objectData;
 		size_t m_objectDataCount = 100;
 		size_t m_objectDataDynamicAlignment;
+
+		vk::SampleCountFlagBits m_msaaSampleCount;
+
+		vk::Image m_colorImage;
+		vk::DeviceMemory m_colorImageMemory;
+		vk::ImageView m_colorImageView;
 
 		vk::Image m_depthImage;
 		vk::DeviceMemory m_depthImageMemory;

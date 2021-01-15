@@ -55,6 +55,7 @@ namespace Firefly
 
 		vk::PhysicalDeviceFeatures requiredDeviceFeatures {};
 		requiredDeviceFeatures.samplerAnisotropy = true;
+		requiredDeviceFeatures.sampleRateShading = true;
 		requiredDeviceFeatures.geometryShader = true;
 
 		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};

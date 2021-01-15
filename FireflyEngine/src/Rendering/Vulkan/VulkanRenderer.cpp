@@ -20,14 +20,14 @@ namespace Firefly
 		m_device = m_vkContext->GetDevice();
 		m_commandPool = m_vkContext->GetCommandPool();
 		m_descriptorPool = m_vkContext->GetDescriptorPool();
+		m_msaaSampleCount = vk::SampleCountFlagBits::e8;
 	}
 
 	void VulkanRenderer::Init()
 	{
 		CreateSwapchain();
-
 		AllocateCommandBuffers();
-
+		CreateColorImage();
 		CreateDepthImage();
 		CreateRenderPass();
 		CreateFramebuffers();
@@ -51,9 +51,8 @@ namespace Firefly
 		DestroyFramebuffers();
 		DestroyRenderPass();
 		DestroyDepthImage();
-
+		DestroyColorImage();
 		FreeCommandBuffers();
-
 		DestroySwapchain();
 	}
 
@@ -120,9 +119,10 @@ namespace Firefly
 		result = m_commandBuffers[m_currentImageIndex].begin(&commandBufferBeginInfo);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to begin recording Vulkan command buffer!");
 
-		std::array<vk::ClearValue, 2> clearValues = {}; // order of clear values needs to be in the order of attachments
+		std::array<vk::ClearValue, 3> clearValues = {}; // order of clear values needs to be in the order of attachments
 		clearValues[0].color = std::array<float, 4>{ 0.1f, 0.1f, 0.1f, 1.0f };
 		clearValues[1].depthStencil = { 1.0f, 0 };
+		clearValues[2].color = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f };
 
 		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
 
@@ -271,10 +271,12 @@ namespace Firefly
 		DestroyPipelines();
 		DestroyFramebuffers();
 		DestroyRenderPass();
+		DestroyColorImage();
 		DestroyDepthImage();
 		DestroySwapchain();
 
 		CreateSwapchain();
+		CreateColorImage();
 		CreateDepthImage();
 		CreateRenderPass();
 		CreateFramebuffers();
@@ -310,6 +312,30 @@ namespace Firefly
 		m_device->GetDevice().freeCommandBuffers(m_commandPool, m_commandBuffers.size(), m_commandBuffers.data());
 	}
 
+	void VulkanRenderer::CreateColorImage()
+	{
+		vk::Format format = m_swapchain->GetImageFormat();
+		uint32_t mipLevels = 1;
+		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
+		vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
+		vk::ImageUsageFlags imageUsageFlags = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+		VulkanUtils::CreateImage(m_device->GetDevice(), m_device->GetPhysicalDevice(), swapchainExtent.width, swapchainExtent.height, mipLevels, m_msaaSampleCount, format, tiling, imageUsageFlags, memoryPropertyFlags, m_colorImage, m_colorImageMemory);
+
+		m_colorImageView = VulkanUtils::CreateImageView(m_device->GetDevice(), m_colorImage, mipLevels, format, vk::ImageAspectFlagBits::eColor);
+
+		//vk::ImageLayout oldLayout = vk::ImageLayout::eUndefined;
+		//vk::ImageLayout newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+		//VulkanUtils::TransitionImageLayout(m_device->GetDevice(), m_commandPool, m_device->GetGraphicsQueue(), m_colorImage, mipLevels, format, oldLayout, newLayout);
+	}
+
+	void VulkanRenderer::DestroyColorImage()
+	{
+		m_device->GetDevice().destroyImageView(m_colorImageView);
+		m_device->GetDevice().destroyImage(m_colorImage);
+		m_device->GetDevice().freeMemory(m_colorImageMemory);
+	}
+
 	void VulkanRenderer::CreateDepthImage()
 	{
 		m_depthFormat = VulkanUtils::FindDepthFormat(m_device->GetPhysicalDevice());
@@ -318,13 +344,13 @@ namespace Firefly
 		vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
 		vk::ImageUsageFlags imageUsageFlags = vk::ImageUsageFlagBits::eDepthStencilAttachment;
 		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		VulkanUtils::CreateImage(m_device->GetDevice(), m_device->GetPhysicalDevice(), swapchainExtent.width, swapchainExtent.height, mipLevels, vk::SampleCountFlagBits::e1, m_depthFormat, tiling, imageUsageFlags, memoryPropertyFlags, m_depthImage, m_depthImageMemory);
+		VulkanUtils::CreateImage(m_device->GetDevice(), m_device->GetPhysicalDevice(), swapchainExtent.width, swapchainExtent.height, mipLevels, m_msaaSampleCount, m_depthFormat, tiling, imageUsageFlags, memoryPropertyFlags, m_depthImage, m_depthImageMemory);
 
 		m_depthImageView = VulkanUtils::CreateImageView(m_device->GetDevice(), m_depthImage, mipLevels, m_depthFormat, vk::ImageAspectFlagBits::eDepth);
 
-		vk::ImageLayout oldLayout = vk::ImageLayout::eUndefined;
-		vk::ImageLayout newLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-		VulkanUtils::TransitionImageLayout(m_device->GetDevice(), m_commandPool, m_device->GetGraphicsQueue(), m_depthImage, mipLevels, m_depthFormat, oldLayout, newLayout);
+		//vk::ImageLayout oldLayout = vk::ImageLayout::eUndefined;
+		//vk::ImageLayout newLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+		//VulkanUtils::TransitionImageLayout(m_device->GetDevice(), m_commandPool, m_device->GetGraphicsQueue(), m_depthImage, mipLevels, m_depthFormat, oldLayout, newLayout);
 	}
 
 	void VulkanRenderer::DestroyDepthImage()
@@ -339,13 +365,13 @@ namespace Firefly
 		vk::AttachmentDescription colorAttachmentDescription{};
 		colorAttachmentDescription.flags = {};
 		colorAttachmentDescription.format = m_swapchain->GetImageFormat();
-		colorAttachmentDescription.samples = vk::SampleCountFlagBits::e1;
+		colorAttachmentDescription.samples = m_msaaSampleCount;
 		colorAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
 		colorAttachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
 		colorAttachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 		colorAttachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 		colorAttachmentDescription.initialLayout = vk::ImageLayout::eUndefined;
-		colorAttachmentDescription.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+		colorAttachmentDescription.finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
 
 		vk::AttachmentReference colorAttachmentReference{};
 		colorAttachmentReference.attachment = 0;
@@ -354,7 +380,7 @@ namespace Firefly
 		vk::AttachmentDescription depthAttachmentDescription{};
 		depthAttachmentDescription.flags = {};
 		depthAttachmentDescription.format = m_depthFormat;
-		depthAttachmentDescription.samples = vk::SampleCountFlagBits::e1;
+		depthAttachmentDescription.samples = m_msaaSampleCount;
 		depthAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
 		depthAttachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
 		depthAttachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
@@ -366,6 +392,21 @@ namespace Firefly
 		depthAttachmentReference.attachment = 1;
 		depthAttachmentReference.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 
+		vk::AttachmentDescription colorResolveAttachmentDescription{};
+		colorResolveAttachmentDescription.flags = {};
+		colorResolveAttachmentDescription.format = m_swapchain->GetImageFormat();
+		colorResolveAttachmentDescription.samples = vk::SampleCountFlagBits::e1;
+		colorResolveAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
+		colorResolveAttachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
+		colorResolveAttachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		colorResolveAttachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		colorResolveAttachmentDescription.initialLayout = vk::ImageLayout::eUndefined;
+		colorResolveAttachmentDescription.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+
+		vk::AttachmentReference colorResolveAttachmentReference{};
+		colorResolveAttachmentReference.attachment = 2;
+		colorResolveAttachmentReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
+
 		vk::SubpassDescription subpassDescription{};
 		subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
 		subpassDescription.flags = {};
@@ -376,7 +417,7 @@ namespace Firefly
 		subpassDescription.pDepthStencilAttachment = &depthAttachmentReference;
 		subpassDescription.preserveAttachmentCount = 0;
 		subpassDescription.pPreserveAttachments = nullptr;
-		subpassDescription.pResolveAttachments = nullptr;
+		subpassDescription.pResolveAttachments = &colorResolveAttachmentReference;
 
 		vk::SubpassDependency subpassDependency{};
 		subpassDependency.dependencyFlags = {};
@@ -387,7 +428,7 @@ namespace Firefly
 		subpassDependency.srcAccessMask = {};
 		subpassDependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 
-		std::array<vk::AttachmentDescription, 2> attachments = { colorAttachmentDescription, depthAttachmentDescription };
+		std::array<vk::AttachmentDescription, 3> attachments = { colorAttachmentDescription, depthAttachmentDescription, colorResolveAttachmentDescription };
 		vk::RenderPassCreateInfo renderPassCreateInfo{};
 		renderPassCreateInfo.pNext = nullptr;
 		renderPassCreateInfo.flags = {};
@@ -413,7 +454,7 @@ namespace Firefly
 		m_framebuffers.resize(m_swapchain->GetImageCount());
 		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
 		{
-			std::vector<vk::ImageView> attachments = { m_swapchain->GetImageViews()[i], m_depthImageView };
+			std::vector<vk::ImageView> attachments = { m_colorImageView, m_depthImageView, m_swapchain->GetImageViews()[i] };
 			vk::FramebufferCreateInfo framebufferCreateInfo{};
 			framebufferCreateInfo.renderPass = m_renderPass;
 			framebufferCreateInfo.attachmentCount = attachments.size();
@@ -871,8 +912,8 @@ namespace Firefly
 			vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
 			multisampleStateCreateInfo.pNext = nullptr;
 			multisampleStateCreateInfo.flags = {};
-			multisampleStateCreateInfo.rasterizationSamples = vk::SampleCountFlagBits::e1;
-			multisampleStateCreateInfo.sampleShadingEnable = false;
+			multisampleStateCreateInfo.rasterizationSamples = m_msaaSampleCount;
+			multisampleStateCreateInfo.sampleShadingEnable = true;
 			multisampleStateCreateInfo.minSampleShading = 1.0f;
 			multisampleStateCreateInfo.pSampleMask = nullptr;
 			multisampleStateCreateInfo.alphaToCoverageEnable = false;
