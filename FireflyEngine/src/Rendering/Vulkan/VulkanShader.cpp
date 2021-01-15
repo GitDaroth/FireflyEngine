@@ -25,8 +25,6 @@ namespace Firefly
 			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode.geometry, vk::ShaderStageFlagBits::eGeometry));
 		if (!shaderCode.fragment.empty())
 			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode.fragment, vk::ShaderStageFlagBits::eFragment));
-		if (!shaderCode.compute.empty())
-			m_shaderStageCreateInfos.push_back(CreateShaderStage(shaderCode.compute, vk::ShaderStageFlagBits::eCompute));
 	}
 
 	void VulkanShader::Destroy()

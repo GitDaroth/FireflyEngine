@@ -4,10 +4,8 @@
 
 namespace Firefly
 {
-	void VulkanContext::Init(std::shared_ptr<Window> window)
+	void VulkanContext::OnInit(std::shared_ptr<Window> window)
 	{
-		m_window = window;
-
 		CreateInstance();
 		if (AreValidationLayersEnabled())
 			CreateDebugMessenger();
@@ -50,16 +48,6 @@ namespace Firefly
 	vk::DescriptorPool VulkanContext::GetDescriptorPool() const
 	{
 		return m_descriptorPool;
-	}
-
-	size_t VulkanContext::GetWidth() const
-	{
-		return m_window->GetWidth();
-	}
-
-	size_t VulkanContext::GetHeight() const
-	{
-		return m_window->GetHeight();
 	}
 
 	void VulkanContext::CreateInstance()
@@ -313,6 +301,9 @@ namespace Firefly
 			break;
 		case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
 			messageTypeLabel = "performance";
+			break;
+		default:
+			messageTypeLabel = "unknown";
 			break;
 		}
 

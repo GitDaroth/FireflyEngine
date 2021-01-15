@@ -5,6 +5,6 @@
 
 #include "Scene/Scene.h"
 
-#include "Rendering/Camera.h"
+#include "Scene/Camera.h"
 #include "Rendering/RenderingAPI.h"
 #include "Rendering/Renderer.h"

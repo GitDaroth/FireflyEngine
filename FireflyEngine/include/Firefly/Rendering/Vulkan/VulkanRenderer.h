@@ -7,34 +7,6 @@
 
 namespace Firefly
 {
-	struct SceneData
-	{
-		glm::mat4 viewMatrix;
-		glm::mat4 projectionMatrix;
-		glm::mat4 viewProjectionMatrix;
-		glm::vec4 cameraPosition;
-	};
-
-	struct MaterialData
-	{
-		glm::vec4 albedo;
-		float roughness;
-		float metalness;
-		float heightScale;
-		float hasAlbedoTexture;
-		float hasNormalTexture;
-		float hasRoughnessTexture;
-		float hasMetalnessTexture;
-		float hasOcclusionTexture;
-		float hasHeightTexture;
-	};
-
-	struct ObjectData
-	{
-		glm::mat4 modelMatrix;
-		glm::mat4 normalMatrix;
-	};
-
 	class VulkanRenderer : public Renderer
 	{
 	public:

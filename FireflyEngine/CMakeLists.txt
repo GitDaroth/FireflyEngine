@@ -44,21 +44,16 @@ set(renderingFiles
 	src/Rendering/Material.cpp
 	include/Firefly/Rendering/Mesh.h
 	src/Rendering/Mesh.cpp
-	include/Firefly/Rendering/Camera.h
-	src/Rendering/Camera.cpp
 	include/Firefly/Rendering/RenderingAPI.h
 	src/Rendering/RenderingAPI.cpp
 	include/Firefly/Rendering/Renderer.h
 	src/Rendering/Renderer.cpp
 	include/Firefly/Rendering/GraphicsContext.h
+	src/Rendering/GraphicsContext.cpp
 	include/Firefly/Rendering/Shader.h
 	src/Rendering/Shader.cpp
 	include/Firefly/Rendering/Texture.h
-	src/Rendering/Texture.cpp
-	include/Firefly/Rendering/VertexArray.h
-	include/Firefly/Rendering/VertexBuffer.h
-	include/Firefly/Rendering/IndexBuffer.h
-	include/Firefly/Rendering/RenderFunctions.h)
+	src/Rendering/Texture.cpp)
 
 set(renderingOpenGLFiles
 	include/Firefly/Rendering/OpenGL/OpenGLContext.h
@@ -67,14 +62,12 @@ set(renderingOpenGLFiles
 	src/Rendering/OpenGL/OpenGLShader.cpp
 	include/Firefly/Rendering/OpenGL/OpenGLTexture.h
 	src/Rendering/OpenGL/OpenGLTexture.cpp
-	include/Firefly/Rendering/OpenGL/OpenGLVertexArray.h
-	src/Rendering/OpenGL/OpenGLVertexArray.cpp
-	include/Firefly/Rendering/OpenGL/OpenGLVertexBuffer.h
-	src/Rendering/OpenGL/OpenGLVertexBuffer.cpp
-	include/Firefly/Rendering/OpenGL/OpenGLIndexBuffer.h
-	src/Rendering/OpenGL/OpenGLIndexBuffer.cpp
-	include/Firefly/Rendering/OpenGL/OpenGLRenderFunctions.h
-	src/Rendering/OpenGL/OpenGLRenderFunctions.cpp)
+	include/Firefly/Rendering/OpenGL/OpenGLMesh.h
+	src/Rendering/OpenGL/OpenGLMesh.cpp
+	include/Firefly/Rendering/OpenGL/OpenGLMaterial.h
+	src/Rendering/OpenGL/OpenGLMaterial.cpp
+	include/Firefly/Rendering/OpenGL/OpenGLRenderer.h
+	src/Rendering/OpenGL/OpenGLRenderer.cpp)
 
 set(renderingVulkanFiles
 	include/Firefly/Rendering/Vulkan/VulkanContext.h
@@ -100,7 +93,9 @@ set(sceneFiles
 	include/Firefly/Scene/Scene.h
 	src/Scene/Scene.cpp
 	include/Firefly/Scene/Entity.h
-	src/Scene/Entity.cpp)
+	src/Scene/Entity.cpp
+	include/Firefly/Scene/Camera.h
+	src/Scene/Camera.cpp)
 
 set(entityComponentFiles
 	include/Firefly/Scene/Components/Component.h

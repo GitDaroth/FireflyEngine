@@ -20,6 +20,14 @@ namespace Firefly
 			Logger::Error("FireflyEngine", "GLFW error [{0}]: {1}", code, description);
 		});
 
+		if (RenderingAPI::GetType() == RenderingAPI::Type::OpenGL)
+		{
+			glfwWindowHint(GLFW_SAMPLES, 8);
+#ifndef NDEBUG
+			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
+#endif
+		}
+
 		if(RenderingAPI::GetType() == RenderingAPI::Type::Vulkan)
 			glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // tell GLFW not to use OpenGL for context creation
 

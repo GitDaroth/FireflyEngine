@@ -9,7 +9,6 @@
 #include "Scene/Components/TransformComponent.h"
 #include "Scene/Components/MeshComponent.h"
 #include "Scene/Components/MaterialComponent.h"
-#include <glm/gtc/matrix_transform.hpp>
 
 namespace Firefly
 {
@@ -96,8 +95,11 @@ namespace Firefly
 
 	void VulkanRenderer::SubmitDraw(std::shared_ptr<Camera> camera)
 	{
-		if (m_vkContext->GetWidth() == 0 && m_vkContext->GetHeight() == 0)
+		if (m_vkContext->GetWidth() == 0 || m_vkContext->GetHeight() == 0)
+		{
+			m_device->WaitIdle();
 			return;
+		}
 
 		// AQUIRE NEXT IMAGE
 		vk::Result result = m_device->GetDevice().acquireNextImageKHR(m_swapchain->GetSwapchain(), UINT64_MAX, m_isNewImageAvailableSemaphores[m_currentFrameIndex], nullptr, &m_currentImageIndex);

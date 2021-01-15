@@ -9,15 +9,15 @@ namespace Firefly
 	class VulkanContext : public GraphicsContext
 	{
 	public:
-		virtual void Init(std::shared_ptr<Window> window) override;
 		virtual void Destroy() override;
 
 		std::shared_ptr<VulkanDevice> GetDevice() const;
 		vk::SurfaceKHR GetSurface() const;
 		vk::CommandPool GetCommandPool() const;
 		vk::DescriptorPool GetDescriptorPool() const;
-		size_t GetWidth() const;
-		size_t GetHeight() const;
+
+	protected:
+		virtual void OnInit(std::shared_ptr<Window> window) override;
 
 	private:
 		void CreateInstance();
@@ -49,7 +49,6 @@ namespace Firefly
 
 		vk::Instance m_instance;
 		vk::SurfaceKHR m_surface;
-		std::shared_ptr<Window> m_window;
 		vk::DebugUtilsMessengerEXT m_debugMessenger;
 		std::shared_ptr<VulkanDevice> m_device;
 		vk::CommandPool m_commandPool;

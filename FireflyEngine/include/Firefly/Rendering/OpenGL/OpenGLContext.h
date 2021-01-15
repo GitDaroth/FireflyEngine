@@ -1,21 +1,30 @@
 #pragma once
 
-//#include "Rendering/GraphicsContext.h"
-//
-//struct GLFWwindow;
-//
-//namespace Firefly
-//{
-//	class OpenGLContext : public GraphicsContext
-//	{
-//	public:
-//		OpenGLContext();
-//		virtual ~OpenGLContext() override;
-//
-//		virtual void Init(void* window) override;
-//		virtual void SwapBuffers() override;
-//
-//	private:
-//		GLFWwindow* m_glfwWindow;
-//	};
-//}
+#include <glad/glad.h>
+#include "Rendering/GraphicsContext.h"
+
+struct GLFWwindow;
+
+namespace Firefly
+{
+	class OpenGLContext : public GraphicsContext
+	{
+	public:
+		virtual void Destroy() override;
+
+		void SwapBuffers();
+
+	protected:
+		virtual void OnInit(std::shared_ptr<Window> window) override;
+
+	private:
+		void PrintGpuInfo();
+
+		GLFWwindow* m_glfwWindow;
+
+		static void GLAPIENTRY DebugMessengerCallback(
+			GLenum source, GLenum type, GLuint id, 
+			GLenum severity, GLsizei length, 
+			const GLchar* message, const void* userParam);
+	};
+}

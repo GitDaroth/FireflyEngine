@@ -15,8 +15,17 @@ SandboxApp::SandboxApp()
 	m_cameraController = std::make_shared<CameraController>(m_camera);
 
 	Firefly::ShaderCode shaderCode{};
-	shaderCode.vertex = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/pbr.vert.spv");
-	shaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/pbr.frag.spv");
+	if (Firefly::RenderingAPI::GetType() == Firefly::RenderingAPI::Type::OpenGL)
+	{
+		shaderCode.vertex = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/OpenGL/pbr.vert");
+		shaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/OpenGL/pbr.frag");
+	}
+	else if (Firefly::RenderingAPI::GetType() == Firefly::RenderingAPI::Type::Vulkan)
+	{
+		shaderCode.vertex = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/pbr.vert.spv");
+		shaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/pbr.frag.spv");
+	}
+
 	std::shared_ptr<Firefly::Shader> defaultShader = Firefly::RenderingAPI::CreateShader(m_graphicsContext);
 	defaultShader->Init("PBR", shaderCode);
 	Firefly::ShaderRegistry::Instance().Insert(defaultShader->GetTag(), defaultShader);

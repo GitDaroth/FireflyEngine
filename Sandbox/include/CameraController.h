@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Firefly/Rendering/Camera.h>
+#include <Firefly/Scene/Camera.h>
 #include <Firefly/Input/Input.h>
 #include <memory.h>
 

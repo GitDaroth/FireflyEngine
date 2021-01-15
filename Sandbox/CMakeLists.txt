@@ -5,12 +5,19 @@ set(sources
 	include/CameraController.h
 	src/CameraController.cpp)
 
-set(shaders 
-	assets/shaders/pbr.vert
-	assets/shaders/pbr.frag
-	assets/shaders/drawNormals.vert
-	assets/shaders/drawNormals.frag
-	assets/shaders/drawNormals.geom)
+set(openGLShaders 
+	assets/shaders/OpenGL/pbr.vert
+	assets/shaders/OpenGL/pbr.frag
+	assets/shaders/OpenGL/drawNormals.vert
+	assets/shaders/OpenGL/drawNormals.frag
+	assets/shaders/OpenGL/drawNormals.geom)
+
+set(vulkanShaders 
+	assets/shaders/Vulkan/pbr.vert
+	assets/shaders/Vulkan/pbr.frag
+	assets/shaders/Vulkan/drawNormals.vert
+	assets/shaders/Vulkan/drawNormals.frag
+	assets/shaders/Vulkan/drawNormals.geom)
 
 set(meshes
 	assets/meshes/armchair.fbx
@@ -42,13 +49,15 @@ set(textures
 	assets/textures/pistol/occlusion.jpg)
 
 source_group("" FILES ${sources})
-source_group("\\assets\\shaders" FILES ${shaders})
+source_group("\\assets\\shaders\\OpenGL" FILES ${openGLShaders})
+source_group("\\assets\\shaders\\Vulkan" FILES ${vulkanShaders})
 source_group("\\assets\\meshes" FILES ${meshes})
 source_group("\\assets\\textures" FILES ${textures})
 
 add_executable(Sandbox 
 	${sources}
-	${shaders}
+	${openGLShaders}
+	${vulkanShaders}
 	${meshes}
 	${textures})
  
@@ -62,17 +71,17 @@ else()
   set(glslValidator "$ENV{VULKAN_SDK}/Bin32/glslangValidator.exe")
 endif()
 
-foreach(shader ${shaders})
+foreach(shader ${vulkanShaders})
 	get_filename_component(fileName ${shader} NAME)
-	set(spirv "${CMAKE_CURRENT_BINARY_DIR}/assets/shaders/${fileName}.spv")
+	set(spirv "${CMAKE_CURRENT_BINARY_DIR}/assets/shaders/Vulkan/${fileName}.spv")
 	add_custom_command(
 		OUTPUT ${spirv}
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/assets/shaders/"
 		COMMAND ${glslValidator} -V ${shader} -o ${spirv}
 		DEPENDS ${shader})
-	list(APPEND spirvBinaryFiles ${spirv})
+	list(APPEND vulkanSpirvBinaryFiles ${spirv})
 endforeach(shader)
-add_custom_target(CompileGlslToSpirv DEPENDS ${spirvBinaryFiles})
+add_custom_target(CompileGlslToSpirv DEPENDS ${vulkanSpirvBinaryFiles})
 add_dependencies(Sandbox CompileGlslToSpirv)
 set_target_properties(CompileGlslToSpirv PROPERTIES FOLDER PostBuild)
 

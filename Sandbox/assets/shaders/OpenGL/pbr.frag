@@ -1,8 +1,7 @@
 #version 450
-#extension GL_ARB_separate_shader_objects : enable
 
-layout(set = 1, binding = 0) uniform MaterialData
-{   
+struct MaterialData
+{
 	vec4 albedo;
 	float roughness;
 	float metalness;
@@ -13,22 +12,24 @@ layout(set = 1, binding = 0) uniform MaterialData
 	float hasMetalnessTexture;
 	float hasOcclusionTexture;
 	float hasHeightTexture;
-} material;
+};
 
-layout(set = 2, binding = 0) uniform sampler2D albedoTexutureSampler;
-layout(set = 2, binding = 1) uniform sampler2D normalTexutureSampler;
-layout(set = 2, binding = 2) uniform sampler2D roughnessTexutureSampler;
-layout(set = 2, binding = 3) uniform sampler2D metalnessTexutureSampler;
-layout(set = 2, binding = 4) uniform sampler2D occlusionTexutureSampler;
-layout(set = 2, binding = 5) uniform sampler2D heightTexutureSampler;
+uniform MaterialData material;
 
-layout(location = 0) in vec2 fragTexCoords;
-layout(location = 1) in vec3 fragPosition;
-layout(location = 2) in vec3 fragNormal;
-layout(location = 3) in vec3 cameraPosition;
-layout(location = 4) in mat3 TBN;
+layout(binding = 0) uniform sampler2D albedoTextureSampler;
+layout(binding = 1) uniform sampler2D normalTextureSampler;
+layout(binding = 2) uniform sampler2D roughnessTextureSampler;
+layout(binding = 3) uniform sampler2D metalnessTextureSampler;
+layout(binding = 4) uniform sampler2D occlusionTextureSampler;
+layout(binding = 5) uniform sampler2D heightTextureSampler;
 
-layout(location = 0) out vec4 outColor;
+in vec2 fragTexCoords;
+in vec3 fragPosition;
+in vec3 fragNormal;
+in vec3 cameraPosition;
+in mat3 TBN;
+
+out vec4 outColor;
 
 const float PI = 3.14159265359;
 
@@ -50,31 +51,31 @@ void main()
 
 	vec3 albedo;
 	if(material.hasAlbedoTexture > 0.0f)
-		albedo = pow(texture(albedoTexutureSampler, texCoords).rgb, vec3(2.2));
+		albedo = pow(texture(albedoTextureSampler, texCoords).rgb, vec3(2.2));
 	else
 		albedo = material.albedo.rgb;
 
 	vec3 normal;
 	if(material.hasNormalTexture > 0.0f)
-		normal = normalize(TBN * normalize(texture(normalTexutureSampler, texCoords).xyz * 2.0 - 1.0));
+		normal = normalize(TBN * normalize(texture(normalTextureSampler, texCoords).xyz * 2.0 - 1.0));
 	else
 		normal = normalize(fragNormal);
 
 	float roughness;
 	if(material.hasRoughnessTexture > 0.0f)
-		roughness = texture(roughnessTexutureSampler, texCoords).r;
+		roughness = texture(roughnessTextureSampler, texCoords).r;
 	else
 		roughness = material.roughness;
 
 	float metalness;
 	if(material.hasMetalnessTexture > 0.0f)
-		metalness = texture(metalnessTexutureSampler, texCoords).r;
+		metalness = texture(metalnessTextureSampler, texCoords).r;
 	else
 		metalness = material.metalness;
 
 	float occlusion = 1.0;
 	if(material.hasOcclusionTexture > 0.0f)
-		occlusion = texture(occlusionTexutureSampler, texCoords).r;
+		occlusion = texture(occlusionTextureSampler, texCoords).r;
 
 	vec3 F0 = vec3(0.04); 
 	F0 = mix(F0, albedo, metalness);
@@ -183,14 +184,14 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 
 	// get initial values
 	vec2  currentTexCoords = texCoords;
-	float currentDepthMapValue = -(texture(heightTexutureSampler, currentTexCoords).r - 1.0);
+	float currentDepthMapValue = -(texture(heightTextureSampler, currentTexCoords).r - 1.0);
   
 	while(currentLayerDepth < currentDepthMapValue)
 	{
 		// shift texture coordinates along direction of P
 		currentTexCoords -= deltaTexCoords;
 		// get depthmap value at current texture coordinates
-		currentDepthMapValue = -(texture(heightTexutureSampler, currentTexCoords).r - 1.0);  
+		currentDepthMapValue = -(texture(heightTextureSampler, currentTexCoords).r - 1.0);  
 		// get depth of next layer
 		currentLayerDepth += layerDepth;  
 	}
@@ -200,7 +201,7 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 
 	// get depth after and before collision for linear interpolation
 	float afterDepth  = currentDepthMapValue - currentLayerDepth;
-	float beforeDepth = -(texture(heightTexutureSampler, prevTexCoords).r - 1.0) - currentLayerDepth + layerDepth;
+	float beforeDepth = -(texture(heightTextureSampler, prevTexCoords).r - 1.0) - currentLayerDepth + layerDepth;
  
 	// interpolation of texture coordinates
 	float t = afterDepth / (afterDepth - beforeDepth);

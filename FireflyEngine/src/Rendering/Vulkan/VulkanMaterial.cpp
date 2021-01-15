@@ -110,22 +110,22 @@ namespace Firefly
 		uint32_t binding = 0;
 		switch (usage)
 		{
-		case Firefly::Material::TextureUsage::Albedo:
+		case TextureUsage::Albedo:
 			binding = 0;
 			break;
-		case Firefly::Material::TextureUsage::Normal:
+		case TextureUsage::Normal:
 			binding = 1;
 			break;
-		case Firefly::Material::TextureUsage::Roughness:
+		case TextureUsage::Roughness:
 			binding = 2;
 			break;
-		case Firefly::Material::TextureUsage::Metalness:
+		case TextureUsage::Metalness:
 			binding = 3;
 			break;
-		case Firefly::Material::TextureUsage::Occlusion:
+		case TextureUsage::Occlusion:
 			binding = 4;
 			break;
-		case Firefly::Material::TextureUsage::Height:
+		case TextureUsage::Height:
 			binding = 5;
 			break;
 		}

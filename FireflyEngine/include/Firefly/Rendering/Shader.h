@@ -12,7 +12,6 @@ namespace Firefly
 		std::vector<char> tesselationEvaluation;
 		std::vector<char> geometry;
 		std::vector<char> fragment;
-		std::vector<char> compute;
 	};
 
 	class Shader
