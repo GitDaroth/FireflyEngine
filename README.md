@@ -1,44 +1,44 @@
 # FireflyEngine
 
-The FireflyEngine is an ambitious project of developing a game engine from scratch for learning purposes. This early-stage engine is currently solely developed by me.
+The FireflyEngine is an ambitious project of developing a game engine from scratch for learning purposes. This early-stage engine is currently solely developed by me. The rendering is done optionally with Vulkan or OpenGL.
 
 ![scene1](/showcase/scene1.gif)
 ![scene1_close](/showcase/scene1_close.gif)
 ![scene2](/showcase/scene2.gif)
 
 **Engine Features:**
-- simple graphics API abstraction layer
-- OpenGL forward rendering
-- input (mouse + keyboard + gamepad) and window events
+- simple graphics API abstraction layer for OpenGL and Vulkan
+- forward rendering
+- input (mouse, keyboard, gamepad) and window events with [GLFW](https://github.com/glfw/glfw)
 - normal mapping
 - parallax mapping
 - basic real-time PBR shader and material
 - texture loading with mipmaps and anisotropic filtering
-- mesh loading
-- logger
+- anti-aliasing (MSAA)
+- mesh loading with [assimp](https://github.com/assimp/assimp)
+- simple resource registry for meshes, textures, shaders and materials
+- entity, component, system (ECS) with [EnTT](https://github.com/skypjack/entt)
+- logger with [spdlog](https://github.com/gabime/spdlog)
 
 **Upcoming Features:**
-- resource managers for meshes, textures, shaders, ...
+- lights
 - deferred rendering pass
 - scenegraph
-- entity, component, system (ECS)
 - batch rendering
 - screen-space ambient occlusion (SSAO)
 - cubemaps
 - image based lighting (IBL) for PBR
 - shadow mapping
-- anti-aliasing
 - skeletal animation
-- support for multithreading
+- multithreaded command recoring with Vulkan
 - scripting
 - editor
-- support for DirectX12 or Vulkan
-- shader variants generation
+- support for DirectX12
 - rigid body physics integration
 - cross-platfrom support (Windows, Linux, Mac)
 
 ## Build Instructions
-The FireflyEngine only supports Windows at the moment!
+The FireflyEngine only supports **Windows** at the moment!
 
 For Visual Studio 2019:
 ```
@@ -49,6 +49,7 @@ cmake_generate_VS2019.bat
 Open the generated Visual Studio solution in the "build" folder and build the "Sandbox" target.
 
 ## Dependencies
+- min. OpenGL 4.5 or Vulkan 1.2
 - [GLFW](https://github.com/glfw/glfw)
 - [Glad](https://glad.dav1d.de)
 - [glm](https://github.com/g-truc/glm)
@@ -57,3 +58,4 @@ Open the generated Visual Studio solution in the "build" folder and build the "S
 - [spdlog](https://github.com/gabime/spdlog)
 - [ImGui](https://github.com/ocornut/imgui)
 - [EnTT](https://github.com/skypjack/entt)
+- [SPIRV-Reflect](https://github.com/KhronosGroup/SPIRV-Reflect)
