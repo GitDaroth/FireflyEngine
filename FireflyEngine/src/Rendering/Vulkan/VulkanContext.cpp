@@ -203,7 +203,7 @@ namespace Firefly
 
 		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{};
 		descriptorPoolCreateInfo.pNext = nullptr;
-		descriptorPoolCreateInfo.flags = {};
+		descriptorPoolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind; // Needed in order to update textures on the fly
 		descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
 		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
 		descriptorPoolCreateInfo.maxSets = 1000;

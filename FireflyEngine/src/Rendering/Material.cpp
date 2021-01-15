@@ -70,6 +70,7 @@ namespace Firefly
 			return;
 
 		m_textures[usage] = texture;
+		m_useTextures[usage] = true;
 		OnSetTexture(texture, usage);
 	}
 
@@ -84,6 +85,20 @@ namespace Firefly
 	bool Material::HasTexture(TextureUsage usage)
 	{
 		return m_textures.find(usage) != m_textures.end();
+	}
+
+	void Material::EnableTexture(bool enable, TextureUsage usage)
+	{
+		if (m_textures.find(usage) != m_textures.end())
+			m_useTextures[usage] = enable;
+	}
+
+	bool Material::IsTextureEnabled(TextureUsage usage)
+	{
+		if (m_useTextures.find(usage) != m_useTextures.end())
+			return m_useTextures[usage];
+		else
+			return false;
 	}
 
 	void Material::ClearTextures()

@@ -222,54 +222,72 @@ void SandboxApp::OnWindowEvent(std::shared_ptr<Firefly::WindowEvent> event)
 
 void SandboxApp::OnKeyEvent(std::shared_ptr<Firefly::KeyEvent> event)
 {
-	//if (event->IsType<Firefly::KeyPressEvent>() || event->IsType<Firefly::KeyRepeatEvent>())
-	//{
-	//	switch (event->GetKeyCode())
-	//	{
-	//	case FIREFLY_KEY_UP:
-	//		m_heightScale = std::max(m_heightScale - 0.01f, 0.f);
-	//		break;
-	//	case FIREFLY_KEY_DOWN:
-	//		m_heightScale += 0.01f;
-	//		break;
-	//	}
+	if (event->IsType<Firefly::KeyPressEvent>() || event->IsType<Firefly::KeyRepeatEvent>())
+	{
+		switch (event->GetKeyCode())
+		{
+		case FIREFLY_KEY_1:
+			m_isAlbedoTexEnabled = !m_isAlbedoTexEnabled;
+			break;
+		case FIREFLY_KEY_2:
+			m_isNormalTexEnabled = !m_isNormalTexEnabled;
+			break;
+		case FIREFLY_KEY_3:
+			m_isRoughnessTexEnabled = !m_isRoughnessTexEnabled;
+			break;
+		case FIREFLY_KEY_4:
+			m_isMetalnessTexEnabled = !m_isMetalnessTexEnabled;
+			break;
+		case FIREFLY_KEY_5:
+			m_isOcclusionTexEnabled = !m_isOcclusionTexEnabled;
+			break;
+		case FIREFLY_KEY_6:
+			m_isHeightTexEnabled = !m_isHeightTexEnabled;
+			break;
+		case FIREFLY_KEY_UP:
+			m_heightScale = std::max(m_heightScale - 0.01f, 0.f);
+			break;
+		case FIREFLY_KEY_DOWN:
+			m_heightScale += 0.01f;
+			break;
+		}
 
-	//	auto entityGroup = m_scene->GetEntityGroup<Firefly::MaterialComponent>();
-	//	for (auto entity : entityGroup)
-	//	{
-	//		auto material = entity.GetComponent<Firefly::MaterialComponent>().m_material;
-	//		
-	//		switch (event->GetKeyCode())
-	//		{
-	//		case FIREFLY_KEY_1:
-	//			material->EnableAlbedoMap(!material->IsAlbedoMapEnabled());
-	//			break;
-	//		case FIREFLY_KEY_2:
-	//			material->EnableNormalMap(!material->IsNormalMapEnabled());
-	//			break;
-	//		case FIREFLY_KEY_3:
-	//			material->EnableRoughnessMap(!material->IsRoughnessMapEnabled());
-	//			break;
-	//		case FIREFLY_KEY_4:
-	//			material->EnableMetalnessMap(!material->IsMetalnessMapEnabled());
-	//			break;
-	//		case FIREFLY_KEY_5:
-	//			material->EnableOcclusionMap(!material->IsOcclusionMapEnabled());
-	//			break;
-	//		case FIREFLY_KEY_6:
-	//			material->EnableHeightMap(!material->IsHeightMapEnabled());
-	//			break;
-	//		case FIREFLY_KEY_UP:
-	//			material->SetHeightScale(m_heightScale);
-	//			break;
-	//		case FIREFLY_KEY_DOWN:
-	//			material->SetHeightScale(m_heightScale);
-	//			break;
-	//		default:
-	//			break;
-	//		}
-	//	}
-	//}
+		auto entityGroup = m_scene->GetEntityGroup<Firefly::MaterialComponent>();
+		for (auto entity : entityGroup)
+		{
+			auto material = entity.GetComponent<Firefly::MaterialComponent>().m_material;
+			
+			switch (event->GetKeyCode())
+			{
+			case FIREFLY_KEY_1:
+				material->EnableTexture(m_isAlbedoTexEnabled, Firefly::Material::TextureUsage::Albedo);
+				break;
+			case FIREFLY_KEY_2:
+				material->EnableTexture(m_isNormalTexEnabled, Firefly::Material::TextureUsage::Normal);
+				break;
+			case FIREFLY_KEY_3:
+				material->EnableTexture(m_isRoughnessTexEnabled, Firefly::Material::TextureUsage::Roughness);
+				break;
+			case FIREFLY_KEY_4:
+				material->EnableTexture(m_isMetalnessTexEnabled, Firefly::Material::TextureUsage::Metalness);
+				break;
+			case FIREFLY_KEY_5:
+				material->EnableTexture(m_isOcclusionTexEnabled, Firefly::Material::TextureUsage::Occlusion);
+				break;
+			case FIREFLY_KEY_6:
+				material->EnableTexture(m_isHeightTexEnabled, Firefly::Material::TextureUsage::Height);
+				break;
+			case FIREFLY_KEY_UP:
+				material->SetHeightScale(m_heightScale);
+				break;
+			case FIREFLY_KEY_DOWN:
+				material->SetHeightScale(m_heightScale);
+				break;
+			default:
+				break;
+			}
+		}
+	}
 }
 
 void SandboxApp::OnMouseEvent(std::shared_ptr<Firefly::MouseEvent> event)

@@ -75,8 +75,6 @@ namespace Firefly
 
 		void CreateUniformBuffers();
 		void DestroyUniformBuffers();
-		void CreateDescriptorPool();
-		void DestroyDescriptorPool();
 		void CreateDescriptorSetLayouts();
 		void DestroyDescriptorSetLayouts();
 		void AllocateDescriptorSets();

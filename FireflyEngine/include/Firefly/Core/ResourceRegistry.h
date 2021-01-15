@@ -27,7 +27,7 @@ namespace Firefly
 				m_resources[name] = resource;
 		}
 
-		std::shared_ptr<TResource> Retrieve(const std::string& name) const
+		std::shared_ptr<TResource> Retrieve(const std::string& name)
 		{
 			if (m_resources.find(name) != m_resources.end())
 				return m_resources[name];

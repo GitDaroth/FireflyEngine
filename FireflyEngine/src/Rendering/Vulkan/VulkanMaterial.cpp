@@ -77,7 +77,20 @@ namespace Firefly
 			occlusionTextureLayoutBinding,
 			heightTextureLayoutBinding
 		};
+
+		// PartiallyBound: (PhysicalDeviceDescriptorIndexingFeatures.descriptorBindingPartiallyBound needs to be enabled)
+		// -> Allows to update only part of the combined image sampler descriptors with actual data 
+		// UpdateAfterBind: (PhysicalDeviceDescriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind needs to be enabled)
+		// -> Allows to update a combined image sampler descriptor on the fly -> corres. flag needs to be set in DescriptorSetLayoutCreateInfo and DescriptorPoolCreateInfo
+		std::vector<vk::DescriptorBindingFlags> bindingFlags(bindings.size(), vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind);
+		vk::DescriptorSetLayoutBindingFlagsCreateInfo layoutBindingFlagsCreateInfo{};
+		layoutBindingFlagsCreateInfo.pNext = nullptr;
+		layoutBindingFlagsCreateInfo.bindingCount = bindingFlags.size();
+		layoutBindingFlagsCreateInfo.pBindingFlags = bindingFlags.data();
+
 		vk::DescriptorSetLayoutCreateInfo materialTexturesDescriptorSetLayoutCreateInfo{};
+		materialTexturesDescriptorSetLayoutCreateInfo.pNext = &layoutBindingFlagsCreateInfo;
+		materialTexturesDescriptorSetLayoutCreateInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool; // Needed in order to update textures on the fly
 		materialTexturesDescriptorSetLayoutCreateInfo.bindingCount = bindings.size();
 		materialTexturesDescriptorSetLayoutCreateInfo.pBindings = bindings.data();
 		vk::Result result = m_device.createDescriptorSetLayout(&materialTexturesDescriptorSetLayoutCreateInfo, nullptr, &m_materialTexturesDescriptorSetLayout);

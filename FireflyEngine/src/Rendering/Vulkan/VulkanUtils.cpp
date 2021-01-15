@@ -42,15 +42,28 @@ namespace Firefly::VulkanUtils
 		return vk::SurfaceKHR(surface);
 	}
 
+	vk::Device CreateDevice(vk::PhysicalDevice physicalDevice,
+		const std::vector<const char*>& requiredDeviceExtensions,
+		const std::vector<const char*>& requiredDeviceLayers,
+		vk::PhysicalDeviceFeatures deviceFeatures,
+		const std::vector<vk::DeviceQueueCreateInfo>& queueCreateInfos)
+	{
+		vk::PhysicalDeviceFeatures2 deviceFeatures2{};
+		deviceFeatures2.pNext = nullptr;
+		deviceFeatures2.features = deviceFeatures;
+
+		return CreateDevice(physicalDevice, requiredDeviceExtensions, requiredDeviceLayers, deviceFeatures2, queueCreateInfos);
+	}
+
 	vk::Device CreateDevice(vk::PhysicalDevice physicalDevice, 
 							const std::vector<const char*>& requiredDeviceExtensions, 
 							const std::vector<const char*>& requiredDeviceLayers,
-							vk::PhysicalDeviceFeatures deviceFeatures,
+							vk::PhysicalDeviceFeatures2 deviceFeatures2,
 							const std::vector<vk::DeviceQueueCreateInfo>& queueCreateInfos)
 	{
 		// TODO: Check required device extensions and layers
 		vk::DeviceCreateInfo deviceCreateInfo{};
-		deviceCreateInfo.pNext = nullptr;
+		deviceCreateInfo.pNext = &deviceFeatures2;
 		deviceCreateInfo.flags = {};
 		deviceCreateInfo.enabledExtensionCount = requiredDeviceExtensions.size();
 		deviceCreateInfo.ppEnabledExtensionNames = requiredDeviceExtensions.data();
@@ -58,7 +71,7 @@ namespace Firefly::VulkanUtils
 		deviceCreateInfo.ppEnabledLayerNames = requiredDeviceLayers.data();
 		deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
 		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-		deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+		deviceCreateInfo.pEnabledFeatures = nullptr;
 
 		vk::Device device;
 		vk::Result result = physicalDevice.createDevice(&deviceCreateInfo, nullptr, &device);

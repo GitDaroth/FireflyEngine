@@ -16,7 +16,13 @@ namespace Firefly::VulkanUtils
 	vk::Device CreateDevice(vk::PhysicalDevice physicalDevice,
 							const std::vector<const char*>& requiredDeviceExtensions,
 							const std::vector<const char*>& requiredDeviceLayers,
-							vk::PhysicalDeviceFeatures deviceFeatures,
+							vk::PhysicalDeviceFeatures deviceFeatures2,
+							const std::vector<vk::DeviceQueueCreateInfo>& queueCreateInfos);
+
+	vk::Device CreateDevice(vk::PhysicalDevice physicalDevice,
+							const std::vector<const char*>& requiredDeviceExtensions,
+							const std::vector<const char*>& requiredDeviceLayers,
+							vk::PhysicalDeviceFeatures2 deviceFeatures2,
 							const std::vector<vk::DeviceQueueCreateInfo>& queueCreateInfos);
 
 	struct SwapchainData

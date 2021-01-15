@@ -57,7 +57,15 @@ namespace Firefly
 		requiredDeviceFeatures.samplerAnisotropy = true;
 		requiredDeviceFeatures.geometryShader = true;
 
-		m_device = VulkanUtils::CreateDevice(physicalDevice, requiredDeviceExtensions, requiredDeviceLayers, requiredDeviceFeatures, queueCreateInfos);
+		vk::PhysicalDeviceDescriptorIndexingFeatures descriptorIndexingFeatures{};
+		descriptorIndexingFeatures.descriptorBindingPartiallyBound = true;
+		descriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind = true;
+
+		vk::PhysicalDeviceFeatures2 requiredDeviceFeatures2{};
+		requiredDeviceFeatures2.pNext = &descriptorIndexingFeatures;
+		requiredDeviceFeatures2.features = requiredDeviceFeatures;
+
+		m_device = VulkanUtils::CreateDevice(physicalDevice, requiredDeviceExtensions, requiredDeviceLayers, requiredDeviceFeatures2, queueCreateInfos);
 	}
 
 	void VulkanDevice::Destroy()

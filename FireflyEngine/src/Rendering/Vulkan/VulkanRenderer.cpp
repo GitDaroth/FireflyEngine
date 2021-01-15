@@ -19,6 +19,7 @@ namespace Firefly
 		m_vkContext = std::dynamic_pointer_cast<VulkanContext>(context);
 		m_device = m_vkContext->GetDevice();
 		m_commandPool = m_vkContext->GetCommandPool();
+		m_descriptorPool = m_vkContext->GetDescriptorPool();
 	}
 
 	void VulkanRenderer::Init()
@@ -33,7 +34,6 @@ namespace Firefly
 		CreateSynchronizationPrimitivesForRendering();
 
 		CreateUniformBuffers();
-		CreateDescriptorPool();
 		CreateDescriptorSetLayouts();
 		AllocateDescriptorSets();
 		CreatePipelines();
@@ -45,7 +45,6 @@ namespace Firefly
 
 		DestroyPipelines();
 		DestroyDescriptorSetLayouts();
-		DestroyDescriptorPool();
 		DestroyUniformBuffers();
 
 		DestroySynchronizationPrimitivesForRendering();
@@ -98,6 +97,9 @@ namespace Firefly
 
 	void VulkanRenderer::SubmitDraw(std::shared_ptr<Camera> camera)
 	{
+		if (m_vkContext->GetWidth() == 0 && m_vkContext->GetHeight() == 0)
+			return;
+
 		// AQUIRE NEXT IMAGE
 		vk::Result result = m_device->GetDevice().acquireNextImageKHR(m_swapchain->GetSwapchain(), UINT64_MAX, m_isNewImageAvailableSemaphores[m_currentFrameIndex], nullptr, &m_currentImageIndex);
 		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
@@ -235,12 +237,12 @@ namespace Firefly
 			(*materialData).roughness = m_materials[i]->GetRoughness();
 			(*materialData).metalness = m_materials[i]->GetMetalness();
 			(*materialData).heightScale = m_materials[i]->GetHeightScale();
-			(*materialData).hasAlbedoTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Albedo);
-			(*materialData).hasNormalTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Normal);
-			(*materialData).hasRoughnessTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Roughness);
-			(*materialData).hasMetalnessTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Metalness);
-			(*materialData).hasOcclusionTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Occlusion);
-			(*materialData).hasHeightTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Height);
+			(*materialData).hasAlbedoTexture = (float)m_materials[i]->IsTextureEnabled(Material::TextureUsage::Albedo);
+			(*materialData).hasNormalTexture = (float)m_materials[i]->IsTextureEnabled(Material::TextureUsage::Normal);
+			(*materialData).hasRoughnessTexture = (float)m_materials[i]->IsTextureEnabled(Material::TextureUsage::Roughness);
+			(*materialData).hasMetalnessTexture = (float)m_materials[i]->IsTextureEnabled(Material::TextureUsage::Metalness);
+			(*materialData).hasOcclusionTexture = (float)m_materials[i]->IsTextureEnabled(Material::TextureUsage::Occlusion);
+			(*materialData).hasHeightTexture = (float)m_materials[i]->IsTextureEnabled(Material::TextureUsage::Height);
 		}
 
 		m_device->GetDevice().mapMemory(m_materialDataUniformBufferMemories[m_currentImageIndex], 0, m_materialDataCount * m_materialDataDynamicAlignment, {}, &mappedMemory);
@@ -266,31 +268,17 @@ namespace Firefly
 	{
 		m_device->WaitIdle();
 
-		if (m_vkContext->GetWidth() == 0 && m_vkContext->GetHeight() == 0)
-			return;
-
 		DestroyPipelines();
-		DestroyUniformBuffers();
-		DestroyDescriptorPool();
-
-		DestroySynchronizationPrimitivesForRendering();
 		DestroyFramebuffers();
 		DestroyRenderPass();
 		DestroyDepthImage();
-		FreeCommandBuffers();
 		DestroySwapchain();
 
 		CreateSwapchain();
-		AllocateCommandBuffers();
 		CreateDepthImage();
 		CreateRenderPass();
 		CreateFramebuffers();
-		CreateSynchronizationPrimitivesForRendering();
-
 		CreatePipelines();
-		CreateDescriptorPool();
-		CreateUniformBuffers();
-		AllocateDescriptorSets();
 	}
 
 	void VulkanRenderer::CreateSwapchain()
@@ -501,35 +489,6 @@ namespace Firefly
 		}
 	}
 
-	void VulkanRenderer::CreateDescriptorPool()
-	{
-		vk::DescriptorPoolSize uniformBufferDescriptorPoolSize{};
-		uniformBufferDescriptorPoolSize.type = vk::DescriptorType::eUniformBuffer;
-		uniformBufferDescriptorPoolSize.descriptorCount = 100;
-
-		vk::DescriptorPoolSize uniformBufferDynamicDescriptorPoolSize{};
-		uniformBufferDynamicDescriptorPoolSize.type = vk::DescriptorType::eUniformBufferDynamic;
-		uniformBufferDynamicDescriptorPoolSize.descriptorCount = 100;
-
-		std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = { uniformBufferDescriptorPoolSize, uniformBufferDynamicDescriptorPoolSize };
-
-		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{};
-		descriptorPoolCreateInfo.pNext = nullptr;
-		descriptorPoolCreateInfo.flags = {};
-		descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
-		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
-		descriptorPoolCreateInfo.maxSets = 10 * m_swapchain->GetImageCount();
-
-		vk::Result result = m_device->GetDevice().createDescriptorPool(&descriptorPoolCreateInfo, nullptr, &m_descriptorPool);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan descriptor pool!");
-	}
-
-	void VulkanRenderer::DestroyDescriptorPool()
-	{
-		m_device->GetDevice().resetDescriptorPool(m_descriptorPool, {});
-		m_device->GetDevice().destroyDescriptorPool(m_descriptorPool);
-	}
-
 	void VulkanRenderer::CreateDescriptorSetLayouts()
 	{
 		// SCENE DATA
@@ -619,7 +578,15 @@ namespace Firefly
 			heightTextureLayoutBinding
 		};
 
+		std::vector<vk::DescriptorBindingFlags> bindingFlags(bindings.size(), vk::DescriptorBindingFlagBits::ePartiallyBound | vk::DescriptorBindingFlagBits::eUpdateAfterBind);
+		vk::DescriptorSetLayoutBindingFlagsCreateInfo layoutBindingFlagsCreateInfo{};
+		layoutBindingFlagsCreateInfo.pNext = nullptr;
+		layoutBindingFlagsCreateInfo.bindingCount = bindingFlags.size();
+		layoutBindingFlagsCreateInfo.pBindingFlags = bindingFlags.data();
+
 		vk::DescriptorSetLayoutCreateInfo materialTexturesDescriptorSetLayoutCreateInfo{};
+		materialTexturesDescriptorSetLayoutCreateInfo.pNext = &layoutBindingFlagsCreateInfo;
+		materialTexturesDescriptorSetLayoutCreateInfo.flags = vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
 		materialTexturesDescriptorSetLayoutCreateInfo.bindingCount = bindings.size();
 		materialTexturesDescriptorSetLayoutCreateInfo.pBindings = bindings.data();
 
