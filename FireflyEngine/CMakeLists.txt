@@ -54,6 +54,7 @@ set(renderingFiles
 	include/Firefly/Rendering/Shader.h
 	src/Rendering/Shader.cpp
 	include/Firefly/Rendering/Texture.h
+	src/Rendering/Texture.cpp
 	include/Firefly/Rendering/VertexArray.h
 	include/Firefly/Rendering/VertexBuffer.h
 	include/Firefly/Rendering/IndexBuffer.h
@@ -86,6 +87,10 @@ set(renderingVulkanFiles
 	src/Rendering/Vulkan/VulkanMesh.cpp
 	include/Firefly/Rendering/Vulkan/VulkanShader.h
 	src/Rendering/Vulkan/VulkanShader.cpp
+	include/Firefly/Rendering/Vulkan/VulkanMaterial.h
+	src/Rendering/Vulkan/VulkanMaterial.cpp
+	include/Firefly/Rendering/Vulkan/VulkanTexture.h
+	src/Rendering/Vulkan/VulkanTexture.cpp
 	include/Firefly/Rendering/Vulkan/VulkanUtils.h
 	src/Rendering/Vulkan/VulkanUtils.cpp
 	include/Firefly/Rendering/Vulkan/VulkanRenderer.h

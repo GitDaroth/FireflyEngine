@@ -8,7 +8,10 @@ set(sources
 set(shaders 
 	#assets/shaders/pbr.glsl
 	assets/shaders/triangle.vert
-	assets/shaders/triangle.frag)
+	assets/shaders/triangle.frag
+	assets/shaders/drawNormals.vert
+	assets/shaders/drawNormals.frag
+	assets/shaders/drawNormals.geom)
 
 set(meshes
 	assets/meshes/armchair.fbx

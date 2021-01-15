@@ -10,7 +10,7 @@ namespace Firefly
 
 		m_swapchainData.imageCount = 2;
 		m_swapchainData.presentMode = vk::PresentModeKHR::eFifoRelaxed;
-		m_swapchainData.imageFormat = vk::Format::eB8G8R8A8Srgb;
+		m_swapchainData.imageFormat = vk::Format::eR8G8B8A8Srgb;
 		m_swapchainData.colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 
 		vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(context->GetSurface());

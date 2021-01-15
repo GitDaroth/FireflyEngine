@@ -21,6 +21,7 @@ namespace Firefly
 		MeshRegistry::Instance().DestroyResources();
 		ShaderRegistry::Instance().DestroyResources();
 		MaterialRegistry::Instance().DestroyResources();
+		TextureRegistry::Instance().DestroyResources();
 		m_graphicsContext->Destroy();
 	}
 

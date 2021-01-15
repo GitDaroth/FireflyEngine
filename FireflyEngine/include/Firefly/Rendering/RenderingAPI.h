@@ -5,6 +5,7 @@
 #include "Rendering/Shader.h"
 #include "Rendering/Mesh.h"
 #include "Rendering/Texture.h"
+#include "Rendering/Material.h"
 
 namespace Firefly
 {
@@ -24,7 +25,8 @@ namespace Firefly
 		static std::shared_ptr<Renderer> CreateRenderer(std::shared_ptr<GraphicsContext> context);
 		static std::shared_ptr<Shader> CreateShader(std::shared_ptr<GraphicsContext> context);
 		static std::shared_ptr<Mesh> CreateMesh(std::shared_ptr<GraphicsContext> context);
-		static std::shared_ptr<Texture2D> CreateTexture2D();
+		static std::shared_ptr<Texture> CreateTexture(std::shared_ptr<GraphicsContext> context);
+		static std::shared_ptr<Material> CreateMaterial(std::shared_ptr<GraphicsContext> context);
 
 		static void SetType(Type type);
 		static Type GetType();

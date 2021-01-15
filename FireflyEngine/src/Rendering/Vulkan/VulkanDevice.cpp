@@ -53,7 +53,11 @@ namespace Firefly
 			queueCreateInfos.push_back(presentQueueCreateInfo);
 		}
 
-		m_device = VulkanUtils::CreateDevice(physicalDevice, requiredDeviceExtensions, requiredDeviceLayers, queueCreateInfos);
+		vk::PhysicalDeviceFeatures requiredDeviceFeatures {};
+		requiredDeviceFeatures.samplerAnisotropy = true;
+		requiredDeviceFeatures.geometryShader = true;
+
+		m_device = VulkanUtils::CreateDevice(physicalDevice, requiredDeviceExtensions, requiredDeviceLayers, requiredDeviceFeatures, queueCreateInfos);
 	}
 
 	void VulkanDevice::Destroy()

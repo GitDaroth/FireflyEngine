@@ -16,6 +16,7 @@ namespace Firefly::VulkanUtils
 	vk::Device CreateDevice(vk::PhysicalDevice physicalDevice,
 							const std::vector<const char*>& requiredDeviceExtensions,
 							const std::vector<const char*>& requiredDeviceLayers,
+							vk::PhysicalDeviceFeatures deviceFeatures,
 							const std::vector<vk::DeviceQueueCreateInfo>& queueCreateInfos);
 
 	struct SwapchainData
@@ -37,6 +38,8 @@ namespace Firefly::VulkanUtils
 	void CreateImage(vk::Device device, vk::PhysicalDevice physicalDevice, uint32_t width, uint32_t height, uint32_t mipLevels, vk::SampleCountFlagBits sampleCount, vk::Format format, vk::ImageTiling tiling, vk::ImageUsageFlags imageUsageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::Image& image, vk::DeviceMemory& imageMemory);
 	vk::ImageView CreateImageView(vk::Device device, vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageAspectFlags imageAspectFlags);
 	void TransitionImageLayout(vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Image image, uint32_t mipLevels, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
+	void CopyBufferToImage(vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Buffer sourceBuffer, vk::Image destinationImage, uint32_t width, uint32_t height);
+	void GenerateMipmaps(vk::Device device, vk::PhysicalDevice physicalDevice, vk::CommandPool commandPool, vk::Queue queue, vk::Image image, vk::Format format, int32_t width, int32_t height, uint32_t mipLevels);
 	vk::Format FindSupportedFormat(vk::PhysicalDevice physicalDevice, const std::vector<vk::Format>& formatCandidates, vk::ImageTiling tiling, vk::FormatFeatureFlags formatFeatureFlags);
 	vk::Format FindDepthFormat(vk::PhysicalDevice physicalDevice);
 	bool HasStencilComponent(vk::Format format);

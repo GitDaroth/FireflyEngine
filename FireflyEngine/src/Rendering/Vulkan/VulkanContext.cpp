@@ -14,6 +14,7 @@ namespace Firefly
 		CreateSurface();
 		CreateDevice();
 		CreateCommandPool();
+		CreateDescriptorPool();
 
 		PrintGpuInfo();
 	}
@@ -22,6 +23,7 @@ namespace Firefly
 	{
 		m_device->WaitIdle();
 
+		DestroyDescriptorPool();
 		DestroyCommandPool();
 		DestroyDevice();
 		DestroySurface();
@@ -43,6 +45,11 @@ namespace Firefly
 	vk::CommandPool VulkanContext::GetCommandPool() const
 	{
 		return m_commandPool;
+	}
+
+	vk::DescriptorPool VulkanContext::GetDescriptorPool() const
+	{
+		return m_descriptorPool;
 	}
 
 	size_t VulkanContext::GetWidth() const
@@ -171,6 +178,44 @@ namespace Firefly
 	void VulkanContext::DestroyCommandPool()
 	{
 		m_device->GetDevice().destroyCommandPool(m_commandPool);
+	}
+
+	void VulkanContext::CreateDescriptorPool()
+	{
+		vk::DescriptorPoolSize uniformBufferDescriptorPoolSize{};
+		uniformBufferDescriptorPoolSize.type = vk::DescriptorType::eUniformBuffer;
+		uniformBufferDescriptorPoolSize.descriptorCount = 100;
+
+		vk::DescriptorPoolSize uniformBufferDynamicDescriptorPoolSize{};
+		uniformBufferDynamicDescriptorPoolSize.type = vk::DescriptorType::eUniformBufferDynamic;
+		uniformBufferDynamicDescriptorPoolSize.descriptorCount = 100;
+
+		vk::DescriptorPoolSize imageSamplerDescriptorPoolSize{};
+		imageSamplerDescriptorPoolSize.type = vk::DescriptorType::eCombinedImageSampler;
+		imageSamplerDescriptorPoolSize.descriptorCount = 100;
+
+		std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = 
+		{ 
+			uniformBufferDescriptorPoolSize, 
+			uniformBufferDynamicDescriptorPoolSize, 
+			imageSamplerDescriptorPoolSize 
+		};
+
+		vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{};
+		descriptorPoolCreateInfo.pNext = nullptr;
+		descriptorPoolCreateInfo.flags = {};
+		descriptorPoolCreateInfo.poolSizeCount = descriptorPoolSizes.size();
+		descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizes.data();
+		descriptorPoolCreateInfo.maxSets = 1000;
+
+		vk::Result result = m_device->GetDevice().createDescriptorPool(&descriptorPoolCreateInfo, nullptr, &m_descriptorPool);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan descriptor pool!");
+	}
+
+	void VulkanContext::DestroyDescriptorPool()
+	{
+		m_device->GetDevice().resetDescriptorPool(m_descriptorPool, {});
+		m_device->GetDevice().destroyDescriptorPool(m_descriptorPool);
 	}
 
 	void VulkanContext::PrintGpuInfo()

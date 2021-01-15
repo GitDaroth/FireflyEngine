@@ -5,6 +5,8 @@
 #include "Rendering/Vulkan/VulkanRenderer.h"
 #include "Rendering/Vulkan/VulkanShader.h"
 #include "Rendering/Vulkan/VulkanMesh.h"
+#include "Rendering/Vulkan/VulkanTexture.h"
+#include "Rendering/Vulkan/VulkanMaterial.h"
 
 namespace Firefly
 {
@@ -70,12 +72,28 @@ namespace Firefly
 		}
 	}
 
-	std::shared_ptr<Texture2D> RenderingAPI::CreateTexture2D()
+	std::shared_ptr<Texture> RenderingAPI::CreateTexture(std::shared_ptr<GraphicsContext> context)
 	{
 		switch (s_type)
 		{
 		case RenderingAPI::Type::OpenGL:
 		case RenderingAPI::Type::Vulkan:
+			return std::make_shared<VulkanTexture>(context);
+		case RenderingAPI::Type::DirectX12:
+		case RenderingAPI::Type::Metal:
+		case RenderingAPI::Type::None:
+		default:
+			return nullptr;
+		}
+	}
+
+	std::shared_ptr<Material> RenderingAPI::CreateMaterial(std::shared_ptr<GraphicsContext> context)
+	{
+		switch (s_type)
+		{
+		case RenderingAPI::Type::OpenGL:
+		case RenderingAPI::Type::Vulkan:
+			return std::make_shared<VulkanMaterial>(context);
 		case RenderingAPI::Type::DirectX12:
 		case RenderingAPI::Type::Metal:
 		case RenderingAPI::Type::None:

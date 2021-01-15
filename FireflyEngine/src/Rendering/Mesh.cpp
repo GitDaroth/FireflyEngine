@@ -44,17 +44,21 @@ namespace Firefly
 					vertex.position.x = mesh->mVertices[i].x;
 					vertex.position.y = mesh->mVertices[i].y;
 					vertex.position.z = mesh->mVertices[i].z;
+					vertex.position.w = 1.0f;
 					vertex.normal.x = mesh->mNormals[i].x;
 					vertex.normal.y = mesh->mNormals[i].y;
 					vertex.normal.z = mesh->mNormals[i].z;
+					vertex.normal.w = 0.0f;
 					if (mesh->mTextureCoords[0])
 					{
 						vertex.tangent.x = mesh->mTangents[i].x;
 						vertex.tangent.y = mesh->mTangents[i].y;
 						vertex.tangent.z = mesh->mTangents[i].z;
+						vertex.tangent.w = 0.0f;
 						vertex.bitangent.x = mesh->mBitangents[i].x;
 						vertex.bitangent.y = mesh->mBitangents[i].y;
 						vertex.bitangent.z = mesh->mBitangents[i].z;
+						vertex.bitangent.w = 0.0f;
 						vertex.texCoords.x = mesh->mTextureCoords[0][i].x;
 						vertex.texCoords.y = mesh->mTextureCoords[0][i].y;
 					}
@@ -63,9 +67,11 @@ namespace Firefly
 						vertex.tangent.x = 1.f;
 						vertex.tangent.y = 0.f;
 						vertex.tangent.z = 0.f;
+						vertex.tangent.w = 0.0f;
 						vertex.bitangent.x = 0.f;
 						vertex.bitangent.y = 1.f;
 						vertex.bitangent.z = 0.f;
+						vertex.bitangent.w = 0.0f;
 						vertex.texCoords.x = 0.f;
 						vertex.texCoords.y = 0.f;
 					}

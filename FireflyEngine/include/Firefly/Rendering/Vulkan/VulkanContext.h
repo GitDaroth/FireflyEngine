@@ -15,6 +15,7 @@ namespace Firefly
 		std::shared_ptr<VulkanDevice> GetDevice() const;
 		vk::SurfaceKHR GetSurface() const;
 		vk::CommandPool GetCommandPool() const;
+		vk::DescriptorPool GetDescriptorPool() const;
 		size_t GetWidth() const;
 		size_t GetHeight() const;
 
@@ -35,6 +36,9 @@ namespace Firefly
 		void CreateCommandPool();
 		void DestroyCommandPool();
 
+		void CreateDescriptorPool();
+		void DestroyDescriptorPool();
+
 		void PrintGpuInfo();
 
 		std::vector<const char*> GetRequiredInstanceExtensions() const;
@@ -49,6 +53,7 @@ namespace Firefly
 		vk::DebugUtilsMessengerEXT m_debugMessenger;
 		std::shared_ptr<VulkanDevice> m_device;
 		vk::CommandPool m_commandPool;
+		vk::DescriptorPool m_descriptorPool;
 
 		static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
 			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

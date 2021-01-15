@@ -22,5 +22,5 @@ private:
 	std::shared_ptr<Firefly::Renderer> m_renderer;
 	std::shared_ptr<Firefly::Camera> m_camera;
 	std::shared_ptr<CameraController> m_cameraController;
-	//float m_heightScale = 0.2f;
+	float m_heightScale = 0.2f;
 };

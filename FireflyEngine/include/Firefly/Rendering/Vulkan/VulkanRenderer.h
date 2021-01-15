@@ -12,18 +12,30 @@ namespace Firefly
 		glm::mat4 viewMatrix;
 		glm::mat4 projectionMatrix;
 		glm::mat4 viewProjectionMatrix;
-		glm::vec3 cameraPosition;
+		glm::vec4 cameraPosition;
 	};
 
 	struct MaterialData
 	{
-		glm::vec4 color;
+		glm::vec4 albedo;
+		float roughness;
+		float metalness;
+		float heightScale;
+		float dummy1;
+		float hasAlbedoTexture;
+		float hasNormalTexture;
+		float hasRoughnessTexture;
+		float hasMetalnessTexture;
+		float hasOcclusionTexture;
+		float hasHeightTexture;
+		float dummy2;
+		float dummy3;
 	};
 
 	struct ObjectData
 	{
 		glm::mat4 modelMatrix;
-		glm::mat3 normalMatrix;
+		glm::mat4 normalMatrix;
 	};
 
 	class VulkanRenderer : public Renderer
@@ -107,6 +119,8 @@ namespace Firefly
 		MaterialData* m_materialData;
 		size_t m_materialDataCount = 100;
 		size_t m_materialDataDynamicAlignment;
+
+		vk::DescriptorSetLayout m_materialTexturesDescriptorSetLayout;
 
 		vk::DescriptorSetLayout m_objectDataDescriptorSetLayout;
 		std::vector<vk::DescriptorSet> m_objectDataDescriptorSets;

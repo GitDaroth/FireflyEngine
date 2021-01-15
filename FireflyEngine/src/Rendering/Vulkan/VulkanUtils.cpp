@@ -44,7 +44,8 @@ namespace Firefly::VulkanUtils
 
 	vk::Device CreateDevice(vk::PhysicalDevice physicalDevice, 
 							const std::vector<const char*>& requiredDeviceExtensions, 
-							const std::vector<const char*>& requiredDeviceLayers, 
+							const std::vector<const char*>& requiredDeviceLayers,
+							vk::PhysicalDeviceFeatures deviceFeatures,
 							const std::vector<vk::DeviceQueueCreateInfo>& queueCreateInfos)
 	{
 		// TODO: Check required device extensions and layers
@@ -57,7 +58,7 @@ namespace Firefly::VulkanUtils
 		deviceCreateInfo.ppEnabledLayerNames = requiredDeviceLayers.data();
 		deviceCreateInfo.queueCreateInfoCount = queueCreateInfos.size();
 		deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-		deviceCreateInfo.pEnabledFeatures = nullptr;
+		deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
 
 		vk::Device device;
 		vk::Result result = physicalDevice.createDevice(&deviceCreateInfo, nullptr, &device);
@@ -357,6 +358,93 @@ namespace Firefly::VulkanUtils
 			throw std::invalid_argument("Unsupported layout transition!");
 
 		commandBuffer.pipelineBarrier(sourcePipelineStageFlags, destinationPipelineStageFlags, {}, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+		EndCommandBuffer(device, commandBuffer, commandPool, queue);
+	}
+
+	void CopyBufferToImage(vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Buffer sourceBuffer, vk::Image destinationImage, uint32_t width, uint32_t height)
+	{
+		vk::CommandBuffer commandBuffer = BeginOneTimeCommandBuffer(device, commandPool);
+
+		vk::BufferImageCopy bufferImageCopy{};
+		bufferImageCopy.bufferOffset = 0;
+		bufferImageCopy.bufferRowLength = 0;
+		bufferImageCopy.bufferImageHeight = 0;
+		bufferImageCopy.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+		bufferImageCopy.imageSubresource.mipLevel = 0;
+		bufferImageCopy.imageSubresource.baseArrayLayer = 0;
+		bufferImageCopy.imageSubresource.layerCount = 1;
+		bufferImageCopy.imageOffset = { 0, 0, 0 };
+		bufferImageCopy.imageExtent = { width, height, 1 };
+		commandBuffer.copyBufferToImage(sourceBuffer, destinationImage, vk::ImageLayout::eTransferDstOptimal, 1, &bufferImageCopy);
+
+		EndCommandBuffer(device, commandBuffer, commandPool, queue);
+	}
+
+	void GenerateMipmaps(vk::Device device, vk::PhysicalDevice physicalDevice, vk::CommandPool commandPool, vk::Queue queue, vk::Image image, vk::Format format, int32_t width, int32_t height, uint32_t mipLevels)
+	{
+		// Check if image format supports linear blitting
+		vk::FormatProperties formatProperties;
+		physicalDevice.getFormatProperties(format, &formatProperties);
+		if (!(formatProperties.optimalTilingFeatures & vk::FormatFeatureFlagBits::eSampledImageFilterLinear))
+			throw std::runtime_error("Texture image format does not support linear blitting!");
+
+		vk::CommandBuffer commandBuffer = BeginOneTimeCommandBuffer(device, commandPool);
+
+		vk::ImageMemoryBarrier imageMemoryBarrier{};
+		imageMemoryBarrier.pNext = nullptr;
+		imageMemoryBarrier.image = image;
+		imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		imageMemoryBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		imageMemoryBarrier.subresourceRange.layerCount = 1;
+		imageMemoryBarrier.subresourceRange.levelCount = 1;
+
+		int32_t mipWidth = width;
+		int32_t mipHeight = height;
+		for (uint32_t i = 1; i < mipLevels; i++)
+		{
+			imageMemoryBarrier.subresourceRange.baseMipLevel = i - 1;
+			imageMemoryBarrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+			imageMemoryBarrier.newLayout = vk::ImageLayout::eTransferSrcOptimal;
+			imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+			imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eTransfer, {}, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+			vk::ImageBlit imageBlit{};
+			imageBlit.srcOffsets[0] = { 0, 0, 0 };
+			imageBlit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+			imageBlit.srcSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+			imageBlit.srcSubresource.mipLevel = i - 1;
+			imageBlit.srcSubresource.baseArrayLayer = 0;
+			imageBlit.srcSubresource.layerCount = 1;
+			imageBlit.dstOffsets[0] = { 0, 0, 0 };
+			imageBlit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+			imageBlit.dstSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;;
+			imageBlit.dstSubresource.mipLevel = i;
+			imageBlit.dstSubresource.baseArrayLayer = 0;
+			imageBlit.dstSubresource.layerCount = 1;
+			commandBuffer.blitImage(image, vk::ImageLayout::eTransferSrcOptimal, image, vk::ImageLayout::eTransferDstOptimal, 1, &imageBlit, vk::Filter::eLinear);
+
+			imageMemoryBarrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
+			imageMemoryBarrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+			imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+			imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+			commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+
+			if (mipWidth > 1)
+				mipWidth /= 2;
+			if (mipHeight > 1)
+				mipHeight /= 2;
+		}
+
+		imageMemoryBarrier.subresourceRange.baseMipLevel = mipLevels - 1;
+		imageMemoryBarrier.oldLayout = vk::ImageLayout::eTransferDstOptimal;
+		imageMemoryBarrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferWrite;
+		imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
+		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
 		EndCommandBuffer(device, commandBuffer, commandPool, queue);
 	}

@@ -3,18 +3,20 @@
 
 namespace Firefly
 {
-	Material::Material(std::shared_ptr<Shader> shader) :
-		m_shader(shader),
-		m_color(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f))
+	Material::Material(std::shared_ptr<GraphicsContext> context) :
+		m_context(context),
+		m_shader(nullptr),
+		m_albedo(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)),
+		m_roughness(0.0f),
+		m_metalness(0.0f),
+		m_heightScale(0.1f)
 	{
 	}
 
-	Material::~Material()
+	void Material::Init(std::shared_ptr<Shader> shader)
 	{
-	}
-
-	void Material::Destroy()
-	{
+		m_shader = shader;
+		OnInit();
 	}
 
 	std::shared_ptr<Shader> Material::GetShader() const
@@ -22,13 +24,70 @@ namespace Firefly
 		return m_shader;
 	}
 
-	void Material::SetColor(const glm::vec4& color)
+	void Material::SetAlbedo(const glm::vec4& albedo)
 	{
-		m_color = color;
+		m_albedo = albedo;
 	}
 
-	glm::vec4 Material::GetColor() const
+	glm::vec4 Material::GetAlbedo() const
 	{
-		return m_color;
+		return m_albedo;
+	}
+
+	void Material::SetRoughness(float roughness)
+	{
+		m_roughness = roughness;
+	}
+
+	float Material::GetRoughness() const
+	{
+		return m_roughness;
+	}
+
+	void Material::SetMetalness(float metalness)
+	{
+		m_metalness = metalness;
+	}
+
+	float Material::GetMetalness() const
+	{
+		return m_metalness;
+	}
+
+	void Material::SetHeightScale(float heightScale)
+	{
+		m_heightScale = heightScale;
+	}
+
+	float Material::GetHeightScale() const
+	{
+		return m_heightScale;
+	}
+
+	void Material::SetTexture(std::shared_ptr<Texture> texture, TextureUsage usage)
+	{
+		if (!texture)
+			return;
+
+		m_textures[usage] = texture;
+		OnSetTexture(texture, usage);
+	}
+
+	std::shared_ptr<Texture> Material::GetTexture(TextureUsage usage)
+	{
+		if (m_textures.find(usage) != m_textures.end())
+			return m_textures[usage];
+		else
+			return nullptr;
+	}
+
+	bool Material::HasTexture(TextureUsage usage)
+	{
+		return m_textures.find(usage) != m_textures.end();
+	}
+
+	void Material::ClearTextures()
+	{
+		m_textures.clear();
 	}
 }

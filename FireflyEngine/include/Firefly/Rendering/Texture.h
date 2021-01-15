@@ -1,20 +1,30 @@
 #pragma once
 
+#include "Rendering/GraphicsContext.h"
+
 namespace Firefly
 {
-	class Texture2D
+	class Texture
 	{
 	public:
-		Texture2D() {}
-		virtual ~Texture2D() {}
+		enum class ColorSpace
+		{
+			RGB,
+			SRGB
+		};
 
-		virtual void Init(const std::string& path) = 0;
-		virtual void Bind(uint32_t slot) = 0;
+		Texture(std::shared_ptr<GraphicsContext> context);
 
-		inline uint32_t GetWidth() { return m_width; }
-		inline uint32_t GetHeight() { return m_height; }
+		void Init(const std::string& path, ColorSpace colorSpace = ColorSpace::RGB);
+		virtual void Destroy() = 0;
+
+		uint32_t GetWidth();
+		uint32_t GetHeight();
 
 	protected:
+		virtual void OnInit(unsigned char* pixelData, ColorSpace colorSpace) = 0;
+
+		std::shared_ptr<GraphicsContext> m_context;
 		uint32_t m_width;
 		uint32_t m_height;
 	};

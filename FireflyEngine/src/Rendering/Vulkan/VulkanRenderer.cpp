@@ -4,6 +4,7 @@
 #include "Core/ResourceRegistry.h"
 #include "Rendering/Vulkan/VulkanMesh.h"
 #include "Rendering/Vulkan/VulkanShader.h"
+#include "Rendering/Vulkan/VulkanMaterial.h"
 #include "Rendering/Vulkan/VulkanUtils.h"
 #include "Scene/Components/TransformComponent.h"
 #include "Scene/Components/MeshComponent.h"
@@ -118,7 +119,7 @@ namespace Firefly
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to begin recording Vulkan command buffer!");
 
 		std::array<vk::ClearValue, 2> clearValues = {}; // order of clear values needs to be in the order of attachments
-		clearValues[0].color = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f };
+		clearValues[0].color = std::array<float, 4>{ 0.1f, 0.1f, 0.1f, 1.0f };
 		clearValues[1].depthStencil = { 1.0f, 0 };
 
 		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
@@ -138,7 +139,7 @@ namespace Firefly
 
 		for (size_t i = 0; i < m_entities.size(); i++)
 		{
-			std::shared_ptr<Material> material = m_materials[m_entityMaterialIndices[i]];
+			std::shared_ptr<VulkanMaterial> material = std::dynamic_pointer_cast<VulkanMaterial>(m_materials[m_entityMaterialIndices[i]]);
 			std::shared_ptr<VulkanMesh> mesh = std::dynamic_pointer_cast<VulkanMesh>(m_entities[i].GetComponent<MeshComponent>().m_mesh);
 			std::string shaderTag = material->GetShader()->GetTag();
 
@@ -148,6 +149,7 @@ namespace Firefly
 			{ 
 				m_sceneDataDescriptorSets[m_currentImageIndex], 
 				m_materialDataDescriptorSets[m_currentImageIndex], 
+				material->GetTexturesDescriptorSet(),
 				m_objectDataDescriptorSets[m_currentImageIndex] 
 			};
 			std::vector<uint32_t> dynamicOffsets =
@@ -209,7 +211,7 @@ namespace Firefly
 	void VulkanRenderer::UpdateUniformBuffers(std::shared_ptr<Camera> camera)
 	{
 		// Scene Data ---------
-		glm::vec3 cameraPosition = camera->GetPosition();
+		glm::vec4 cameraPosition = glm::vec4(camera->GetPosition(), 1.0f);
 		glm::mat4 viewMatrix = camera->GetViewMatrix();
 		glm::mat4 projectionMatrix = camera->GetProjectionMatrix();
 		projectionMatrix[1][1] *= -1; // Vulkan has inverted y axis in comparison to OpenGL
@@ -229,7 +231,16 @@ namespace Firefly
 		for (size_t i = 0; i < m_materials.size(); i++)
 		{
 			MaterialData* materialData = (MaterialData*)((uint64_t)m_materialData + (i * m_materialDataDynamicAlignment));
-			(*materialData).color = m_materials[i]->GetColor();
+			(*materialData).albedo = m_materials[i]->GetAlbedo();
+			(*materialData).roughness = m_materials[i]->GetRoughness();
+			(*materialData).metalness = m_materials[i]->GetMetalness();
+			(*materialData).heightScale = m_materials[i]->GetHeightScale();
+			(*materialData).hasAlbedoTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Albedo);
+			(*materialData).hasNormalTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Normal);
+			(*materialData).hasRoughnessTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Roughness);
+			(*materialData).hasMetalnessTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Metalness);
+			(*materialData).hasOcclusionTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Occlusion);
+			(*materialData).hasHeightTexture = (float)m_materials[i]->HasTexture(Material::TextureUsage::Height);
 		}
 
 		m_device->GetDevice().mapMemory(m_materialDataUniformBufferMemories[m_currentImageIndex], 0, m_materialDataCount * m_materialDataDynamicAlignment, {}, &mappedMemory);
@@ -242,7 +253,7 @@ namespace Firefly
 			glm::mat4 modelMatrix = m_entities[i].GetComponent<TransformComponent>().m_transform;
 			ObjectData* objectData = (ObjectData*)((uint64_t)m_objectData + (i * m_objectDataDynamicAlignment));
 			(*objectData).modelMatrix = modelMatrix;
-			(*objectData).normalMatrix = glm::transpose(glm::inverse(glm::mat3(modelMatrix)));
+			(*objectData).normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(modelMatrix))));
 		}
 
 		m_device->GetDevice().mapMemory(m_objectDataUniformBufferMemories[m_currentImageIndex], 0, m_objectDataCount * m_objectDataDynamicAlignment, {}, &mappedMemory);
@@ -543,7 +554,7 @@ namespace Firefly
 		materialDataLayoutBinding.binding = 0;
 		materialDataLayoutBinding.descriptorType = vk::DescriptorType::eUniformBufferDynamic;
 		materialDataLayoutBinding.descriptorCount = 1;
-		materialDataLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+		materialDataLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
 		materialDataLayoutBinding.pImmutableSamplers = nullptr;
 
 		bindings = { materialDataLayoutBinding };
@@ -555,6 +566,66 @@ namespace Firefly
 		result = m_device->GetDevice().createDescriptorSetLayout(&materialDataDescriptorSetLayoutCreateInfo, nullptr, &m_materialDataDescriptorSetLayout);
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
 		
+		// MATERIAL TEXTURES
+		vk::DescriptorSetLayoutBinding albedoTextureLayoutBinding{};
+		albedoTextureLayoutBinding.binding = 0;
+		albedoTextureLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		albedoTextureLayoutBinding.descriptorCount = 1;
+		albedoTextureLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		albedoTextureLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutBinding normalTextureLayoutBinding{};
+		normalTextureLayoutBinding.binding = 1;
+		normalTextureLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		normalTextureLayoutBinding.descriptorCount = 1;
+		normalTextureLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		normalTextureLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutBinding roughnessTextureLayoutBinding{};
+		roughnessTextureLayoutBinding.binding = 2;
+		roughnessTextureLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		roughnessTextureLayoutBinding.descriptorCount = 1;
+		roughnessTextureLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		roughnessTextureLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutBinding metalnessTextureLayoutBinding{};
+		metalnessTextureLayoutBinding.binding = 3;
+		metalnessTextureLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		metalnessTextureLayoutBinding.descriptorCount = 1;
+		metalnessTextureLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		metalnessTextureLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutBinding occlusionTextureLayoutBinding{};
+		occlusionTextureLayoutBinding.binding = 4;
+		occlusionTextureLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		occlusionTextureLayoutBinding.descriptorCount = 1;
+		occlusionTextureLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		occlusionTextureLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutBinding heightTextureLayoutBinding{};
+		heightTextureLayoutBinding.binding = 5;
+		heightTextureLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		heightTextureLayoutBinding.descriptorCount = 1;
+		heightTextureLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		heightTextureLayoutBinding.pImmutableSamplers = nullptr;
+
+		bindings =
+		{
+			albedoTextureLayoutBinding,
+			normalTextureLayoutBinding,
+			roughnessTextureLayoutBinding,
+			metalnessTextureLayoutBinding,
+			occlusionTextureLayoutBinding,
+			heightTextureLayoutBinding
+		};
+
+		vk::DescriptorSetLayoutCreateInfo materialTexturesDescriptorSetLayoutCreateInfo{};
+		materialTexturesDescriptorSetLayoutCreateInfo.bindingCount = bindings.size();
+		materialTexturesDescriptorSetLayoutCreateInfo.pBindings = bindings.data();
+
+		result = m_device->GetDevice().createDescriptorSetLayout(&materialTexturesDescriptorSetLayoutCreateInfo, nullptr, &m_materialTexturesDescriptorSetLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+
 		// OBJECT DATA
 		vk::DescriptorSetLayoutBinding objectDataLayoutBinding{};
 		objectDataLayoutBinding.binding = 0;
@@ -577,6 +648,7 @@ namespace Firefly
 	{
 		m_device->GetDevice().destroyDescriptorSetLayout(m_objectDataDescriptorSetLayout);
 		m_device->GetDevice().destroyDescriptorSetLayout(m_materialDataDescriptorSetLayout);
+		m_device->GetDevice().destroyDescriptorSetLayout(m_materialTexturesDescriptorSetLayout);
 		m_device->GetDevice().destroyDescriptorSetLayout(m_sceneDataDescriptorSetLayout);
 	}
 
@@ -756,19 +828,19 @@ namespace Firefly
 			std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};
 			vertexInputAttributeDescriptions[0].binding = 0;
 			vertexInputAttributeDescriptions[0].location = 0;
-			vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
+			vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32A32Sfloat;
 			vertexInputAttributeDescriptions[0].offset = offsetof(Mesh::Vertex, position);
 			vertexInputAttributeDescriptions[1].binding = 0;
 			vertexInputAttributeDescriptions[1].location = 1;
-			vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
+			vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32A32Sfloat;
 			vertexInputAttributeDescriptions[1].offset = offsetof(Mesh::Vertex, normal);
 			vertexInputAttributeDescriptions[2].binding = 0;
 			vertexInputAttributeDescriptions[2].location = 2;
-			vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
+			vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32A32Sfloat;
 			vertexInputAttributeDescriptions[2].offset = offsetof(Mesh::Vertex, tangent);
 			vertexInputAttributeDescriptions[3].binding = 0;
 			vertexInputAttributeDescriptions[3].location = 3;
-			vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32Sfloat;
+			vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32A32Sfloat;
 			vertexInputAttributeDescriptions[3].offset = offsetof(Mesh::Vertex, bitangent);
 			vertexInputAttributeDescriptions[4].binding = 0;
 			vertexInputAttributeDescriptions[4].location = 4;
@@ -875,12 +947,13 @@ namespace Firefly
 			depthStencilStateCreateInfo.back = {};
 			// ---------------------------------------------
 			// PIPELINE LAYOUT -----------------------------
-			//vk::PushConstantRange pushConstantRange{};
-			//pushConstantRange.offset = 0;
-			//pushConstantRange.size = sizeof(glm::mat4);
-			//pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eVertex;
-
-			std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = { m_sceneDataDescriptorSetLayout, m_materialDataDescriptorSetLayout , m_objectDataDescriptorSetLayout };
+			std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = 
+			{ 
+				m_sceneDataDescriptorSetLayout, 
+				m_materialDataDescriptorSetLayout, 
+				m_materialTexturesDescriptorSetLayout, 
+				m_objectDataDescriptorSetLayout 
+			};
 
 			vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 			pipelineLayoutCreateInfo.pNext = nullptr;

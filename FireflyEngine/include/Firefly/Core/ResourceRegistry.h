@@ -6,6 +6,7 @@
 
 #include "Rendering/Shader.h"
 #include "Rendering/Material.h"
+#include "Rendering/Texture.h"
 #include "Rendering/Mesh.h"
 
 namespace Firefly
@@ -56,5 +57,6 @@ namespace Firefly
 
 	typedef ResourceRegistry<Shader> ShaderRegistry;
 	typedef ResourceRegistry<Material> MaterialRegistry;
+	typedef ResourceRegistry<Texture> TextureRegistry;
 	typedef ResourceRegistry<Mesh> MeshRegistry;
 }
