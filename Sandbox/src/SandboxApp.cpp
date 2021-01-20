@@ -67,7 +67,8 @@ SandboxApp::SandboxApp()
 	globeMesh->Init("assets/meshes/globe.fbx");
 	std::shared_ptr<Firefly::Mesh> armchairMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
 	armchairMesh->Init("assets/meshes/armchair.fbx");
-	std::shared_ptr<Firefly::Mesh> cubeMesh = Firefly::MeshGenerator::CreateBox(m_graphicsContext, glm::vec3(1.0f), 10);
+	//std::shared_ptr<Firefly::Mesh> cubeMesh = Firefly::MeshGenerator::CreateBox(m_graphicsContext, glm::vec3(1.0f), 10);
+	std::shared_ptr<Firefly::Mesh> cubeMesh = Firefly::MeshGenerator::CreateSphere(m_graphicsContext);
 
 	Firefly::MeshRegistry::Instance().Insert("Floor", floorMesh);
 	Firefly::MeshRegistry::Instance().Insert("Pistol", pistolMesh);
@@ -228,15 +229,15 @@ SandboxApp::SandboxApp()
 
 	Firefly::Entity cube(m_scene);
 	cube.AddComponent<Firefly::TagComponent>("Cube");
-	cube.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.5f, 0.f)));
+	cube.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.0f, 0.f)));
 	cube.AddComponent<Firefly::MeshComponent>(cubeMesh);
 	cube.AddComponent<Firefly::MaterialComponent>(defaultMaterial);
 
-	Firefly::Entity cubeNormals(m_scene);
-	cubeNormals.AddComponent<Firefly::TagComponent>("CubeNormals");
-	cubeNormals.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.5f, 0.f)));
-	cubeNormals.AddComponent<Firefly::MeshComponent>(cubeMesh);
-	cubeNormals.AddComponent<Firefly::MaterialComponent>(drawNormalsMaterial);
+	//Firefly::Entity cubeNormals(m_scene);
+	//cubeNormals.AddComponent<Firefly::TagComponent>("CubeNormals");
+	//cubeNormals.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.0f, 0.f)));
+	//cubeNormals.AddComponent<Firefly::MeshComponent>(cubeMesh);
+	//cubeNormals.AddComponent<Firefly::MaterialComponent>(drawNormalsMaterial);
 
 	m_renderer = Firefly::RenderingAPI::CreateRenderer(m_graphicsContext);
 	m_renderer->Init();
