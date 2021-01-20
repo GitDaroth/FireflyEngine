@@ -8,7 +8,7 @@ namespace Firefly
 	class VulkanMaterial : public Material
 	{
 	public:
-		VulkanMaterial(std::shared_ptr<GraphicsContext> context);
+		VulkanMaterial();
 
 		virtual void Destroy() override;
 

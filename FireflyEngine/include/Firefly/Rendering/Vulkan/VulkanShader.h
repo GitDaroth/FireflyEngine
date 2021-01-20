@@ -10,7 +10,7 @@ namespace Firefly
 	class VulkanShader : public Shader
 	{
 	public:
-		VulkanShader(std::shared_ptr<GraphicsContext> context);
+		VulkanShader();
 
 		virtual void Destroy() override;
 

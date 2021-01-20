@@ -9,7 +9,7 @@ namespace Firefly
 	class OpenGLTexture : public Texture
 	{
 	public:
-		OpenGLTexture(std::shared_ptr<GraphicsContext> context);
+		OpenGLTexture();
 
 		virtual void Destroy() override;
 

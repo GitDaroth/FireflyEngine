@@ -1,15 +1,15 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanMesh.h"
 
+#include "Rendering/RenderingAPI.h"
 #include "Rendering/Vulkan/VulkanUtils.h"
 #include "Rendering/Vulkan/VulkanContext.h"
 
 namespace Firefly
 {
-	VulkanMesh::VulkanMesh(std::shared_ptr<GraphicsContext> context) :
-		Mesh(context)
+	VulkanMesh::VulkanMesh()
 	{
-		std::shared_ptr<VulkanContext> vkContext = std::dynamic_pointer_cast<VulkanContext>(context);
+		std::shared_ptr<VulkanContext> vkContext = std::dynamic_pointer_cast<VulkanContext>(RenderingAPI::GetContext());
 		m_device = vkContext->GetDevice()->GetDevice();
 		m_physicalDevice = vkContext->GetDevice()->GetPhysicalDevice();
 		m_commandPool = vkContext->GetCommandPool();

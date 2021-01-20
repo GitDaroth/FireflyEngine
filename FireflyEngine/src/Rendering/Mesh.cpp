@@ -7,11 +7,6 @@
 
 namespace Firefly
 {
-	Mesh::Mesh(std::shared_ptr<GraphicsContext> context) :
-		m_context(context)
-	{
-	}
-
 	void Mesh::Init(std::vector<Vertex> vertices, std::vector<uint32_t> indices)
 	{
 		m_vertexCount = vertices.size();

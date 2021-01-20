@@ -10,7 +10,7 @@ namespace Firefly
 	class VulkanRenderer : public Renderer
 	{
 	public:
-		VulkanRenderer(std::shared_ptr<GraphicsContext> context);
+		VulkanRenderer();
 
 		virtual void Init() override;
 		virtual void Destroy() override;

@@ -49,7 +49,6 @@ set(renderingFiles
 	include/Firefly/Rendering/RenderingAPI.h
 	src/Rendering/RenderingAPI.cpp
 	include/Firefly/Rendering/Renderer.h
-	src/Rendering/Renderer.cpp
 	include/Firefly/Rendering/GraphicsContext.h
 	src/Rendering/GraphicsContext.cpp
 	include/Firefly/Rendering/Shader.h

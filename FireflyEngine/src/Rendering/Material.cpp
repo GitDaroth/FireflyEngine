@@ -3,8 +3,7 @@
 
 namespace Firefly
 {
-	Material::Material(std::shared_ptr<GraphicsContext> context) :
-		m_context(context),
+	Material::Material() :
 		m_shader(nullptr),
 		m_albedo(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)),
 		m_roughness(0.0f),

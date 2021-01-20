@@ -30,7 +30,6 @@ namespace Firefly
 		virtual void OnGamepadEvent(std::shared_ptr<GamepadEvent> event) = 0;
 
 		std::shared_ptr<Window> m_window;
-		std::shared_ptr<GraphicsContext> m_graphicsContext;
 		bool m_isShutdownRequested = false;
 	};
 }

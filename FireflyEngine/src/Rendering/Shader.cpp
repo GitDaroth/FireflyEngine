@@ -5,11 +5,6 @@
 
 namespace Firefly
 {
-	Shader::Shader(std::shared_ptr<GraphicsContext> context) :
-		m_context(context)
-	{
-	}
-
 	void Shader::Init(const std::string& tag, const ShaderCode& shaderCode)
 	{
 		m_tag = tag;

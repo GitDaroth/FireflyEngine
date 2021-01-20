@@ -7,7 +7,7 @@ namespace Firefly
 	class OpenGLMaterial : public Material
 	{
 	public:
-		OpenGLMaterial(std::shared_ptr<GraphicsContext> context);
+		OpenGLMaterial();
 
 		virtual void Destroy() override;
 

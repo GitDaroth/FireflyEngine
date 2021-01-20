@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Rendering/OpenGL/OpenGLRenderer.h"
 
+#include "Rendering/RenderingAPI.h"
 #include "Rendering/OpenGL/OpenGLMesh.h"
 #include "Rendering/OpenGL/OpenGLMaterial.h"
 #include "Rendering/OpenGL/OpenGLShader.h"
@@ -10,10 +11,9 @@
 
 namespace Firefly
 {
-	OpenGLRenderer::OpenGLRenderer(std::shared_ptr<GraphicsContext> context) :
-		Renderer(context)
+	OpenGLRenderer::OpenGLRenderer()
 	{
-		m_openGLContext = std::dynamic_pointer_cast<OpenGLContext>(context);
+		m_openGLContext = std::dynamic_pointer_cast<OpenGLContext>(RenderingAPI::GetContext());
 		m_windowWidth = m_openGLContext->GetWidth();
 		m_windowHeight = m_openGLContext->GetHeight();
 	}

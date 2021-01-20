@@ -5,8 +5,7 @@
 
 namespace Firefly
 {
-	OpenGLShader::OpenGLShader(std::shared_ptr<GraphicsContext> context) :
-		Shader(context),
+	OpenGLShader::OpenGLShader() :
 		m_program(0)
 	{
 	}

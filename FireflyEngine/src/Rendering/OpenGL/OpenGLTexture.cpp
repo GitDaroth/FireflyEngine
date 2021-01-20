@@ -3,8 +3,8 @@
 
 namespace Firefly
 {
-	OpenGLTexture::OpenGLTexture(std::shared_ptr<GraphicsContext> context) :
-		Texture(context),
+	OpenGLTexture::OpenGLTexture() :
+		Texture(),
 		m_texture(0)
 	{
 	}

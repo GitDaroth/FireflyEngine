@@ -19,7 +19,7 @@ namespace Firefly
 			Height
 		};
 
-		Material(std::shared_ptr<GraphicsContext> context);
+		Material();
 
 		void Init(std::shared_ptr<Shader> shader);
 		virtual void Destroy() = 0;
@@ -48,8 +48,6 @@ namespace Firefly
 	protected:
 		virtual void OnInit() = 0;
 		virtual void OnSetTexture(std::shared_ptr<Texture> texture, TextureUsage usage) = 0;
-
-		std::shared_ptr<GraphicsContext> m_context;
 
 		std::shared_ptr<Shader> m_shader;
 		glm::vec4 m_albedo;

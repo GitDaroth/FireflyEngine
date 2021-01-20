@@ -8,7 +8,7 @@ namespace Firefly
 	class OpenGLRenderer : public Renderer
 	{
 	public:
-		OpenGLRenderer(std::shared_ptr<GraphicsContext> context);
+		OpenGLRenderer();
 
 		virtual void Init() override;
 		virtual void Destroy() override;

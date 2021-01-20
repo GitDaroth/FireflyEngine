@@ -6,8 +6,8 @@
 
 namespace Firefly
 {
-	OpenGLMaterial::OpenGLMaterial(std::shared_ptr<GraphicsContext> context) :
-		Material(context)
+	OpenGLMaterial::OpenGLMaterial() :
+		Material()
 	{
 	}
 

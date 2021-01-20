@@ -9,7 +9,7 @@ namespace Firefly
 	class OpenGLShader : public Shader
 	{
 	public:
-		OpenGLShader(std::shared_ptr<GraphicsContext> context);
+		OpenGLShader();
 
 		virtual void Destroy() override;
 

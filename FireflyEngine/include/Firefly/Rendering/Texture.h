@@ -13,7 +13,7 @@ namespace Firefly
 			SRGB
 		};
 
-		Texture(std::shared_ptr<GraphicsContext> context);
+		Texture();
 
 		void Init(const std::string& path, ColorSpace colorSpace = ColorSpace::RGB);
 		virtual void Destroy() = 0;
@@ -24,7 +24,6 @@ namespace Firefly
 	protected:
 		virtual void OnInit(unsigned char* pixelData, ColorSpace colorSpace) = 0;
 
-		std::shared_ptr<GraphicsContext> m_context;
 		uint32_t m_width;
 		uint32_t m_height;
 	};

@@ -51,7 +51,7 @@ void main()
 
 	vec3 albedo;
 	if(material.hasAlbedoTexture > 0.0f)
-		albedo = pow(texture(albedoTextureSampler, texCoords).rgb, vec3(2.2));
+		albedo = texture(albedoTextureSampler, texCoords).rgb;
 	else
 		albedo = material.albedo.rgb;
 

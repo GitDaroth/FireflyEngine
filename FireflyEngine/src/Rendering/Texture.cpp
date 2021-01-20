@@ -5,8 +5,7 @@
 
 namespace Firefly
 {
-	Texture::Texture(std::shared_ptr<GraphicsContext> context) :
-		m_context(context),
+	Texture::Texture() :
 		m_width(0),
 		m_height(0)
 	{

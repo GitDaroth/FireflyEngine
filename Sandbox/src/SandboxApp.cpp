@@ -27,8 +27,7 @@ SandboxApp::SandboxApp()
 		shaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/pbr.frag.spv");
 	}
 
-	std::shared_ptr<Firefly::Shader> defaultShader = Firefly::RenderingAPI::CreateShader(m_graphicsContext);
-	defaultShader->Init("PBR", shaderCode);
+	std::shared_ptr<Firefly::Shader> defaultShader = Firefly::RenderingAPI::CreateShader("PBR", shaderCode);
 	Firefly::ShaderRegistry::Instance().Insert(defaultShader->GetTag(), defaultShader);
 
 	// DRAW NORMALS SHADER
@@ -46,8 +45,7 @@ SandboxApp::SandboxApp()
 		drawNormalsShaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/drawNormals.frag.spv");
 	}
 
-	std::shared_ptr<Firefly::Shader> drawNormalsShader = Firefly::RenderingAPI::CreateShader(m_graphicsContext);
-	drawNormalsShader->Init("DrawNormals", drawNormalsShaderCode);
+	std::shared_ptr<Firefly::Shader> drawNormalsShader = Firefly::RenderingAPI::CreateShader("DrawNormals", drawNormalsShaderCode);
 	Firefly::ShaderRegistry::Instance().Insert(drawNormalsShader->GetTag(), drawNormalsShader);
 
 	std::vector<Firefly::Mesh::Vertex> vertices = 
@@ -59,115 +57,85 @@ SandboxApp::SandboxApp()
 	};
 	std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
 
-	std::shared_ptr<Firefly::Mesh> floorMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
-	floorMesh->Init(vertices, indices);
-	std::shared_ptr<Firefly::Mesh> pistolMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
-	pistolMesh->Init("assets/meshes/pistol.fbx", true);
-	std::shared_ptr<Firefly::Mesh> globeMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
-	globeMesh->Init("assets/meshes/globe.fbx");
-	std::shared_ptr<Firefly::Mesh> armchairMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
-	armchairMesh->Init("assets/meshes/armchair.fbx");
-	//std::shared_ptr<Firefly::Mesh> cubeMesh = Firefly::MeshGenerator::CreateBox(m_graphicsContext, glm::vec3(1.0f), 10);
-	std::shared_ptr<Firefly::Mesh> cubeMesh = Firefly::MeshGenerator::CreateSphere(m_graphicsContext);
+	std::shared_ptr<Firefly::Mesh> floorMesh = Firefly::RenderingAPI::CreateMesh(vertices, indices);
+	std::shared_ptr<Firefly::Mesh> pistolMesh = Firefly::RenderingAPI::CreateMesh("assets/meshes/pistol.fbx", true);
+	std::shared_ptr<Firefly::Mesh> globeMesh = Firefly::RenderingAPI::CreateMesh("assets/meshes/globe.fbx");
+	std::shared_ptr<Firefly::Mesh> armchairMesh = Firefly::RenderingAPI::CreateMesh("assets/meshes/armchair.fbx");
+	std::shared_ptr<Firefly::Mesh> sphereMesh = Firefly::MeshGenerator::CreateSphere();
 
 	Firefly::MeshRegistry::Instance().Insert("Floor", floorMesh);
 	Firefly::MeshRegistry::Instance().Insert("Pistol", pistolMesh);
 	Firefly::MeshRegistry::Instance().Insert("Globe", globeMesh);
 	Firefly::MeshRegistry::Instance().Insert("Armchair", armchairMesh);
-	Firefly::MeshRegistry::Instance().Insert("Cube", cubeMesh);
+	Firefly::MeshRegistry::Instance().Insert("Sphere", sphereMesh);
 
-	std::shared_ptr<Firefly::Texture> pistolAlbedoTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	pistolAlbedoTexture->Init("assets/textures/pistol/albedo.jpg");
-	std::shared_ptr<Firefly::Texture> pistolNormalTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	pistolNormalTexture->Init("assets/textures/pistol/normal.jpg");
-	std::shared_ptr<Firefly::Texture> pistolRoughnessTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	pistolRoughnessTexture->Init("assets/textures/pistol/roughness.jpg");
-	std::shared_ptr<Firefly::Texture> pistolMetalnessTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	pistolMetalnessTexture->Init("assets/textures/pistol/metalness.jpg");
-	std::shared_ptr<Firefly::Texture> pistolOcclusionTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	pistolOcclusionTexture->Init("assets/textures/pistol/occlusion.jpg");
+	std::shared_ptr<Firefly::Texture> pistolAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/albedo.jpg", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> pistolNormalTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/normal.jpg");
+	std::shared_ptr<Firefly::Texture> pistolRoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/roughness.jpg");
+	std::shared_ptr<Firefly::Texture> pistolMetalnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/metalness.jpg");
+	std::shared_ptr<Firefly::Texture> pistolOcclusionTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/occlusion.jpg");
 	Firefly::TextureRegistry::Instance().Insert("PistolAlbedo", pistolAlbedoTexture);
 	Firefly::TextureRegistry::Instance().Insert("PistolNormal", pistolNormalTexture);
 	Firefly::TextureRegistry::Instance().Insert("PistolRoughness", pistolRoughnessTexture);
 	Firefly::TextureRegistry::Instance().Insert("PistolMetallness", pistolMetalnessTexture);
 	Firefly::TextureRegistry::Instance().Insert("PistolOcclusion", pistolOcclusionTexture);
 
-	std::shared_ptr<Firefly::Texture> globeAlbedoTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	globeAlbedoTexture->Init("assets/textures/globe/albedo.png");
-	std::shared_ptr<Firefly::Texture> globeRoughnessTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	globeRoughnessTexture->Init("assets/textures/globe/roughness.png");
-	std::shared_ptr<Firefly::Texture> globeMetalnessTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	globeMetalnessTexture->Init("assets/textures/globe/metalness.png");
-	std::shared_ptr<Firefly::Texture> globeOcclusionTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	globeOcclusionTexture->Init("assets/textures/globe/occlusion.png");
+	std::shared_ptr<Firefly::Texture> globeAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/globe/albedo.png", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> globeRoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/globe/roughness.png");
+	std::shared_ptr<Firefly::Texture> globeMetalnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/globe/metalness.png");
+	std::shared_ptr<Firefly::Texture> globeOcclusionTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/globe/occlusion.png");
 	Firefly::TextureRegistry::Instance().Insert("GlobeAlbedo", globeAlbedoTexture);
 	Firefly::TextureRegistry::Instance().Insert("GlobeRoughness", globeRoughnessTexture);
 	Firefly::TextureRegistry::Instance().Insert("GlobeMetalness", globeMetalnessTexture);
 	Firefly::TextureRegistry::Instance().Insert("GlobeOcclusion", globeOcclusionTexture);
 
-	std::shared_ptr<Firefly::Texture> armchairAlbedoTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	armchairAlbedoTexture->Init("assets/textures/armchair/albedo.png");
-	std::shared_ptr<Firefly::Texture> armchairNormalTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	armchairNormalTexture->Init("assets/textures/armchair/normal.png");
-	std::shared_ptr<Firefly::Texture> armchairRoughnessTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	armchairRoughnessTexture->Init("assets/textures/armchair/roughness.png");
-	std::shared_ptr<Firefly::Texture> armchairOcclusionTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	armchairOcclusionTexture->Init("assets/textures/armchair/occlusion.png");
+	std::shared_ptr<Firefly::Texture> armchairAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/armchair/albedo.png", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> armchairNormalTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/armchair/normal.png");
+	std::shared_ptr<Firefly::Texture> armchairRoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/armchair/roughness.png");
+	std::shared_ptr<Firefly::Texture> armchairOcclusionTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/armchair/occlusion.png");
 	Firefly::TextureRegistry::Instance().Insert("ArmchairAlbedo", armchairAlbedoTexture);
 	Firefly::TextureRegistry::Instance().Insert("ArmchairNormal", armchairNormalTexture);
 	Firefly::TextureRegistry::Instance().Insert("ArmchairRoughness", armchairRoughnessTexture);
 	Firefly::TextureRegistry::Instance().Insert("ArmchairOcclusion", armchairOcclusionTexture);
 
-	std::shared_ptr<Firefly::Texture> floorAlbedoTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	floorAlbedoTexture->Init("assets/textures/floor/1_albedo.jpg");
-	std::shared_ptr<Firefly::Texture> floorNormalTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	floorNormalTexture->Init("assets/textures/floor/1_normal.jpg");
-	std::shared_ptr<Firefly::Texture> floorRoughnessTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	floorRoughnessTexture->Init("assets/textures/floor/1_roughness.jpg");
-	std::shared_ptr<Firefly::Texture> floorOcclusionTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	floorOcclusionTexture->Init("assets/textures/floor/1_occlusion.jpg");
-	std::shared_ptr<Firefly::Texture> floorHeightTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	floorHeightTexture->Init("assets/textures/floor/1_height.jpg");
+	std::shared_ptr<Firefly::Texture> floorAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_albedo.jpg", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> floorNormalTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_normal.jpg");
+	std::shared_ptr<Firefly::Texture> floorRoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_roughness.jpg");
+	std::shared_ptr<Firefly::Texture> floorOcclusionTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_occlusion.jpg");
+	std::shared_ptr<Firefly::Texture> floorHeightTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_height.jpg");
 	Firefly::TextureRegistry::Instance().Insert("FloorAlbedo", floorAlbedoTexture);
 	Firefly::TextureRegistry::Instance().Insert("FloorNormal", floorNormalTexture);
 	Firefly::TextureRegistry::Instance().Insert("FloorRoughness", floorRoughnessTexture);
 	Firefly::TextureRegistry::Instance().Insert("FloorOcclusion", floorOcclusionTexture);
 	Firefly::TextureRegistry::Instance().Insert("FloorHeight", floorHeightTexture);
 
-	std::shared_ptr<Firefly::Texture> floor2AlbedoTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	floor2AlbedoTexture->Init("assets/textures/floor/2_albedo.jpg");
-	std::shared_ptr<Firefly::Texture> floor2NormalTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	floor2NormalTexture->Init("assets/textures/floor/2_normal.jpg");
-	std::shared_ptr<Firefly::Texture> floor2RoughnessTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
-	floor2RoughnessTexture->Init("assets/textures/floor/2_roughness.jpg");
+	std::shared_ptr<Firefly::Texture> floor2AlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/2_albedo.jpg", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> floor2NormalTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/2_normal.jpg");
+	std::shared_ptr<Firefly::Texture> floor2RoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/2_roughness.jpg");
 	Firefly::TextureRegistry::Instance().Insert("Floor2Albedo", floor2AlbedoTexture);
 	Firefly::TextureRegistry::Instance().Insert("Floor2Normal", floor2NormalTexture);
 	Firefly::TextureRegistry::Instance().Insert("Floor2Roughness", floor2RoughnessTexture);
 
-	std::shared_ptr<Firefly::Material> pistolMaterial = Firefly::RenderingAPI::CreateMaterial(m_graphicsContext);
-	pistolMaterial->Init(defaultShader);
+	std::shared_ptr<Firefly::Material> pistolMaterial = Firefly::RenderingAPI::CreateMaterial(defaultShader);
 	pistolMaterial->SetTexture(pistolAlbedoTexture, Firefly::Material::TextureUsage::Albedo);
 	pistolMaterial->SetTexture(pistolNormalTexture, Firefly::Material::TextureUsage::Normal);
 	pistolMaterial->SetTexture(pistolRoughnessTexture, Firefly::Material::TextureUsage::Roughness);
 	pistolMaterial->SetTexture(pistolMetalnessTexture, Firefly::Material::TextureUsage::Metalness);
 	pistolMaterial->SetTexture(pistolOcclusionTexture, Firefly::Material::TextureUsage::Occlusion);
 
-	std::shared_ptr<Firefly::Material> globeMaterial = Firefly::RenderingAPI::CreateMaterial(m_graphicsContext);
-	globeMaterial->Init(defaultShader);
+	std::shared_ptr<Firefly::Material> globeMaterial = Firefly::RenderingAPI::CreateMaterial(defaultShader);
 	globeMaterial->SetTexture(globeAlbedoTexture, Firefly::Material::TextureUsage::Albedo);
 	globeMaterial->SetTexture(globeRoughnessTexture, Firefly::Material::TextureUsage::Roughness);
 	globeMaterial->SetTexture(globeMetalnessTexture, Firefly::Material::TextureUsage::Metalness);
 	globeMaterial->SetTexture(globeOcclusionTexture, Firefly::Material::TextureUsage::Occlusion);
 
-	std::shared_ptr<Firefly::Material> armchairMaterial = Firefly::RenderingAPI::CreateMaterial(m_graphicsContext);
-	armchairMaterial->Init(defaultShader);
+	std::shared_ptr<Firefly::Material> armchairMaterial = Firefly::RenderingAPI::CreateMaterial(defaultShader);
 	armchairMaterial->SetTexture(armchairAlbedoTexture, Firefly::Material::TextureUsage::Albedo);
 	armchairMaterial->SetTexture(armchairNormalTexture, Firefly::Material::TextureUsage::Normal);
 	armchairMaterial->SetTexture(armchairRoughnessTexture, Firefly::Material::TextureUsage::Roughness);
 	armchairMaterial->SetTexture(armchairOcclusionTexture, Firefly::Material::TextureUsage::Occlusion);
 
-	std::shared_ptr<Firefly::Material> floorMaterial = Firefly::RenderingAPI::CreateMaterial(m_graphicsContext);
-	floorMaterial->Init(defaultShader);
+	std::shared_ptr<Firefly::Material> floorMaterial = Firefly::RenderingAPI::CreateMaterial(defaultShader);
 	floorMaterial->SetTexture(floorAlbedoTexture, Firefly::Material::TextureUsage::Albedo);
 	floorMaterial->SetTexture(floorNormalTexture, Firefly::Material::TextureUsage::Normal);
 	floorMaterial->SetTexture(floorRoughnessTexture, Firefly::Material::TextureUsage::Roughness);
@@ -175,19 +143,13 @@ SandboxApp::SandboxApp()
 	floorMaterial->SetTexture(floorHeightTexture, Firefly::Material::TextureUsage::Height);
 	floorMaterial->SetHeightScale(m_heightScale);
 
-	std::shared_ptr<Firefly::Material> floor2Material = Firefly::RenderingAPI::CreateMaterial(m_graphicsContext);
-	floor2Material->Init(defaultShader);
+	std::shared_ptr<Firefly::Material> floor2Material = Firefly::RenderingAPI::CreateMaterial(defaultShader);
 	floor2Material->SetTexture(floor2AlbedoTexture, Firefly::Material::TextureUsage::Albedo);
 	floor2Material->SetTexture(floor2NormalTexture, Firefly::Material::TextureUsage::Normal);
 	floor2Material->SetTexture(floor2RoughnessTexture, Firefly::Material::TextureUsage::Roughness);
 
-	std::shared_ptr<Firefly::Material> drawNormalsMaterial = Firefly::RenderingAPI::CreateMaterial(m_graphicsContext);
-	drawNormalsMaterial->Init(drawNormalsShader);
+	std::shared_ptr<Firefly::Material> drawNormalsMaterial = Firefly::RenderingAPI::CreateMaterial(drawNormalsShader);
 	drawNormalsMaterial->SetAlbedo(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
-
-	std::shared_ptr<Firefly::Material> defaultMaterial = Firefly::RenderingAPI::CreateMaterial(m_graphicsContext);
-	defaultMaterial->Init(defaultShader);
-	defaultMaterial->SetAlbedo(glm::vec4(0.4f, 0.6f, 0.2f, 1.0f));
 
 	Firefly::MaterialRegistry::Instance().Insert("Pistol", pistolMaterial);
 	Firefly::MaterialRegistry::Instance().Insert("Globe", globeMaterial);
@@ -195,7 +157,6 @@ SandboxApp::SandboxApp()
 	Firefly::MaterialRegistry::Instance().Insert("Floor", floorMaterial);
 	Firefly::MaterialRegistry::Instance().Insert("Floor2", floor2Material);
 	Firefly::MaterialRegistry::Instance().Insert("DrawNormals", drawNormalsMaterial);
-	Firefly::MaterialRegistry::Instance().Insert("Default", defaultMaterial);
 
 	Firefly::Entity pistol(m_scene);
 	pistol.AddComponent<Firefly::TagComponent>("Pistol");
@@ -227,20 +188,33 @@ SandboxApp::SandboxApp()
 	floor2.AddComponent<Firefly::MeshComponent>(floorMesh);
 	floor2.AddComponent<Firefly::MaterialComponent>(floor2Material);
 
-	Firefly::Entity cube(m_scene);
-	cube.AddComponent<Firefly::TagComponent>("Cube");
-	cube.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.0f, 0.f)));
-	cube.AddComponent<Firefly::MeshComponent>(cubeMesh);
-	cube.AddComponent<Firefly::MaterialComponent>(defaultMaterial);
+	const uint32_t rowCount = 7;
+	const uint32_t columnCount = 7;
+	for (size_t x = 0; x < columnCount; x++)
+	{
+		for (size_t y = 0; y < rowCount; y++)
+		{
+			std::shared_ptr<Firefly::Material> defaultMaterial = Firefly::RenderingAPI::CreateMaterial(defaultShader);
+			defaultMaterial->SetAlbedo(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
+			defaultMaterial->SetRoughness((x + 1) / (float)columnCount);
+			defaultMaterial->SetMetalness((y + 1) / (float)rowCount);
+			Firefly::MaterialRegistry::Instance().Insert("Default" + std::to_string(x) + "-" + std::to_string(y), defaultMaterial);
 
-	//Firefly::Entity cubeNormals(m_scene);
-	//cubeNormals.AddComponent<Firefly::TagComponent>("CubeNormals");
-	//cubeNormals.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.0f, 0.f)));
-	//cubeNormals.AddComponent<Firefly::MeshComponent>(cubeMesh);
-	//cubeNormals.AddComponent<Firefly::MaterialComponent>(drawNormalsMaterial);
+			Firefly::Entity sphere(m_scene);
+			sphere.AddComponent<Firefly::TagComponent>("Sphere" + std::to_string(x) + "-" + std::to_string(y));
+			sphere.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(x * 1.1f , y * 1.1f, 0.0f) + glm::vec3(-(float)columnCount * 0.5f, 1.0f, -5.f)));
+			sphere.AddComponent<Firefly::MeshComponent>(sphereMesh);
+			sphere.AddComponent<Firefly::MaterialComponent>(defaultMaterial);
 
-	m_renderer = Firefly::RenderingAPI::CreateRenderer(m_graphicsContext);
-	m_renderer->Init();
+			//Firefly::Entity sphereNormals(m_scene);
+			//sphereNormals.AddComponent<Firefly::TagComponent>("SphereNormals" + std::to_string(x) + "-" + std::to_string(y));
+			//sphereNormals.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(x * 1.1f, y * 1.1f, 0.0f) + glm::vec3(-(float)columnCount * 0.5f, 1.0f, -5.f)));
+			//sphereNormals.AddComponent<Firefly::MeshComponent>(sphereMesh);
+			//sphereNormals.AddComponent<Firefly::MaterialComponent>(drawNormalsMaterial);
+		}
+	}
+
+	m_renderer = Firefly::RenderingAPI::CreateRenderer();
 }
 
 SandboxApp::~SandboxApp()

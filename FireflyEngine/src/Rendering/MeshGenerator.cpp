@@ -5,7 +5,7 @@
 
 namespace Firefly
 {
-	std::shared_ptr<Mesh> MeshGenerator::CreateQuad(std::shared_ptr<GraphicsContext> context, const glm::vec2& size, uint32_t subdivisions)
+	std::shared_ptr<Mesh> MeshGenerator::CreateQuad(const glm::vec2& size, uint32_t subdivisions)
 	{
 		std::vector<Mesh::Vertex> vertices;
 		std::vector<uint32_t> indices;
@@ -37,13 +37,10 @@ namespace Firefly
 			}
 		}
 
-		std::shared_ptr<Mesh> quadMesh = RenderingAPI::CreateMesh(context);
-		quadMesh->Init(vertices, indices);
-
-		return quadMesh;
+		return RenderingAPI::CreateMesh(vertices, indices);
 	}
 
-	std::shared_ptr<Mesh> MeshGenerator::CreateBox(std::shared_ptr<GraphicsContext> context, const glm::vec3& size, uint32_t subdivisions)
+	std::shared_ptr<Mesh> MeshGenerator::CreateBox(const glm::vec3& size, uint32_t subdivisions)
 	{
 		std::vector<Mesh::Vertex> vertices;
 		std::vector<uint32_t> indices;
@@ -211,13 +208,10 @@ namespace Firefly
 			}
 		}
 
-		std::shared_ptr<Mesh> boxMesh =  RenderingAPI::CreateMesh(context);
-		boxMesh->Init(vertices, indices);
-
-		return boxMesh;
+		return RenderingAPI::CreateMesh(vertices, indices);
 	}
 
-	std::shared_ptr<Mesh> MeshGenerator::CreateSphere(std::shared_ptr<GraphicsContext> context, float size, uint32_t latitude, uint32_t longitude)
+	std::shared_ptr<Mesh> MeshGenerator::CreateSphere(float size, uint32_t latitude, uint32_t longitude)
 	{
 		std::vector<Mesh::Vertex> vertices;
 		std::vector<uint32_t> indices;
@@ -293,10 +287,7 @@ namespace Firefly
 		vertex.texCoords = glm::vec2(0.5f, 0.0f);
 		vertices.push_back(vertex);
 
-		std::shared_ptr<Mesh> sphereMesh = RenderingAPI::CreateMesh(context);
-		sphereMesh->Init(vertices, indices);
-
-		return sphereMesh;
+		return RenderingAPI::CreateMesh(vertices, indices);
 	}
 
 	float MeshGenerator::DegreeToRad(float angle)

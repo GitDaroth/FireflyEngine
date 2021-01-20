@@ -2,6 +2,7 @@
 #include "Rendering/Vulkan/VulkanRenderer.h"
 
 #include "Core/ResourceRegistry.h"
+#include "Rendering/RenderingAPI.h"
 #include "Rendering/Vulkan/VulkanMesh.h"
 #include "Rendering/Vulkan/VulkanShader.h"
 #include "Rendering/Vulkan/VulkanMaterial.h"
@@ -12,10 +13,9 @@
 
 namespace Firefly
 {
-	VulkanRenderer::VulkanRenderer(std::shared_ptr<GraphicsContext> context) :
-		Renderer(context)
+	VulkanRenderer::VulkanRenderer()
 	{
-		m_vkContext = std::dynamic_pointer_cast<VulkanContext>(context);
+		m_vkContext = std::dynamic_pointer_cast<VulkanContext>(RenderingAPI::GetContext());
 		m_device = m_vkContext->GetDevice();
 		m_commandPool = m_vkContext->GetCommandPool();
 		m_descriptorPool = m_vkContext->GetDescriptorPool();

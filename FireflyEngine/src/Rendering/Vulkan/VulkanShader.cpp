@@ -1,15 +1,15 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanShader.h"
 
+#include "Rendering/RenderingAPI.h"
 #include "Rendering/Vulkan/VulkanContext.h"
 #include <spirv_reflect.h>
 
 namespace Firefly
 {
-	VulkanShader::VulkanShader(std::shared_ptr<GraphicsContext> context) :
-		Shader(context)
+	VulkanShader::VulkanShader()
 	{
-		std::shared_ptr<VulkanContext> vkContext = std::dynamic_pointer_cast<VulkanContext>(context);
+		std::shared_ptr<VulkanContext> vkContext = std::dynamic_pointer_cast<VulkanContext>(RenderingAPI::GetContext());
 		m_device = vkContext->GetDevice()->GetDevice();
 	}
 

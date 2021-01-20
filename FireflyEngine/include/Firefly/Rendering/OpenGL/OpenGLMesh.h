@@ -7,7 +7,7 @@ namespace Firefly
 	class OpenGLMesh : public Mesh
 	{
 	public:
-		OpenGLMesh(std::shared_ptr<GraphicsContext> context);
+		OpenGLMesh();
 
 		virtual void Destroy() override;
 

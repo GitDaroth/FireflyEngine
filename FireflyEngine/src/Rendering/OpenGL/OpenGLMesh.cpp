@@ -5,8 +5,7 @@
 
 namespace Firefly
 {
-	OpenGLMesh::OpenGLMesh(std::shared_ptr<GraphicsContext> context) :
-		Mesh(context),
+	OpenGLMesh::OpenGLMesh() :
 		m_vertexArray(0),
 		m_vertexBuffer(0),
 		m_indexBuffer(0)

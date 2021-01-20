@@ -8,7 +8,7 @@ namespace Firefly
 	class VulkanMesh : public Mesh
 	{
 	public:
-		VulkanMesh(std::shared_ptr<GraphicsContext> context);
+		VulkanMesh();
 
 		virtual void Destroy() override;
 

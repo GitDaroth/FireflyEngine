@@ -12,8 +12,7 @@ namespace Firefly
 		m_window = std::make_shared<WindowsWindow>("Firefly Engine", 1280, 720);
 		m_window->SetEventCallback(std::bind(&Application::OnEvent, this, std::placeholders::_1));
 
-		m_graphicsContext = RenderingAPI::CreateContext();
-		m_graphicsContext->Init(m_window);
+		RenderingAPI::Init(m_window);
 	}
 
 	Application::~Application()
@@ -22,7 +21,8 @@ namespace Firefly
 		ShaderRegistry::Instance().DestroyResources();
 		MaterialRegistry::Instance().DestroyResources();
 		TextureRegistry::Instance().DestroyResources();
-		m_graphicsContext->Destroy();
+
+		RenderingAPI::Destroy();
 	}
 
 	void Application::Update(float deltaTime)

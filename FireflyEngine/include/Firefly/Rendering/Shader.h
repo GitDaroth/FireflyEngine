@@ -17,8 +17,6 @@ namespace Firefly
 	class Shader
 	{
 	public:
-		Shader(std::shared_ptr<GraphicsContext> context);
-
 		void Init(const std::string& tag, const ShaderCode& shaderCode);
 		virtual void Destroy() = 0;
 
@@ -29,7 +27,6 @@ namespace Firefly
 	protected:
 		virtual void OnInit(const ShaderCode& shaderCode) = 0;
 
-		std::shared_ptr<GraphicsContext> m_context;
 		std::string m_tag;
 	};
 }

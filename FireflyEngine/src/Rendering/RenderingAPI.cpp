@@ -24,6 +24,8 @@
 
 namespace Firefly
 {
+	std::shared_ptr<GraphicsContext> RenderingAPI::s_context = nullptr;
+
 #ifdef GFX_API_OPENGL
 	RenderingAPI::Type RenderingAPI::s_type = RenderingAPI::Type::OpenGL;
 #endif
@@ -31,64 +33,124 @@ namespace Firefly
 	RenderingAPI::Type RenderingAPI::s_type = RenderingAPI::Type::Vulkan;
 #endif
 
-	std::shared_ptr<GraphicsContext> RenderingAPI::CreateContext()
+	void RenderingAPI::Init(std::shared_ptr<Window> window)
 	{
-#ifdef GFX_API_OPENGL
-		return std::make_shared<OpenGLContext>();
-#endif
-#ifdef GFX_API_VULKAN
-		return std::make_shared<VulkanContext>();
-#endif
+		s_context = CreateContext(window);
 	}
 
-	std::shared_ptr<Renderer> RenderingAPI::CreateRenderer(std::shared_ptr<GraphicsContext> context)
+	void RenderingAPI::Destroy()
 	{
-#ifdef GFX_API_OPENGL
-		return std::make_shared<OpenGLRenderer>(context);
-#endif
-#ifdef GFX_API_VULKAN
-		return std::make_shared<VulkanRenderer>(context);
-#endif
+		s_context->Destroy();
 	}
 
-	std::shared_ptr<Shader> RenderingAPI::CreateShader(std::shared_ptr<GraphicsContext> context)
+	std::shared_ptr<GraphicsContext> RenderingAPI::CreateContext(std::shared_ptr<Window> window)
 	{
-#ifdef GFX_API_OPENGL
-		return std::make_shared<OpenGLShader>(context);
-#endif
-#ifdef GFX_API_VULKAN
-		return std::make_shared<VulkanShader>(context);
-#endif
+		std::shared_ptr<GraphicsContext> context;
+
+		#ifdef GFX_API_OPENGL
+			context = std::make_shared<OpenGLContext>();
+		#endif
+		#ifdef GFX_API_VULKAN
+			context = std::make_shared<VulkanContext>();
+		#endif
+
+		context->Init(window);
+		return context;
 	}
 
-	std::shared_ptr<Mesh> RenderingAPI::CreateMesh(std::shared_ptr<GraphicsContext> context)
+	std::shared_ptr<Renderer> RenderingAPI::CreateRenderer()
 	{
-#ifdef GFX_API_OPENGL
-		return std::make_shared<OpenGLMesh>(context);
-#endif
-#ifdef GFX_API_VULKAN
-		return std::make_shared<VulkanMesh>(context);
-#endif
+		std::shared_ptr<Renderer> renderer;
+
+		#ifdef GFX_API_OPENGL
+			renderer = std::make_shared<OpenGLRenderer>();
+		#endif
+		#ifdef GFX_API_VULKAN
+			renderer = std::make_shared<VulkanRenderer>();
+		#endif
+
+		renderer->Init();
+		return renderer;
 	}
 
-	std::shared_ptr<Texture> RenderingAPI::CreateTexture(std::shared_ptr<GraphicsContext> context)
+	std::shared_ptr<Shader> RenderingAPI::CreateShader(const std::string& tag, const ShaderCode& shaderCode)
 	{
-#ifdef GFX_API_OPENGL
-		return std::make_shared<OpenGLTexture>(context);
-#endif
-#ifdef GFX_API_VULKAN
-		return std::make_shared<VulkanTexture>(context);
-#endif
+		std::shared_ptr<Shader> shader;
+
+		#ifdef GFX_API_OPENGL
+			shader = std::make_shared<OpenGLShader>();
+		#endif
+		#ifdef GFX_API_VULKAN
+			shader = std::make_shared<VulkanShader>();
+		#endif
+
+		shader->Init(tag, shaderCode);
+		return shader;
 	}
 
-	std::shared_ptr<Material> RenderingAPI::CreateMaterial(std::shared_ptr<GraphicsContext> context)
+	std::shared_ptr<Mesh> RenderingAPI::CreateMesh(std::vector<Mesh::Vertex> vertices, std::vector<uint32_t> indices)
 	{
-#ifdef GFX_API_OPENGL
-		return std::make_shared<OpenGLMaterial>(context);
-#endif
-#ifdef GFX_API_VULKAN
-		return std::make_shared<VulkanMaterial>(context);
-#endif
+		std::shared_ptr<Mesh> mesh;
+
+		#ifdef GFX_API_OPENGL
+			mesh = std::make_shared<OpenGLMesh>();
+		#endif
+		#ifdef GFX_API_VULKAN
+			mesh = std::make_shared<VulkanMesh>();
+		#endif
+
+		mesh->Init(vertices, indices);
+		return mesh;
+	}
+
+	std::shared_ptr<Mesh> RenderingAPI::CreateMesh(const std::string& path, bool flipTexCoords)
+	{
+		std::shared_ptr<Mesh> mesh;
+
+		#ifdef GFX_API_OPENGL
+			mesh = std::make_shared<OpenGLMesh>();
+		#endif
+		#ifdef GFX_API_VULKAN
+			mesh = std::make_shared<VulkanMesh>();
+		#endif
+
+		mesh->Init(path, flipTexCoords);
+		return mesh;
+	}
+
+	std::shared_ptr<Texture> RenderingAPI::CreateTexture(const std::string& path, Texture::ColorSpace colorSpace)
+	{
+		std::shared_ptr<Texture> texture;
+
+		#ifdef GFX_API_OPENGL
+			texture = std::make_shared<OpenGLTexture>();
+		#endif
+		#ifdef GFX_API_VULKAN
+			texture = std::make_shared<VulkanTexture>();
+		#endif
+
+		texture->Init(path, colorSpace);
+		return texture;
+	}
+
+	std::shared_ptr<Material> RenderingAPI::CreateMaterial(std::shared_ptr<Shader> shader)
+	{
+		std::shared_ptr<Material> material;
+
+		#ifdef GFX_API_OPENGL
+			material = std::make_shared<OpenGLMaterial>();
+		#endif
+		#ifdef GFX_API_VULKAN
+			material = std::make_shared<VulkanMaterial>();
+		#endif
+
+		material->Init(shader);
+		return material;
+	}
+
+	std::shared_ptr<GraphicsContext> RenderingAPI::GetContext()
+	{
+		return s_context;
 	}
 
 	void RenderingAPI::SetType(RenderingAPI::Type type)

@@ -17,8 +17,6 @@ namespace Firefly
 			glm::vec2 texCoords;
 		};
 
-		Mesh(std::shared_ptr<GraphicsContext> context);
-
 		void Init(std::vector<Vertex> vertices, std::vector<uint32_t> indices);
 		void Init(const std::string& path, bool flipTexCoords = false);
 		virtual void Destroy() = 0;
@@ -29,7 +27,6 @@ namespace Firefly
 	protected:
 		virtual void OnInit(std::vector<Vertex> vertices, std::vector<uint32_t> indices) = 0;
 
-		std::shared_ptr<GraphicsContext> m_context;
 		uint32_t m_vertexCount = 0;
 		uint32_t m_indexCount = 0;
 	};
