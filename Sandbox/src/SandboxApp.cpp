@@ -14,6 +14,7 @@ SandboxApp::SandboxApp()
 	m_camera->SetPosition(glm::vec3(0.f, 0.f, 2.f));
 	m_cameraController = std::make_shared<CameraController>(m_camera);
 
+	// DEFAULT SHADER
 	Firefly::ShaderCode shaderCode{};
 	if (Firefly::RenderingAPI::GetType() == Firefly::RenderingAPI::Type::OpenGL)
 	{
@@ -29,6 +30,25 @@ SandboxApp::SandboxApp()
 	std::shared_ptr<Firefly::Shader> defaultShader = Firefly::RenderingAPI::CreateShader(m_graphicsContext);
 	defaultShader->Init("PBR", shaderCode);
 	Firefly::ShaderRegistry::Instance().Insert(defaultShader->GetTag(), defaultShader);
+
+	// DRAW NORMALS SHADER
+	Firefly::ShaderCode drawNormalsShaderCode{};
+	if (Firefly::RenderingAPI::GetType() == Firefly::RenderingAPI::Type::OpenGL)
+	{
+		drawNormalsShaderCode.vertex = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/OpenGL/drawNormals.vert");
+		drawNormalsShaderCode.geometry = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/OpenGL/drawNormals.geom");
+		drawNormalsShaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/OpenGL/drawNormals.frag");
+	}
+	else if (Firefly::RenderingAPI::GetType() == Firefly::RenderingAPI::Type::Vulkan)
+	{
+		drawNormalsShaderCode.vertex = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/drawNormals.vert.spv");
+		drawNormalsShaderCode.geometry = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/drawNormals.geom.spv");
+		drawNormalsShaderCode.fragment = Firefly::Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/drawNormals.frag.spv");
+	}
+
+	std::shared_ptr<Firefly::Shader> drawNormalsShader = Firefly::RenderingAPI::CreateShader(m_graphicsContext);
+	drawNormalsShader->Init("DrawNormals", drawNormalsShaderCode);
+	Firefly::ShaderRegistry::Instance().Insert(drawNormalsShader->GetTag(), drawNormalsShader);
 
 	std::vector<Firefly::Mesh::Vertex> vertices = 
 	{
@@ -47,11 +67,13 @@ SandboxApp::SandboxApp()
 	globeMesh->Init("assets/meshes/globe.fbx");
 	std::shared_ptr<Firefly::Mesh> armchairMesh = Firefly::RenderingAPI::CreateMesh(m_graphicsContext);
 	armchairMesh->Init("assets/meshes/armchair.fbx");
+	std::shared_ptr<Firefly::Mesh> cubeMesh = Firefly::MeshGenerator::CreateBox(m_graphicsContext, glm::vec3(1.0f), 10);
 
 	Firefly::MeshRegistry::Instance().Insert("Floor", floorMesh);
 	Firefly::MeshRegistry::Instance().Insert("Pistol", pistolMesh);
 	Firefly::MeshRegistry::Instance().Insert("Globe", globeMesh);
 	Firefly::MeshRegistry::Instance().Insert("Armchair", armchairMesh);
+	Firefly::MeshRegistry::Instance().Insert("Cube", cubeMesh);
 
 	std::shared_ptr<Firefly::Texture> pistolAlbedoTexture = Firefly::RenderingAPI::CreateTexture(m_graphicsContext);
 	pistolAlbedoTexture->Init("assets/textures/pistol/albedo.jpg");
@@ -158,11 +180,21 @@ SandboxApp::SandboxApp()
 	floor2Material->SetTexture(floor2NormalTexture, Firefly::Material::TextureUsage::Normal);
 	floor2Material->SetTexture(floor2RoughnessTexture, Firefly::Material::TextureUsage::Roughness);
 
+	std::shared_ptr<Firefly::Material> drawNormalsMaterial = Firefly::RenderingAPI::CreateMaterial(m_graphicsContext);
+	drawNormalsMaterial->Init(drawNormalsShader);
+	drawNormalsMaterial->SetAlbedo(glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+
+	std::shared_ptr<Firefly::Material> defaultMaterial = Firefly::RenderingAPI::CreateMaterial(m_graphicsContext);
+	defaultMaterial->Init(defaultShader);
+	defaultMaterial->SetAlbedo(glm::vec4(0.4f, 0.6f, 0.2f, 1.0f));
+
 	Firefly::MaterialRegistry::Instance().Insert("Pistol", pistolMaterial);
 	Firefly::MaterialRegistry::Instance().Insert("Globe", globeMaterial);
 	Firefly::MaterialRegistry::Instance().Insert("Armchair", armchairMaterial);
 	Firefly::MaterialRegistry::Instance().Insert("Floor", floorMaterial);
 	Firefly::MaterialRegistry::Instance().Insert("Floor2", floor2Material);
+	Firefly::MaterialRegistry::Instance().Insert("DrawNormals", drawNormalsMaterial);
+	Firefly::MaterialRegistry::Instance().Insert("Default", defaultMaterial);
 
 	Firefly::Entity pistol(m_scene);
 	pistol.AddComponent<Firefly::TagComponent>("Pistol");
@@ -193,6 +225,18 @@ SandboxApp::SandboxApp()
 	floor2.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 0.f)), glm::vec3(4.f)));
 	floor2.AddComponent<Firefly::MeshComponent>(floorMesh);
 	floor2.AddComponent<Firefly::MaterialComponent>(floor2Material);
+
+	Firefly::Entity cube(m_scene);
+	cube.AddComponent<Firefly::TagComponent>("Cube");
+	cube.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.5f, 0.f)));
+	cube.AddComponent<Firefly::MeshComponent>(cubeMesh);
+	cube.AddComponent<Firefly::MaterialComponent>(defaultMaterial);
+
+	Firefly::Entity cubeNormals(m_scene);
+	cubeNormals.AddComponent<Firefly::TagComponent>("CubeNormals");
+	cubeNormals.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(0.f, 0.5f, 0.f)));
+	cubeNormals.AddComponent<Firefly::MeshComponent>(cubeMesh);
+	cubeNormals.AddComponent<Firefly::MaterialComponent>(drawNormalsMaterial);
 
 	m_renderer = Firefly::RenderingAPI::CreateRenderer(m_graphicsContext);
 	m_renderer->Init();

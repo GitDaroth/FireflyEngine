@@ -44,6 +44,8 @@ set(renderingFiles
 	src/Rendering/Material.cpp
 	include/Firefly/Rendering/Mesh.h
 	src/Rendering/Mesh.cpp
+	include/Firefly/Rendering/MeshGenerator.h
+	src/Rendering/MeshGenerator.cpp
 	include/Firefly/Rendering/RenderingAPI.h
 	src/Rendering/RenderingAPI.cpp
 	include/Firefly/Rendering/Renderer.h
