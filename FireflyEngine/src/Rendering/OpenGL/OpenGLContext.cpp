@@ -33,6 +33,8 @@ namespace Firefly
 		glEnable(GL_SAMPLE_SHADING);
 		glMinSampleShading(1.f);
 
+		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
 		glViewport(0, 0, window->GetWidth(), window->GetHeight());
 
 		glfwSwapInterval(1); // 1: vsync, 0: unlimited

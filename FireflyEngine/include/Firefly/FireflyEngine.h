@@ -2,6 +2,7 @@
 
 #include "Core/Engine.h"
 #include "Core/Application.h"
+#include "Core/ResourceRegistry.h"
 
 #include "Scene/Scene.h"
 

@@ -325,10 +325,6 @@ namespace Firefly
 		VulkanUtils::CreateImage(m_device->GetDevice(), m_device->GetPhysicalDevice(), swapchainExtent.width, swapchainExtent.height, mipLevels, m_msaaSampleCount, format, tiling, imageUsageFlags, memoryPropertyFlags, m_colorImage, m_colorImageMemory);
 
 		m_colorImageView = VulkanUtils::CreateImageView(m_device->GetDevice(), m_colorImage, mipLevels, format, vk::ImageAspectFlagBits::eColor);
-
-		//vk::ImageLayout oldLayout = vk::ImageLayout::eUndefined;
-		//vk::ImageLayout newLayout = vk::ImageLayout::eColorAttachmentOptimal;
-		//VulkanUtils::TransitionImageLayout(m_device->GetDevice(), m_commandPool, m_device->GetGraphicsQueue(), m_colorImage, mipLevels, format, oldLayout, newLayout);
 	}
 
 	void VulkanRenderer::DestroyColorImage()

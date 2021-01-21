@@ -3,6 +3,8 @@
 #include "Rendering/Renderer.h"
 #include "Rendering/OpenGL/OpenGLContext.h"
 
+#include "Rendering/OpenGL/OpenGLShader.h"
+
 namespace Firefly
 {
 	class OpenGLRenderer : public Renderer
@@ -23,5 +25,13 @@ namespace Firefly
 		std::vector<Entity> m_entities;
 		uint32_t m_windowWidth;
 		uint32_t m_windowHeight;
+
+		unsigned int m_irradianceMap;
+		unsigned int m_prefilterMap;
+		unsigned int m_brdfLUTTexture;
+		unsigned int m_envCubemap;
+		unsigned int m_cubeVAO;
+		unsigned int m_quadVAO;
+		std::shared_ptr<OpenGLShader> m_environmentCubeMapShader;
 	};
 }

@@ -4,7 +4,6 @@
 #include <Firefly/Scene/Components/MeshComponent.h>
 #include <Firefly/Scene/Components/MaterialComponent.h>
 #include <Firefly/Scene/Components/TransformComponent.h>
-#include <Firefly/Core/ResourceRegistry.h>
 #include <glm/gtc/matrix_transform.hpp>
 
 SandboxApp::SandboxApp()
@@ -48,16 +47,7 @@ SandboxApp::SandboxApp()
 	std::shared_ptr<Firefly::Shader> drawNormalsShader = Firefly::RenderingAPI::CreateShader("DrawNormals", drawNormalsShaderCode);
 	Firefly::ShaderRegistry::Instance().Insert(drawNormalsShader->GetTag(), drawNormalsShader);
 
-	std::vector<Firefly::Mesh::Vertex> vertices = 
-	{
-		{ {-1.f, 0.f,  1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {0.f, 0.f} },
-		{ { 1.f, 0.f,  1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {2.f, 0.f} },
-		{ { 1.f, 0.f, -1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {2.f, 2.f} },
-		{ {-1.f, 0.f, -1.f}, {0.f, 1.f, 0.f}, {1.f, 0.f, 0.f}, {0.f, 0.f, -1.f}, {0.f, 2.f} }
-	};
-	std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
-
-	std::shared_ptr<Firefly::Mesh> floorMesh = Firefly::RenderingAPI::CreateMesh(vertices, indices);
+	std::shared_ptr<Firefly::Mesh> floorMesh = Firefly::MeshGenerator::CreateQuad(glm::vec2(2.0f));
 	std::shared_ptr<Firefly::Mesh> pistolMesh = Firefly::RenderingAPI::CreateMesh("assets/meshes/pistol.fbx", true);
 	std::shared_ptr<Firefly::Mesh> globeMesh = Firefly::RenderingAPI::CreateMesh("assets/meshes/globe.fbx");
 	std::shared_ptr<Firefly::Mesh> armchairMesh = Firefly::RenderingAPI::CreateMesh("assets/meshes/armchair.fbx");

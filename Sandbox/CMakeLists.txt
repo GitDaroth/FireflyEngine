@@ -8,6 +8,16 @@ set(sources
 set(openGLShaders 
 	assets/shaders/OpenGL/pbr.vert
 	assets/shaders/OpenGL/pbr.frag
+	assets/shaders/OpenGL/hdrImageToCubeMap.vert
+	assets/shaders/OpenGL/hdrImageToCubeMap.frag
+	assets/shaders/OpenGL/irradianceCubeMap.vert
+	assets/shaders/OpenGL/irradianceCubeMap.frag
+	assets/shaders/OpenGL/environmentCubeMap.vert
+	assets/shaders/OpenGL/environmentCubeMap.frag
+	assets/shaders/OpenGL/prefilterCubeMap.vert
+	assets/shaders/OpenGL/prefilterCubeMap.frag
+	assets/shaders/OpenGL/brdfLUT.vert
+	assets/shaders/OpenGL/brdfLUT.frag
 	assets/shaders/OpenGL/drawNormals.vert
 	assets/shaders/OpenGL/drawNormals.frag
 	assets/shaders/OpenGL/drawNormals.geom)
@@ -46,7 +56,13 @@ set(textures
 	assets/textures/pistol/normal.jpg
 	assets/textures/pistol/roughness.jpg
 	assets/textures/pistol/metalness.jpg
-	assets/textures/pistol/occlusion.jpg)
+	assets/textures/pistol/occlusion.jpg
+	assets/textures/environment/FactoryCatwalk.hdr
+	assets/textures/environment/HamarikyuBridge.hdr
+	assets/textures/environment/MonValley.hdr
+	assets/textures/environment/TopangaForest.hdr
+	assets/textures/environment/TropicalBeach.hdr
+	assets/textures/environment/WinterForest.hdr)
 
 source_group("" FILES ${sources})
 source_group("\\assets\\shaders\\OpenGL" FILES ${openGLShaders})
