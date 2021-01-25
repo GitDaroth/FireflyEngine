@@ -22,7 +22,6 @@ namespace Firefly
 
 		if (RenderingAPI::GetType() == RenderingAPI::Type::OpenGL)
 		{
-			glfwWindowHint(GLFW_SAMPLES, 8);
 #ifndef NDEBUG
 			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
 #endif

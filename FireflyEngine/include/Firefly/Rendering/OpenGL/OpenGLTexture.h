@@ -14,6 +14,7 @@ namespace Firefly
 		virtual void Destroy() override;
 
 		void Bind(GLuint slot);
+		uint32_t GetHandle() const;
 
 	protected:
 		virtual void OnInit(void* pixelData) override;

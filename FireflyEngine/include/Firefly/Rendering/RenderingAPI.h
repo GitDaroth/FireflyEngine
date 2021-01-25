@@ -7,6 +7,8 @@
 #include "Rendering/Mesh.h"
 #include "Rendering/Texture.h"
 #include "Rendering/Material.h"
+#include "Rendering/FrameBuffer.h"
+#include "Rendering/RenderPass.h"
 
 namespace Firefly
 {
@@ -30,7 +32,10 @@ namespace Firefly
 		static std::shared_ptr<Mesh> CreateMesh(std::vector<Mesh::Vertex> vertices, std::vector<uint32_t> indices);
 		static std::shared_ptr<Mesh> CreateMesh(const std::string& path, bool flipTexCoords = false);
 		static std::shared_ptr<Texture> CreateTexture(const std::string& path, bool useLinearColorSpace = true);
+		static std::shared_ptr<Texture> CreateTexture(const Texture::Description& description);
 		static std::shared_ptr<Material> CreateMaterial(std::shared_ptr<Shader> shader);
+		static std::shared_ptr<FrameBuffer> CreateFrameBuffer(const FrameBuffer::Description& description);
+		static std::shared_ptr<RenderPass> CreateRenderPass(const RenderPass::Description& description);
 
 		static std::shared_ptr<GraphicsContext> GetContext();
 

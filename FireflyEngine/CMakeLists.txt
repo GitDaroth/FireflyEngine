@@ -72,7 +72,11 @@ set(renderingOpenGLFiles
 	include/Firefly/Rendering/OpenGL/OpenGLMaterial.h
 	src/Rendering/OpenGL/OpenGLMaterial.cpp
 	include/Firefly/Rendering/OpenGL/OpenGLRenderer.h
-	src/Rendering/OpenGL/OpenGLRenderer.cpp)
+	src/Rendering/OpenGL/OpenGLRenderer.cpp
+	include/Firefly/Rendering/OpenGL/OpenGLFrameBuffer.h
+	src/Rendering/OpenGL/OpenGLFrameBuffer.cpp
+	include/Firefly/Rendering/OpenGL/OpenGLRenderPass.h
+	src/Rendering/OpenGL/OpenGLRenderPass.cpp)
 
 set(renderingVulkanFiles
 	include/Firefly/Rendering/Vulkan/VulkanContext.h

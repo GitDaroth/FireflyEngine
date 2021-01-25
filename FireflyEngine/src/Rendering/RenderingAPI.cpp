@@ -11,6 +11,8 @@
 #include "Rendering/OpenGL/OpenGLMesh.h"
 #include "Rendering/OpenGL/OpenGLTexture.h"
 #include "Rendering/OpenGL/OpenGLMaterial.h"
+#include "Rendering/OpenGL/OpenGLFrameBuffer.h"
+#include "Rendering/OpenGL/OpenGLRenderPass.h"
 #endif
 
 #ifdef GFX_API_VULKAN
@@ -20,6 +22,8 @@
 #include "Rendering/Vulkan/VulkanMesh.h"
 #include "Rendering/Vulkan/VulkanTexture.h"
 #include "Rendering/Vulkan/VulkanMaterial.h"
+//#include "Rendering/Vulkan/VulkanFrameBuffer.h"
+//#include "Rendering/Vulkan/VulkanRenderPass.h"
 #endif
 
 namespace Firefly
@@ -133,6 +137,21 @@ namespace Firefly
 		return texture;
 	}
 
+	std::shared_ptr<Texture> RenderingAPI::CreateTexture(const Texture::Description& description)
+	{
+		std::shared_ptr<Texture> texture;
+
+		#ifdef GFX_API_OPENGL
+			texture = std::make_shared<OpenGLTexture>();
+		#endif
+		#ifdef GFX_API_VULKAN
+			texture = std::make_shared<VulkanTexture>();
+		#endif
+
+		texture->Init(description);
+		return texture;
+	}
+
 	std::shared_ptr<Material> RenderingAPI::CreateMaterial(std::shared_ptr<Shader> shader)
 	{
 		std::shared_ptr<Material> material;
@@ -146,6 +165,36 @@ namespace Firefly
 
 		material->Init(shader);
 		return material;
+	}
+
+	std::shared_ptr<FrameBuffer> RenderingAPI::CreateFrameBuffer(const FrameBuffer::Description& description)
+	{
+		std::shared_ptr<FrameBuffer> frameBuffer;
+
+		#ifdef GFX_API_OPENGL
+			frameBuffer = std::make_shared<OpenGLFrameBuffer>();
+		#endif
+		//#ifdef GFX_API_VULKAN
+		//	frameBuffer = std::make_shared<VulkanFrameBuffer>();
+		//#endif
+
+		frameBuffer->Init(description);
+		return frameBuffer;
+	}
+
+	std::shared_ptr<RenderPass> RenderingAPI::CreateRenderPass(const RenderPass::Description& description)
+	{
+		std::shared_ptr<RenderPass> renderPass;
+
+		#ifdef GFX_API_OPENGL
+			renderPass = std::make_shared<OpenGLRenderPass>();
+		#endif
+		//#ifdef GFX_API_VULKAN
+		//	renderPass = std::make_shared<VulkanRenderPass>();
+		//#endif
+
+		renderPass->Init(description);
+		return renderPass;
 	}
 
 	std::shared_ptr<GraphicsContext> RenderingAPI::GetContext()

@@ -19,6 +19,11 @@ namespace Firefly
 		glBindTextureUnit(slot, m_texture);
 	}
 
+    uint32_t OpenGLTexture::GetHandle() const
+    {
+        return m_texture;
+    }
+
 	void OpenGLTexture::OnInit(void* pixelData)
 	{
 		GLenum baseFormat = ConvertToOpenGLBaseFormat(m_description.format);
@@ -32,24 +37,24 @@ namespace Firefly
 
         switch (textureType)
         {
-        case GL_TEXTURE_1D:
-            glTexImage1D(textureType, 0, internalFormat, m_description.width, 0, baseFormat, pixelDataType, pixelData);
-            break;
         case GL_TEXTURE_2D:
             glTexImage2D(textureType, 0, internalFormat, m_description.width, m_description.height, 0, baseFormat, pixelDataType, pixelData);
             break;
         case GL_TEXTURE_2D_MULTISAMPLE:
             glTexImage2DMultisample(textureType, sampleCount, internalFormat, m_description.width, m_description.height, GL_TRUE);
             break;
-        case GL_TEXTURE_3D:
-            glTexImage3D(textureType, 0, internalFormat, m_description.width, m_description.height, m_description.depth, 0, baseFormat, pixelDataType, pixelData);
-            break;
         case GL_TEXTURE_CUBE_MAP:
             uint32_t textureSize = m_description.width * m_description.height * GetBytePerPixel(m_description.format);
             for (size_t i = 0; i < 6; i++)
             {
-                uint32_t offset = i * textureSize;
-                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internalFormat, m_description.width, m_description.height, 0, baseFormat, pixelDataType, (reinterpret_cast<unsigned char*>(pixelData) + offset));
+                void* offsetPixelData = nullptr;
+                if (pixelData)
+                {
+                    uint32_t offset = i * textureSize;
+                    offsetPixelData = (reinterpret_cast<unsigned char*>(pixelData) + offset);
+                }
+
+                glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internalFormat, m_description.width, m_description.height, 0, baseFormat, pixelDataType, offsetPixelData);
             }
             break;
         }
@@ -238,17 +243,11 @@ namespace Firefly
 
         switch (type)
         {
-        case Type::TEXTURE_1D:
-            textureType = GL_TEXTURE_1D;
-            break;
         case Type::TEXTURE_2D:
             if(sampleCount == 1)
                 textureType = GL_TEXTURE_2D;
             else
                 textureType = GL_TEXTURE_2D_MULTISAMPLE;
-            break;
-        case Type::TEXTURE_3D:
-            textureType = GL_TEXTURE_3D;
             break;
         case Type::TEXTURE_CUBE_MAP:
             textureType = GL_TEXTURE_CUBE_MAP;

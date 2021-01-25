@@ -18,6 +18,8 @@ set(openGLShaders
 	assets/shaders/OpenGL/prefilterCubeMap.frag
 	assets/shaders/OpenGL/brdfLUT.vert
 	assets/shaders/OpenGL/brdfLUT.frag
+	assets/shaders/OpenGL/screenTexture.vert
+	assets/shaders/OpenGL/screenTexture.frag
 	assets/shaders/OpenGL/drawNormals.vert
 	assets/shaders/OpenGL/drawNormals.frag
 	assets/shaders/OpenGL/drawNormals.geom)

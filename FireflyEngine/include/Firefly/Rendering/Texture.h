@@ -9,14 +9,14 @@ namespace Firefly
 	public:
 		enum class Type
 		{
-			TEXTURE_1D,
 			TEXTURE_2D,
-			TEXTURE_3D,
 			TEXTURE_CUBE_MAP
 		};
 
 		enum class Format
 		{
+			NONE,
+
 			R_8,
 			R_8_NON_LINEAR,
 			R_16_FLOAT,
@@ -83,14 +83,11 @@ namespace Firefly
 			Type type = Type::TEXTURE_2D;
 			uint32_t width = 0;
 			uint32_t height = 0;
-			uint32_t depth = 0;
 			Format format = Format::RGBA_8;
 			SampleCount sampleCount = SampleCount::SAMPLE_1;
 			bool useSampler = false;
 			SamplerDescription sampler = {};
 		};
-
-		Texture();
 
 		void Init(const std::string& path, bool useLinearColorSpace = true);
 		void Init(const Description& description);
@@ -98,10 +95,19 @@ namespace Firefly
 
 		uint32_t GetWidth();
 		uint32_t GetHeight();
+		Type GetType() const;
+		SampleCount GetSampleCount() const;
+		uint32_t GetMipMapLevels() const;
+		Format GetFormat() const;
+		std::string GetFormatAsString() const;
+		static std::string ConvertFormatToString(Format format);
+		bool HasColorFormat() const;
+		bool HasDepthFormat() const;
+		bool HasDepthStencilFormat() const;
 
 	protected:
 		virtual void OnInit(void* pixelData) = 0;
-		static uint32_t CalcMipMapLevels(uint32_t width, uint32_t height, uint32_t depth);
+		static uint32_t CalcMipMapLevels(uint32_t width, uint32_t height);
 
 		Description m_description;
 		uint32_t m_mipMapLevels;
