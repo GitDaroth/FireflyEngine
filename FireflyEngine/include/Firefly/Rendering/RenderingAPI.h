@@ -29,7 +29,7 @@ namespace Firefly
 		static std::shared_ptr<Shader> CreateShader(const std::string& tag, const ShaderCode& shaderCode);
 		static std::shared_ptr<Mesh> CreateMesh(std::vector<Mesh::Vertex> vertices, std::vector<uint32_t> indices);
 		static std::shared_ptr<Mesh> CreateMesh(const std::string& path, bool flipTexCoords = false);
-		static std::shared_ptr<Texture> CreateTexture(const std::string& path, Texture::ColorSpace colorSpace = Texture::ColorSpace::RGB);
+		static std::shared_ptr<Texture> CreateTexture(const std::string& path, bool useLinearColorSpace = true);
 		static std::shared_ptr<Material> CreateMaterial(std::shared_ptr<Shader> shader);
 
 		static std::shared_ptr<GraphicsContext> GetContext();

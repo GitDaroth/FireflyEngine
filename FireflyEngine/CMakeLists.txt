@@ -54,7 +54,11 @@ set(renderingFiles
 	include/Firefly/Rendering/Shader.h
 	src/Rendering/Shader.cpp
 	include/Firefly/Rendering/Texture.h
-	src/Rendering/Texture.cpp)
+	src/Rendering/Texture.cpp
+	include/Firefly/Rendering/FrameBuffer.h
+	src/Rendering/FrameBuffer.cpp
+	include/Firefly/Rendering/RenderPass.h
+	src/Rendering/RenderPass.cpp)
 
 set(renderingOpenGLFiles
 	include/Firefly/Rendering/OpenGL/OpenGLContext.h

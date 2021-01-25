@@ -118,7 +118,7 @@ namespace Firefly
 		return mesh;
 	}
 
-	std::shared_ptr<Texture> RenderingAPI::CreateTexture(const std::string& path, Texture::ColorSpace colorSpace)
+	std::shared_ptr<Texture> RenderingAPI::CreateTexture(const std::string& path, bool useLinearColorSpace)
 	{
 		std::shared_ptr<Texture> texture;
 
@@ -129,7 +129,7 @@ namespace Firefly
 			texture = std::make_shared<VulkanTexture>();
 		#endif
 
-		texture->Init(path, colorSpace);
+		texture->Init(path, useLinearColorSpace);
 		return texture;
 	}
 

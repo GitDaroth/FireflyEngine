@@ -17,15 +17,17 @@ namespace Firefly
 		vk::Sampler GetSampler() const;
 
 	protected:
-		virtual void OnInit(unsigned char* pixelData, ColorSpace colorSpace) override;
+		virtual void OnInit(void* pixelData) override;
 
 	private:
-		void CreateImage(unsigned char* pixelData);
+		void CreateImage(void* pixelData);
 		void DestroyImage();
 		void CreateImageView();
 		void DestroyImageView();
 		void CreateSampler();
 		void DestroySampler();
+		static vk::Format ConvertToVulkanFormat(Format format);
+		static uint32_t GetBytePerPixel(Format format);
 
 		vk::Device m_device;
 		vk::PhysicalDevice m_physicalDevice;
@@ -38,6 +40,5 @@ namespace Firefly
 		vk::ImageView m_imageView;
 		vk::Sampler m_sampler;
 		vk::Format m_format;
-		uint32_t m_mipLevels;
 	};
 }

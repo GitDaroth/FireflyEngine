@@ -22,6 +22,84 @@ namespace Firefly
 
 	void OpenGLRenderer::Init()
 	{
+		//RenderPassDescription renderPassDesc = {};
+		//renderPassDesc.isDepthTestingEnabled = true;
+		//renderPassDesc.depthCompareOperation = CompareOperation::LESS;
+		//renderPassDesc.isMultisamplingEnabled = true;
+		//renderPassDesc.isSampleShadingEnabled = true;
+		//renderPassDesc.minSampleShading = 1.0f;
+		//renderPassDesc.colorAttachmentDescriptions = { {Texture::Format::RGBA_8, Texture::SampleCount::SAMPLE_4} };
+		//renderPassDesc.colorResolveAttachmentDescriptions = { {Texture::Format::RGBA_8, Texture::SampleCount::SAMPLE_1} };
+		//renderPassDesc.depthStencilAttachmentDescription = { Texture::Format::DEPTH_24_STENCIL_8, Texture::SampleCount::SAMPLE_4 };
+		//std::shared_ptr<RenderPass> forwardRenderPass = RenderingAPI::CreateRenderPass(renderPassDesc);
+
+		//renderPassDesc.isDepthTestingEnabled = true;
+		//renderPassDesc.depthCompareOperation = CompareOperation::LESS_OR_EQUAL;
+		//renderPassDesc.isMultisamplingEnabled = false;
+		//renderPassDesc.colorAttachmentDescriptions = { {Texture::Format::RGB_32_FLOAT, Texture::SampleCount::SAMPLE_1} };
+		//renderPassDesc.colorResolveAttachmentDescriptions = {};
+		//renderPassDesc.depthStencilAttachmentDescription = { Texture::Format::DEPTH_32_FLOAT, Texture::SampleCount::SAMPLE_1 };
+		//std::shared_ptr<RenderPass> environmentCubeMapRenderPass = RenderingAPI::CreateRenderPass(renderPassDesc);
+
+		//renderPassDesc.isDepthTestingEnabled = false;
+		//renderPassDesc.isMultisamplingEnabled = false;
+		//renderPassDesc.colorAttachmentDescriptions = { {Texture::Format::RG_32_FLOAT, Texture::SampleCount::SAMPLE_1} };
+		//renderPassDesc.colorResolveAttachmentDescriptions = {};
+		//renderPassDesc.depthStencilAttachmentDescription = {};
+		//std::shared_ptr<RenderPass> hdrCubeMapRenderPass = RenderingAPI::CreateRenderPass(renderPassDesc);
+
+
+		Texture::Description textureDesc = {};
+		textureDesc.type = Texture::Type::TEXTURE_2D;
+		textureDesc.width = 1024;
+		textureDesc.height = 1024;
+		textureDesc.depth = 0;
+		textureDesc.format = Texture::Format::DEPTH_24_STENCIL_8;
+		textureDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		textureDesc.useSampler = false;
+		std::shared_ptr<Texture> depthTexture = RenderingAPI::CreateTexture(textureDesc);
+
+		textureDesc.type = Texture::Type::TEXTURE_CUBE_MAP;
+		textureDesc.width = 1024;
+		textureDesc.height = 1024;
+		textureDesc.depth = 0;
+		textureDesc.format = Texture::Format::RGB_32_FLOAT;
+		textureDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		textureDesc.useSampler = true;
+		textureDesc.sampler.isMipMappingEnabled = false;
+		textureDesc.sampler.isAnisotropicFilteringEnabled = true;
+		textureDesc.sampler.maxAnisotropy = 16;
+		textureDesc.sampler.wrapMode = Texture::WrapMode::CLAMP_TO_EDGE;
+		textureDesc.sampler.magnificationFilterMode = Texture::FilterMode::LINEAR;
+		textureDesc.sampler.minificationFilterMode = Texture::FilterMode::LINEAR;
+		textureDesc.sampler.mipMapFilterMode = Texture::FilterMode::LINEAR;
+		std::shared_ptr<Texture> environmentCubeMap = RenderingAPI::CreateTexture(textureDesc);
+
+		//std::vector<std::shared_ptr<FrameBuffer>> environmentCudeMapFrameBuffers;
+		//for (size_t layerLevel = 0; layerLevel < 6; layerLevel++)
+		//{
+		//	FrameBufferDescription frameBufferDesc = {};
+		//	frameBufferDesc.width = 1024;
+		//	frameBufferDesc.height = 1024;
+		//	frameBufferDesc.renderPass = environmentCubeMapRenderPass;
+		//	frameBufferDesc.colorAttachments = { environmentCubeMap->GetSubTexture(0, layerLevel) };
+		//	frameBufferDesc.colorResolveAttachments = {};
+		//	frameBufferDesc.depthStencilAttachment = { depthTexture };
+		//	std::shared_ptr<FrameBuffer> frameBuffer = RenderingAPI::CreateFrameBuffer(frameBufferDesc);
+		//	environmentCudeMapFrameBuffers.push_back(frameBuffer);
+		//}
+
+		//for (size_t layerLevel = 0; layerLevel < 6; layerLevel++)
+		//{
+		//	environmentCubeMapRenderPass->Begin(environmentCudeMapFrameBuffers[layerLevel]);
+		//	// BIND SHADER
+		//	// BIND HDR TEXTURE
+		//	// RENDER CUBE
+		//	environmentCubeMapRenderPass->End();
+		//}
+
+
+
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LEQUAL);
 

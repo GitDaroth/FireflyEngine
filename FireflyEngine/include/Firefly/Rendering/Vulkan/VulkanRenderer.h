@@ -97,7 +97,7 @@ namespace Firefly
 		std::vector<vk::Buffer> m_objectDataUniformBuffers;
 		std::vector<vk::DeviceMemory> m_objectDataUniformBufferMemories;
 		ObjectData* m_objectData;
-		size_t m_objectDataCount = 100;
+		size_t m_objectDataCount = 1000;
 		size_t m_objectDataDynamicAlignment;
 
 		vk::SampleCountFlagBits m_msaaSampleCount;

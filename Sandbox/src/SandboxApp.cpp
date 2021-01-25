@@ -59,7 +59,7 @@ SandboxApp::SandboxApp()
 	Firefly::MeshRegistry::Instance().Insert("Armchair", armchairMesh);
 	Firefly::MeshRegistry::Instance().Insert("Sphere", sphereMesh);
 
-	std::shared_ptr<Firefly::Texture> pistolAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/albedo.jpg", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> pistolAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/albedo.jpg", false);
 	std::shared_ptr<Firefly::Texture> pistolNormalTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/normal.jpg");
 	std::shared_ptr<Firefly::Texture> pistolRoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/roughness.jpg");
 	std::shared_ptr<Firefly::Texture> pistolMetalnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/pistol/metalness.jpg");
@@ -70,7 +70,7 @@ SandboxApp::SandboxApp()
 	Firefly::TextureRegistry::Instance().Insert("PistolMetallness", pistolMetalnessTexture);
 	Firefly::TextureRegistry::Instance().Insert("PistolOcclusion", pistolOcclusionTexture);
 
-	std::shared_ptr<Firefly::Texture> globeAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/globe/albedo.png", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> globeAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/globe/albedo.png", false);
 	std::shared_ptr<Firefly::Texture> globeRoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/globe/roughness.png");
 	std::shared_ptr<Firefly::Texture> globeMetalnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/globe/metalness.png");
 	std::shared_ptr<Firefly::Texture> globeOcclusionTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/globe/occlusion.png");
@@ -79,7 +79,7 @@ SandboxApp::SandboxApp()
 	Firefly::TextureRegistry::Instance().Insert("GlobeMetalness", globeMetalnessTexture);
 	Firefly::TextureRegistry::Instance().Insert("GlobeOcclusion", globeOcclusionTexture);
 
-	std::shared_ptr<Firefly::Texture> armchairAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/armchair/albedo.png", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> armchairAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/armchair/albedo.png", false);
 	std::shared_ptr<Firefly::Texture> armchairNormalTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/armchair/normal.png");
 	std::shared_ptr<Firefly::Texture> armchairRoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/armchair/roughness.png");
 	std::shared_ptr<Firefly::Texture> armchairOcclusionTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/armchair/occlusion.png");
@@ -88,7 +88,7 @@ SandboxApp::SandboxApp()
 	Firefly::TextureRegistry::Instance().Insert("ArmchairRoughness", armchairRoughnessTexture);
 	Firefly::TextureRegistry::Instance().Insert("ArmchairOcclusion", armchairOcclusionTexture);
 
-	std::shared_ptr<Firefly::Texture> floorAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_albedo.jpg", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> floorAlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_albedo.jpg", false);
 	std::shared_ptr<Firefly::Texture> floorNormalTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_normal.jpg");
 	std::shared_ptr<Firefly::Texture> floorRoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_roughness.jpg");
 	std::shared_ptr<Firefly::Texture> floorOcclusionTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/1_occlusion.jpg");
@@ -99,7 +99,7 @@ SandboxApp::SandboxApp()
 	Firefly::TextureRegistry::Instance().Insert("FloorOcclusion", floorOcclusionTexture);
 	Firefly::TextureRegistry::Instance().Insert("FloorHeight", floorHeightTexture);
 
-	std::shared_ptr<Firefly::Texture> floor2AlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/2_albedo.jpg", Firefly::Texture::ColorSpace::SRGB);
+	std::shared_ptr<Firefly::Texture> floor2AlbedoTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/2_albedo.jpg", false);
 	std::shared_ptr<Firefly::Texture> floor2NormalTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/2_normal.jpg");
 	std::shared_ptr<Firefly::Texture> floor2RoughnessTexture = Firefly::RenderingAPI::CreateTexture("assets/textures/floor/2_roughness.jpg");
 	Firefly::TextureRegistry::Instance().Insert("Floor2Albedo", floor2AlbedoTexture);

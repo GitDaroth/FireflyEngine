@@ -5,6 +5,8 @@
 
 #include "Rendering/OpenGL/OpenGLShader.h"
 
+#include "Rendering/RenderPass.h"
+
 namespace Firefly
 {
 	class OpenGLRenderer : public Renderer
