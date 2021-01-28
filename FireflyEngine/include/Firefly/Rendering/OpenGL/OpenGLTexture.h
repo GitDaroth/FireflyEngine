@@ -27,8 +27,6 @@ namespace Firefly
 		static GLenum ConvertToOpenGLWrapMode(WrapMode wrapMode);
 		static GLenum ConvertToOpenGLMinificationFilterMode(FilterMode minfilterMode, FilterMode mipMapFilterMode);
 		static GLenum ConvertToOpenGLFilterMode(FilterMode filterMode);
-		static GLsizei ConvertToOpenGLSampleCount(SampleCount sampleCount);
-		static uint32_t GetBytePerPixel(Format format);
 
 		uint32_t m_texture;
 	};

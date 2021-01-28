@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Rendering/RenderingAPI.h"
 
-#define GFX_API_OPENGL
-//#define GFX_API_VULKAN
+//#define GFX_API_OPENGL
+#define GFX_API_VULKAN
 
 #ifdef GFX_API_OPENGL
 #include "Rendering/OpenGL/OpenGLContext.h"

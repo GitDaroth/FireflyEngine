@@ -85,6 +85,7 @@ namespace Firefly
 			uint32_t height = 0;
 			Format format = Format::RGBA_8;
 			SampleCount sampleCount = SampleCount::SAMPLE_1;
+			bool useAsAttachment = false;
 			bool useSampler = false;
 			SamplerDescription sampler = {};
 		};
@@ -107,9 +108,13 @@ namespace Firefly
 
 	protected:
 		virtual void OnInit(void* pixelData) = 0;
-		static uint32_t CalcMipMapLevels(uint32_t width, uint32_t height);
+		void CalcMipMapLevels();
+		void CalcArrayLayers();
+		static uint32_t ConvertToSampleCountNumber(SampleCount sampleCount);
+		static uint32_t GetBytePerPixel(Format format);
 
 		Description m_description;
 		uint32_t m_mipMapLevels;
+		uint32_t m_arrayLayers;
 	};
 }

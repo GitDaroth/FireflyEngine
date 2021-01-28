@@ -176,8 +176,7 @@ namespace Firefly
 		colorResolveTextureDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
 		colorResolveTextureDesc.useSampler = true;
 		colorResolveTextureDesc.sampler.isMipMappingEnabled = false;
-		colorResolveTextureDesc.sampler.isAnisotropicFilteringEnabled = true;
-		colorResolveTextureDesc.sampler.maxAnisotropy = 16;
+		colorResolveTextureDesc.sampler.isAnisotropicFilteringEnabled = false;
 		colorResolveTextureDesc.sampler.wrapMode = Texture::WrapMode::CLAMP_TO_EDGE;
 		colorResolveTextureDesc.sampler.magnificationFilterMode = Texture::FilterMode::LINEAR;
 		colorResolveTextureDesc.sampler.minificationFilterMode = Texture::FilterMode::LINEAR;
@@ -318,17 +317,16 @@ namespace Firefly
 
 		// LOAD HDR IMAGE
 		//std::string environmentMapPath = "assets/textures/environment/FactoryCatwalk.hdr";
-		std::string environmentMapPath = "assets/textures/environment/HamarikyuBridge.hdr";
+		//std::string environmentMapPath = "assets/textures/environment/HamarikyuBridge.hdr";
 		//std::string environmentMapPath = "assets/textures/environment/MonValley.hdr";
-		//std::string environmentMapPath = "assets/textures/environment/TopangaForest.hdr";
+		std::string environmentMapPath = "assets/textures/environment/TopangaForest.hdr";
 		//std::string environmentMapPath = "assets/textures/environment/TropicalBeach.hdr";
 		//std::string environmentMapPath = "assets/textures/environment/WinterForest.hdr";
 
 		std::shared_ptr<OpenGLTexture> hdrTexture = std::dynamic_pointer_cast<OpenGLTexture>(RenderingAPI::CreateTexture(environmentMapPath));
 
 		RenderPass::Description imageBasedLightingRenderPassDesc = {};
-		imageBasedLightingRenderPassDesc.isDepthTestingEnabled = true;
-		imageBasedLightingRenderPassDesc.depthCompareOperation = CompareOperation::LESS_OR_EQUAL;
+		imageBasedLightingRenderPassDesc.isDepthTestingEnabled = false;
 		imageBasedLightingRenderPassDesc.isMultisamplingEnabled = false;
 		imageBasedLightingRenderPassDesc.colorAttachmentLayouts = { {Texture::Format::RGB_16_FLOAT, Texture::SampleCount::SAMPLE_1} };
 		imageBasedLightingRenderPassDesc.colorResolveAttachmentLayouts = {};
@@ -336,8 +334,7 @@ namespace Firefly
 		std::shared_ptr<RenderPass> imageBasedLightingRenderPass = RenderingAPI::CreateRenderPass(imageBasedLightingRenderPassDesc);
 
 		RenderPass::Description brdfLUTRenderPassDesc = {};
-		brdfLUTRenderPassDesc.isDepthTestingEnabled = true;
-		brdfLUTRenderPassDesc.depthCompareOperation = CompareOperation::LESS_OR_EQUAL;
+		brdfLUTRenderPassDesc.isDepthTestingEnabled = false;
 		brdfLUTRenderPassDesc.isMultisamplingEnabled = false;
 		brdfLUTRenderPassDesc.colorAttachmentLayouts = { {Texture::Format::RG_16_FLOAT, Texture::SampleCount::SAMPLE_1} };
 		brdfLUTRenderPassDesc.colorResolveAttachmentLayouts = {};

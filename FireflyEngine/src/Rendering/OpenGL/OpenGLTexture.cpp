@@ -29,7 +29,7 @@ namespace Firefly
 		GLenum baseFormat = ConvertToOpenGLBaseFormat(m_description.format);
 		GLenum internalFormat = ConvertToOpenGLInternalFormat(m_description.format);
         GLenum pixelDataType = GetOpenGLPixelDataType(m_description.format);
-        GLsizei sampleCount = ConvertToOpenGLSampleCount(m_description.sampleCount);
+        GLsizei sampleCount = ConvertToSampleCountNumber(m_description.sampleCount);
         GLenum textureType = ConvertToOpenGLTextureType(m_description.type, sampleCount);
 
 		glGenTextures(1, &m_texture);
@@ -94,116 +94,82 @@ namespace Firefly
 
 	GLenum OpenGLTexture::ConvertToOpenGLBaseFormat(Format format)
 	{
-		GLenum baseFormat = GL_NONE;
-
         switch (format)
         {
         case Format::R_8:
         case Format::R_8_NON_LINEAR:
         case Format::R_16_FLOAT:
         case Format::R_32_FLOAT:
-            baseFormat = GL_RED;
-            break;
+            return GL_RED;
         case Format::RG_8:
         case Format::RG_8_NON_LINEAR:
         case Format::RG_16_FLOAT:
         case Format::RG_32_FLOAT:
-            baseFormat = GL_RG;
-            break;
+            return GL_RG;
         case Format::RGB_8:
         case Format::RGB_8_NON_LINEAR:
         case Format::RGB_16_FLOAT:
         case Format::RGB_32_FLOAT:
-            baseFormat = GL_RGB;
-            break;
+            return GL_RGB;
         case Format::RGBA_8:
         case Format::RGBA_8_NON_LINEAR:
         case Format::RGBA_16_FLOAT:
         case Format::RGBA_32_FLOAT:
-            baseFormat = GL_RGBA;
-            break;
+            return GL_RGBA;
         case Format::DEPTH_32_FLOAT:
-            baseFormat = GL_DEPTH_COMPONENT;
-            break;
+            return GL_DEPTH_COMPONENT;
         case Format::DEPTH_24_STENCIL_8:
-            baseFormat = GL_DEPTH_STENCIL;
-            break;
+            return GL_DEPTH_STENCIL;
         }
-
-		return baseFormat;
 	}
 
 	GLenum OpenGLTexture::ConvertToOpenGLInternalFormat(Format format)
 	{
-		GLenum internalFormat = GL_NONE;
-
         switch (format)
         {
         case Format::R_8:
-            internalFormat = GL_R8;
-            break;
+            return GL_R8;
         case Format::R_8_NON_LINEAR:
-            internalFormat = GL_R8;
             Logger::Warn("OpenGL", "Non linear format with only 1 component is not supported -> linear format GL_R8 is used instead");
-            break;
+            return GL_R8;
         case Format::R_16_FLOAT:
-            internalFormat = GL_R16F;
-            break;
+            return GL_R16F;
         case Format::R_32_FLOAT:
-            internalFormat = GL_R32F;
-            break;
+            return GL_R32F;
         case Format::RG_8:
-            internalFormat = GL_RG8;
-            break;
+            return GL_RG8;
         case Format::RG_8_NON_LINEAR:
-            internalFormat = GL_RG8;
             Logger::Warn("OpenGL", "Non linear format with only 2 components is not supported -> linear format GL_RG8 is used instead");
-            break;
+            return GL_RG8;
         case Format::RG_16_FLOAT:
-            internalFormat = GL_RG16F;
-            break;
+            return GL_RG16F;
         case Format::RG_32_FLOAT:
-            internalFormat = GL_RG32F;
-            break;
+            return GL_RG32F;
         case Format::RGB_8:
-            internalFormat = GL_RGB8;
-            break;
+            return GL_RGB8;
         case Format::RGB_8_NON_LINEAR:
-            internalFormat = GL_SRGB8;
-            break;
+            return GL_SRGB8;
         case Format::RGB_16_FLOAT:
-            internalFormat = GL_RGB16F;
-            break;
+            return GL_RGB16F;
         case Format::RGB_32_FLOAT:
-            internalFormat = GL_RGB32F;
-            break;
+            return GL_RGB32F;
         case Format::RGBA_8:
-            internalFormat = GL_RGBA8;
-            break;
+            return GL_RGBA8;
         case Format::RGBA_8_NON_LINEAR:
-            internalFormat = GL_SRGB8_ALPHA8;
-            break;
+            return GL_SRGB8_ALPHA8;
         case Format::RGBA_16_FLOAT:
-            internalFormat = GL_RGBA16F;
-            break;
+            return GL_RGBA16F;
         case Format::RGBA_32_FLOAT:
-            internalFormat = GL_RGBA32F;
-            break;
+            return GL_RGBA32F;
         case Format::DEPTH_32_FLOAT:
-            internalFormat = GL_DEPTH_COMPONENT32F;
-            break;
+            return GL_DEPTH_COMPONENT32F;
         case Format::DEPTH_24_STENCIL_8:
-            internalFormat = GL_DEPTH24_STENCIL8;
-            break;
+            return GL_DEPTH24_STENCIL8;
         }
-
-		return internalFormat;
 	}
 
     GLenum OpenGLTexture::GetOpenGLPixelDataType(Format format)
     {
-        GLenum pixelDataType = GL_NONE;
-
         switch (format)
         {
         case Format::R_8:
@@ -214,202 +180,88 @@ namespace Firefly
         case Format::RGB_8_NON_LINEAR:
         case Format::RGBA_8:
         case Format::RGBA_8_NON_LINEAR:
-            pixelDataType = GL_UNSIGNED_BYTE;
-            break;
+            return GL_UNSIGNED_BYTE;
         case Format::R_16_FLOAT:
         case Format::RG_16_FLOAT:
         case Format::RGB_16_FLOAT:
         case Format::RGBA_16_FLOAT:
-            pixelDataType = GL_HALF_FLOAT;
-            break;
+            return GL_HALF_FLOAT;
         case Format::R_32_FLOAT:
         case Format::RG_32_FLOAT:
         case Format::RGB_32_FLOAT:
         case Format::RGBA_32_FLOAT:
         case Format::DEPTH_32_FLOAT:
-            pixelDataType = GL_FLOAT;
-            break;
+            return GL_FLOAT;
         case Format::DEPTH_24_STENCIL_8:
-            pixelDataType = GL_UNSIGNED_INT_24_8;
-            break;
+            return GL_UNSIGNED_INT_24_8;
         }
-
-        return pixelDataType;
     }
 
     GLenum OpenGLTexture::ConvertToOpenGLTextureType(Type type, uint32_t sampleCount)
     {
-        GLenum textureType = GL_NONE;
+        if (type != Type::TEXTURE_2D && sampleCount > 1)
+            Logger::Warn("OpenGL", "Sample count > 1 is ignored for non TEXTURE_2D types");
 
         switch (type)
         {
         case Type::TEXTURE_2D:
             if(sampleCount == 1)
-                textureType = GL_TEXTURE_2D;
+                return GL_TEXTURE_2D;
             else
-                textureType = GL_TEXTURE_2D_MULTISAMPLE;
-            break;
+                return GL_TEXTURE_2D_MULTISAMPLE;
         case Type::TEXTURE_CUBE_MAP:
-            textureType = GL_TEXTURE_CUBE_MAP;
-            break;
+            return GL_TEXTURE_CUBE_MAP;
         }
-
-        if (type != Type::TEXTURE_2D && sampleCount > 1)
-            Logger::Warn("OpenGL", "Sample count > 1 is ignored for non TEXTURE_2D types");
-
-        return textureType;
     }
 
     GLenum OpenGLTexture::ConvertToOpenGLWrapMode(WrapMode wrapMode)
     {
-        GLenum textureWrapMode = GL_NONE;
-
         switch (wrapMode)
         {
         case WrapMode::REPEAT:
-            textureWrapMode = GL_REPEAT;
-            break;
+            return GL_REPEAT;
         case WrapMode::MIRRORED_REPEAT:
-            textureWrapMode = GL_MIRRORED_REPEAT;
-            break;
+            return GL_MIRRORED_REPEAT;
         case WrapMode::CLAMP_TO_EDGE:
-            textureWrapMode = GL_CLAMP_TO_EDGE;
-            break;
+            return GL_CLAMP_TO_EDGE;
         case WrapMode::MIRROR_CLAMP_TO_EDGE:
-            textureWrapMode = GL_MIRROR_CLAMP_TO_EDGE;
-            break;
+            return GL_MIRROR_CLAMP_TO_EDGE;
         case WrapMode::CLAMP_TO_BORDER:
-            textureWrapMode = GL_CLAMP_TO_BORDER;
-            break;
+            return GL_CLAMP_TO_BORDER;
         }
-
-        return textureWrapMode;
     }
 
     GLenum OpenGLTexture::ConvertToOpenGLMinificationFilterMode(FilterMode minFilterMode, FilterMode mipMapFilterMode)
     {
-        GLenum minificationFilterMode = GL_NONE;
-
         switch (minFilterMode)
         {
         case FilterMode::NEAREST:
             switch (mipMapFilterMode)
             {
             case FilterMode::NEAREST:
-                minificationFilterMode = GL_NEAREST_MIPMAP_NEAREST;
-                break;
+                return GL_NEAREST_MIPMAP_NEAREST;
             case FilterMode::LINEAR:
-                minificationFilterMode = GL_NEAREST_MIPMAP_LINEAR;
-                break;
+                return GL_NEAREST_MIPMAP_LINEAR;
             }
-            break;
         case FilterMode::LINEAR:
             switch (mipMapFilterMode)
             {
             case FilterMode::NEAREST:
-                minificationFilterMode = GL_LINEAR_MIPMAP_NEAREST;
-                break;
+                return GL_LINEAR_MIPMAP_NEAREST;
             case FilterMode::LINEAR:
-                minificationFilterMode = GL_LINEAR_MIPMAP_LINEAR;
-                break;
+                return GL_LINEAR_MIPMAP_LINEAR;
             }
-            break;
         }
-
-        return minificationFilterMode;
     }
 
     GLenum OpenGLTexture::ConvertToOpenGLFilterMode(FilterMode filterMode)
     {
-        GLenum textureFilterMode = GL_NONE;
-
         switch (filterMode)
         {
         case FilterMode::NEAREST:
-            textureFilterMode = GL_NEAREST;
-            break;
+            return GL_NEAREST;
         case FilterMode::LINEAR:
-            textureFilterMode = GL_LINEAR;
-            break;
+            return GL_LINEAR;
         }
-
-        return textureFilterMode;
-    }
-
-    GLsizei OpenGLTexture::ConvertToOpenGLSampleCount(SampleCount sampleCount)
-    {
-        GLsizei textureSampleCount = 0;
-
-        switch (sampleCount)
-        {
-        case SampleCount::SAMPLE_1:
-            textureSampleCount = 1;
-            break;
-        case SampleCount::SAMPLE_2:
-            textureSampleCount = 2;
-            break;
-        case SampleCount::SAMPLE_4:
-            textureSampleCount = 4;
-            break;
-        case SampleCount::SAMPLE_8:
-            textureSampleCount = 8;
-            break;
-        case SampleCount::SAMPLE_16:
-            textureSampleCount = 16;
-            break;
-        case SampleCount::SAMPLE_32:
-            textureSampleCount = 32;
-            break;
-        case SampleCount::SAMPLE_64:
-            textureSampleCount = 64;
-            break;
-        }
-
-        return textureSampleCount;
-    }
-
-    uint32_t OpenGLTexture::GetBytePerPixel(Format format)
-    {
-        uint32_t bytePerPixel = 0;
-
-        switch (format)
-        {
-        case Format::R_8:
-        case Format::R_8_NON_LINEAR:
-            bytePerPixel = 1;
-            break;
-        case Format::RG_8:
-        case Format::RG_8_NON_LINEAR:
-        case Format::R_16_FLOAT:
-            bytePerPixel = 2;
-            break;
-        case Format::RGB_8:
-        case Format::RGB_8_NON_LINEAR:
-            bytePerPixel = 3;
-            break;
-        case Format::R_32_FLOAT:
-        case Format::RG_16_FLOAT:
-        case Format::RGBA_8:
-        case Format::RGBA_8_NON_LINEAR:
-        case Format::DEPTH_32_FLOAT:
-        case Format::DEPTH_24_STENCIL_8:
-            bytePerPixel = 4;
-            break;
-        case Format::RGB_16_FLOAT:
-            bytePerPixel = 6;
-            break;
-        case Format::RG_32_FLOAT:
-        case Format::RGBA_16_FLOAT:
-            bytePerPixel = 8;
-            break;
-        case Format::RGB_32_FLOAT:
-            bytePerPixel = 12;
-            break;
-        case Format::RGBA_32_FLOAT:
-            bytePerPixel = 16;
-            break;
-        }
-
-        return bytePerPixel;
     }
 }

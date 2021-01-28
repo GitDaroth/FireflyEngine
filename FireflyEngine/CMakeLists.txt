@@ -96,7 +96,11 @@ set(renderingVulkanFiles
 	include/Firefly/Rendering/Vulkan/VulkanUtils.h
 	src/Rendering/Vulkan/VulkanUtils.cpp
 	include/Firefly/Rendering/Vulkan/VulkanRenderer.h
-	src/Rendering/Vulkan/VulkanRenderer.cpp)
+	src/Rendering/Vulkan/VulkanRenderer.cpp
+	include/Firefly/Rendering/Vulkan/VulkanFrameBuffer.h
+	src/Rendering/Vulkan/VulkanFrameBuffer.cpp
+	include/Firefly/Rendering/Vulkan/VulkanRenderPass.h
+	src/Rendering/Vulkan/VulkanRenderPass.cpp)
 
 set(sceneFiles
 	include/Firefly/Scene/Scene.h

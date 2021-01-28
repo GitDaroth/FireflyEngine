@@ -31,6 +31,7 @@ namespace Firefly
 		m_description.width = width;
 		m_description.height = height;
 		m_description.sampleCount = SampleCount::SAMPLE_1;
+		m_description.useAsAttachment = false;
 		m_description.useSampler = true;
 		m_description.sampler.isMipMappingEnabled = true;
 		m_description.sampler.isAnisotropicFilteringEnabled = true;
@@ -40,7 +41,8 @@ namespace Firefly
 		m_description.sampler.minificationFilterMode = FilterMode::LINEAR;
 		m_description.sampler.mipMapFilterMode = FilterMode::LINEAR;
 
-		m_mipMapLevels = CalcMipMapLevels(m_description.width, m_description.height);
+		CalcMipMapLevels();
+		CalcArrayLayers();
 
 		OnInit(pixelData);
 
@@ -50,7 +52,10 @@ namespace Firefly
 	void Texture::Init(const Texture::Description& description)
 	{
 		m_description = description;
-		m_mipMapLevels = CalcMipMapLevels(m_description.width, m_description.height);
+
+		CalcMipMapLevels();
+		CalcArrayLayers();
+
 		OnInit(nullptr);
 	}
 
@@ -175,8 +180,71 @@ namespace Firefly
 		return false;
 	}
 
-	uint32_t Texture::CalcMipMapLevels(uint32_t width, uint32_t height)
+	void Texture::CalcMipMapLevels()
 	{
-		return static_cast<uint32_t>(std::floor(std::log2(std::max(width, height)))) + 1;
+		m_mipMapLevels = 1;
+		if (m_description.useSampler && m_description.sampler.isMipMappingEnabled)
+			m_mipMapLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(m_description.width, m_description.height)))) + 1;
+	}
+
+	void Texture::CalcArrayLayers()
+	{
+		m_arrayLayers = 1;
+		if (m_description.type == Type::TEXTURE_CUBE_MAP)
+			m_arrayLayers = 6;
+	}
+
+	uint32_t Texture::ConvertToSampleCountNumber(Texture::SampleCount sampleCount)
+	{
+		switch (sampleCount)
+		{
+		case SampleCount::SAMPLE_1:
+			return 1;
+		case SampleCount::SAMPLE_2:
+			return 2;
+		case SampleCount::SAMPLE_4:
+			return 4;
+		case SampleCount::SAMPLE_8:
+			return 8;
+		case SampleCount::SAMPLE_16:
+			return 16;
+		case SampleCount::SAMPLE_32:
+			return 32;
+		case SampleCount::SAMPLE_64:
+			return 64;
+		}
+	}
+
+	uint32_t Texture::GetBytePerPixel(Texture::Format format)
+	{
+		switch (format)
+		{
+		case Format::R_8:
+		case Format::R_8_NON_LINEAR:
+			return 1;
+		case Format::RG_8:
+		case Format::RG_8_NON_LINEAR:
+		case Format::R_16_FLOAT:
+			return 2;
+		case Format::RGB_8:
+		case Format::RGB_8_NON_LINEAR:
+			return 3;
+		case Format::R_32_FLOAT:
+		case Format::RG_16_FLOAT:
+		case Format::RGBA_8:
+		case Format::RGBA_8_NON_LINEAR:
+		case Format::DEPTH_32_FLOAT:
+		case Format::DEPTH_24_STENCIL_8:
+			return 4;
+		case Format::RGB_16_FLOAT:
+			return 6;
+		case Format::RG_32_FLOAT:
+		case Format::RGBA_16_FLOAT:
+			return 8;
+		case Format::RGB_32_FLOAT:
+			return 12;
+		case Format::RGBA_32_FLOAT:
+			return 16;
+		}
 	}
 }

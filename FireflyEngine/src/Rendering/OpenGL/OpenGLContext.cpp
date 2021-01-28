@@ -21,8 +21,6 @@ namespace Firefly
 		glDebugMessageCallback(DebugMessengerCallback, 0);
 #endif
 
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		
 		glEnable(GL_CULL_FACE);
 		glFrontFace(GL_CCW);
 		glCullFace(GL_BACK);
