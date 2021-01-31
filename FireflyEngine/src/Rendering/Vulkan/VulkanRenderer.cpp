@@ -7,9 +7,12 @@
 #include "Rendering/Vulkan/VulkanShader.h"
 #include "Rendering/Vulkan/VulkanMaterial.h"
 #include "Rendering/Vulkan/VulkanUtils.h"
+#include "Rendering/Vulkan/VulkanFrameBuffer.h"
+#include "Rendering/Vulkan/VulkanRenderPass.h"
 #include "Scene/Components/TransformComponent.h"
 #include "Scene/Components/MeshComponent.h"
 #include "Scene/Components/MaterialComponent.h"
+#include "Rendering/MeshGenerator.h"
 
 namespace Firefly
 {
@@ -17,42 +20,34 @@ namespace Firefly
 	{
 		m_vkContext = std::dynamic_pointer_cast<VulkanContext>(RenderingAPI::GetContext());
 		m_device = m_vkContext->GetDevice();
-		m_commandPool = m_vkContext->GetCommandPool();
 		m_descriptorPool = m_vkContext->GetDescriptorPool();
-		m_msaaSampleCount = vk::SampleCountFlagBits::e8;
 	}
 
 	void VulkanRenderer::Init()
 	{
-		CreateSwapchain();
-		AllocateCommandBuffers();
-		CreateColorImage();
-		CreateDepthImage();
 		CreateRenderPass();
 		CreateFramebuffers();
-		CreateSynchronizationPrimitivesForRendering();
 
 		CreateUniformBuffers();
 		CreateDescriptorSetLayouts();
 		AllocateDescriptorSets();
 		CreatePipelines();
+
+		CreateScreenTexturePassResources();
 	}
 
 	void VulkanRenderer::Destroy()
 	{
 		m_device->WaitIdle();
 
+		DestroyScreenTexturePassResources();
+
 		DestroyPipelines();
 		DestroyDescriptorSetLayouts();
 		DestroyUniformBuffers();
 
-		DestroySynchronizationPrimitivesForRendering();
 		DestroyFramebuffers();
 		DestroyRenderPass();
-		DestroyDepthImage();
-		DestroyColorImage();
-		FreeCommandBuffers();
-		DestroySwapchain();
 	}
 
 	void VulkanRenderer::BeginDrawRecording()
@@ -101,43 +96,16 @@ namespace Firefly
 			return;
 		}
 
-		// AQUIRE NEXT IMAGE
-		vk::Result result = m_device->GetDevice().acquireNextImageKHR(m_swapchain->GetSwapchain(), UINT64_MAX, m_isNewImageAvailableSemaphores[m_currentFrameIndex], nullptr, &m_currentImageIndex);
-		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+		if (!m_vkContext->AquireNextImage())
 		{
-			RecreateSwapchain();
+			RecreateResources();
 			return;
 		}
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to aquire next image from the swapchain!");
 
-		// RENDER TO IMAGE
-		// wait until the indexed command buffer is not used anymore before recording new commands to it
-		m_device->GetDevice().waitForFences(1, &m_isCommandBufferAvailableFences[m_currentImageIndex], true, UINT64_MAX);
-		m_device->GetDevice().resetFences(1, &m_isCommandBufferAvailableFences[m_currentImageIndex]);
+		uint32_t currentImageIndex = m_vkContext->GetCurrentImageIndex();
+		vk::CommandBuffer currentCommandBuffer = m_vkContext->GetCurrentCommandBuffer();
 
-		m_commandBuffers[m_currentImageIndex].reset({});
-		vk::CommandBufferBeginInfo commandBufferBeginInfo{};
-		commandBufferBeginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
-		result = m_commandBuffers[m_currentImageIndex].begin(&commandBufferBeginInfo);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to begin recording Vulkan command buffer!");
-
-		std::array<vk::ClearValue, 3> clearValues = {}; // order of clear values needs to be in the order of attachments
-		clearValues[0].color = std::array<float, 4>{ 0.1f, 0.1f, 0.1f, 1.0f };
-		clearValues[1].depthStencil = { 1.0f, 0 };
-		clearValues[2].color = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f };
-
-		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
-
-		vk::RenderPassBeginInfo renderPassBeginInfo{};
-		renderPassBeginInfo.pNext = nullptr;
-		renderPassBeginInfo.renderPass = m_renderPass;
-		renderPassBeginInfo.framebuffer = m_framebuffers[m_currentImageIndex];
-		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent = swapchainExtent;
-		renderPassBeginInfo.clearValueCount = clearValues.size();
-		renderPassBeginInfo.pClearValues = clearValues.data();
-
-		m_commandBuffers[m_currentImageIndex].beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
+		m_mainRenderPass->Begin(m_mainFrameBuffers[currentImageIndex]);
 
 		UpdateUniformBuffers(camera);
 
@@ -147,73 +115,76 @@ namespace Firefly
 			std::shared_ptr<VulkanMesh> mesh = std::dynamic_pointer_cast<VulkanMesh>(m_entities[i].GetComponent<MeshComponent>().m_mesh);
 			std::string shaderTag = material->GetShader()->GetTag();
 
-			m_commandBuffers[m_currentImageIndex].bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines[shaderTag]);
+			currentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipelines[shaderTag]);
 
-			std::vector<vk::DescriptorSet> descriptorSets = 
-			{ 
-				m_sceneDataDescriptorSets[m_currentImageIndex], 
-				m_materialDataDescriptorSets[m_currentImageIndex], 
+			std::vector<vk::DescriptorSet> descriptorSets =
+			{
+				m_sceneDataDescriptorSets[currentImageIndex],
+				m_materialDataDescriptorSets[currentImageIndex],
 				material->GetTexturesDescriptorSet(),
-				m_objectDataDescriptorSets[m_currentImageIndex] 
+				m_objectDataDescriptorSets[currentImageIndex]
 			};
 			std::vector<uint32_t> dynamicOffsets =
 			{
 				static_cast<uint32_t>(m_entityMaterialIndices[i] * m_materialDataDynamicAlignment),
 				static_cast<uint32_t>(i * m_objectDataDynamicAlignment)
 			};
-			m_commandBuffers[m_currentImageIndex].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayouts[shaderTag], 0, 
-																	 descriptorSets.size(), descriptorSets.data(), 
-																	 dynamicOffsets.size(), dynamicOffsets.data());
+			currentCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayouts[shaderTag], 0,
+				descriptorSets.size(), descriptorSets.data(),
+				dynamicOffsets.size(), dynamicOffsets.data());
 
 			std::vector<vk::Buffer> vertexBuffers = { mesh->GetVertexBuffer() };
 			vk::DeviceSize offsets[] = { 0 };
-			m_commandBuffers[m_currentImageIndex].bindVertexBuffers(0, vertexBuffers.size(), vertexBuffers.data(), offsets);
-			m_commandBuffers[m_currentImageIndex].bindIndexBuffer(mesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
+			currentCommandBuffer.bindVertexBuffers(0, vertexBuffers.size(), vertexBuffers.data(), offsets);
+			currentCommandBuffer.bindIndexBuffer(mesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
 
-			m_commandBuffers[m_currentImageIndex].drawIndexed(mesh->GetIndexCount(), 1, 0, 0, 0);
+			currentCommandBuffer.drawIndexed(mesh->GetIndexCount(), 1, 0, 0, 0);
 		}
 
-		m_commandBuffers[m_currentImageIndex].endRenderPass();
-		m_commandBuffers[m_currentImageIndex].end();
+		m_mainRenderPass->End();
 
-		std::vector<vk::Semaphore> isNewImageAvailableSemaphores = { m_isNewImageAvailableSemaphores[m_currentFrameIndex] };
-		std::vector<vk::Semaphore> isRenderedImageAvailableSemaphores = { m_isRenderedImageAvailableSemaphores[m_currentFrameIndex] };
-		vk::PipelineStageFlags waitStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput; // ColorAttachmentOutputStage waits for isImageAvailableSemaphore
-		vk::SubmitInfo submitInfo{};
-		submitInfo.waitSemaphoreCount = isNewImageAvailableSemaphores.size();
-		submitInfo.pWaitSemaphores = isNewImageAvailableSemaphores.data();
-		submitInfo.pWaitDstStageMask = &waitStageMask;
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &m_commandBuffers[m_currentImageIndex];
-		submitInfo.signalSemaphoreCount = isRenderedImageAvailableSemaphores.size();
-		submitInfo.pSignalSemaphores = isRenderedImageAvailableSemaphores.data();
+		// RENDER RESOLVED COLOR TEXTURE TO SCREEN
+		vk::ClearValue clearValue;
+		clearValue.color = std::array<float, 4>{ 0.1f, 0.1f, 0.1f, 1.0f };
 
-		result = m_device->GetGraphicsQueue().submit(1, &submitInfo, m_isCommandBufferAvailableFences[m_currentImageIndex]);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to submit commands to the graphics queue!");
+		vk::RenderPassBeginInfo renderPassBeginInfo{};
+		renderPassBeginInfo.pNext = nullptr;
+		renderPassBeginInfo.renderPass = m_screenTextureRenderPass;
+		renderPassBeginInfo.framebuffer = m_screenTextureFramebuffers[currentImageIndex];
+		renderPassBeginInfo.renderArea.offset = { 0, 0 };
+		renderPassBeginInfo.renderArea.extent = m_vkContext->GetSwapchain()->GetExtent();
+		renderPassBeginInfo.clearValueCount = 1;
+		renderPassBeginInfo.pClearValues = &clearValue;
+		currentCommandBuffer.beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
 
-		// PRESENT RENDERED IMAGE
-		vk::PresentInfoKHR presentInfo{};
-		std::vector<vk::SwapchainKHR> swapchains = { m_swapchain->GetSwapchain() };
-		presentInfo.waitSemaphoreCount = isRenderedImageAvailableSemaphores.size();
-		presentInfo.pWaitSemaphores = isRenderedImageAvailableSemaphores.data();
-		presentInfo.swapchainCount = swapchains.size();
-		presentInfo.pSwapchains = swapchains.data();
-		presentInfo.pImageIndices = &m_currentImageIndex;
-		presentInfo.pResults = nullptr;
+		currentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_screenTexturePipeline);
+		
+		currentCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_screenTexturePipelineLayout, 0, 1, &m_screenTextureDescriptorSets[currentImageIndex], 0, nullptr);
 
-		result = m_device->GetPresentQueue().presentKHR(&presentInfo);
-		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+		std::shared_ptr<VulkanMesh> quadMesh = std::dynamic_pointer_cast<VulkanMesh>(m_quadMesh);
+		std::vector<vk::Buffer> vertexBuffers = { quadMesh->GetVertexBuffer() };
+		vk::DeviceSize offsets[] = { 0 };
+		currentCommandBuffer.bindVertexBuffers(0, vertexBuffers.size(), vertexBuffers.data(), offsets);
+		currentCommandBuffer.bindIndexBuffer(quadMesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
+
+		currentCommandBuffer.drawIndexed(quadMesh->GetIndexCount(), 1, 0, 0, 0);
+
+		currentCommandBuffer.endRenderPass();
+
+
+		m_vkContext->SubmitCommands();
+
+		if (!m_vkContext->PresentImage())
 		{
-			RecreateSwapchain();
+			RecreateResources();
 			return;
 		}
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to present the image with the present queue!");
-
-		m_currentFrameIndex = (m_currentFrameIndex + 1) % m_swapchain->GetImageCount();
 	}
 
 	void VulkanRenderer::UpdateUniformBuffers(std::shared_ptr<Camera> camera)
 	{
+		uint32_t currentImageIndex = m_vkContext->GetCurrentImageIndex();
+
 		// Scene Data ---------
 		glm::vec4 cameraPosition = glm::vec4(camera->GetPosition(), 1.0f);
 		glm::mat4 viewMatrix = camera->GetViewMatrix();
@@ -227,9 +198,9 @@ namespace Firefly
 		sceneData.cameraPosition = cameraPosition;
 
 		void* mappedMemory;
-		m_device->GetDevice().mapMemory(m_sceneDataUniformBufferMemories[m_currentImageIndex], 0, sizeof(SceneData), {}, &mappedMemory);
+		m_device->GetDevice().mapMemory(m_sceneDataUniformBufferMemories[currentImageIndex], 0, sizeof(SceneData), {}, &mappedMemory);
 		memcpy(mappedMemory, &sceneData, sizeof(SceneData));
-		m_device->GetDevice().unmapMemory(m_sceneDataUniformBufferMemories[m_currentImageIndex]);
+		m_device->GetDevice().unmapMemory(m_sceneDataUniformBufferMemories[currentImageIndex]);
 		// --------------------
 		// Material Data ------
 		for (size_t i = 0; i < m_materials.size(); i++)
@@ -247,9 +218,9 @@ namespace Firefly
 			(*materialData).hasHeightTexture = (float)m_materials[i]->IsTextureEnabled(Material::TextureUsage::Height);
 		}
 
-		m_device->GetDevice().mapMemory(m_materialDataUniformBufferMemories[m_currentImageIndex], 0, m_materialDataCount * m_materialDataDynamicAlignment, {}, &mappedMemory);
+		m_device->GetDevice().mapMemory(m_materialDataUniformBufferMemories[currentImageIndex], 0, m_materialDataCount * m_materialDataDynamicAlignment, {}, &mappedMemory);
 		memcpy(mappedMemory, m_materialData, m_materialDataCount * m_materialDataDynamicAlignment);
-		m_device->GetDevice().unmapMemory(m_materialDataUniformBufferMemories[m_currentImageIndex]);
+		m_device->GetDevice().unmapMemory(m_materialDataUniformBufferMemories[currentImageIndex]);
 		// --------------------
 		// Object Data --------
 		for (size_t i = 0; i < m_entities.size(); i++)
@@ -260,252 +231,119 @@ namespace Firefly
 			(*objectData).normalMatrix = glm::mat4(glm::transpose(glm::inverse(glm::mat3(modelMatrix))));
 		}
 
-		m_device->GetDevice().mapMemory(m_objectDataUniformBufferMemories[m_currentImageIndex], 0, m_objectDataCount * m_objectDataDynamicAlignment, {}, &mappedMemory);
+		m_device->GetDevice().mapMemory(m_objectDataUniformBufferMemories[currentImageIndex], 0, m_objectDataCount * m_objectDataDynamicAlignment, {}, &mappedMemory);
 		memcpy(mappedMemory, m_objectData, m_objectDataCount * m_objectDataDynamicAlignment);
-		m_device->GetDevice().unmapMemory(m_objectDataUniformBufferMemories[m_currentImageIndex]);
+		m_device->GetDevice().unmapMemory(m_objectDataUniformBufferMemories[currentImageIndex]);
 		// --------------------
 	}
 
-	void VulkanRenderer::RecreateSwapchain()
+	void VulkanRenderer::RecreateResources()
 	{
 		m_device->WaitIdle();
 
+		DestroyScreenTexturePassResources();
 		DestroyPipelines();
 		DestroyFramebuffers();
-		DestroyRenderPass();
-		DestroyColorImage();
-		DestroyDepthImage();
-		DestroySwapchain();
 
-		CreateSwapchain();
-		CreateColorImage();
-		CreateDepthImage();
-		CreateRenderPass();
 		CreateFramebuffers();
 		CreatePipelines();
-	}
-
-	void VulkanRenderer::CreateSwapchain()
-	{
-		m_swapchain = std::make_shared<VulkanSwapchain>();
-		m_swapchain->Init(m_vkContext);
-	}
-
-	void VulkanRenderer::DestroySwapchain()
-	{
-		m_swapchain->Destroy();
-	}
-
-	void VulkanRenderer::AllocateCommandBuffers()
-	{
-		m_commandBuffers.resize(m_swapchain->GetImageCount());
-		vk::CommandBufferAllocateInfo commandBufferAllocateInfo{};
-		commandBufferAllocateInfo.pNext = nullptr;
-		commandBufferAllocateInfo.commandPool = m_commandPool;
-		commandBufferAllocateInfo.level = vk::CommandBufferLevel::ePrimary;
-		commandBufferAllocateInfo.commandBufferCount = m_commandBuffers.size();
-
-		vk::Result result = m_device->GetDevice().allocateCommandBuffers(&commandBufferAllocateInfo, m_commandBuffers.data());
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command buffers!");
-	}
-
-	void VulkanRenderer::FreeCommandBuffers()
-	{
-		m_device->GetDevice().freeCommandBuffers(m_commandPool, m_commandBuffers.size(), m_commandBuffers.data());
-	}
-
-	void VulkanRenderer::CreateColorImage()
-	{
-		vk::Format format = m_swapchain->GetImageFormat();
-		uint32_t mipLevels = 1;
-		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
-		vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
-		vk::ImageUsageFlags imageUsageFlags = vk::ImageUsageFlagBits::eTransientAttachment | vk::ImageUsageFlagBits::eColorAttachment;
-		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		VulkanUtils::CreateImage(m_device->GetDevice(), m_device->GetPhysicalDevice(), swapchainExtent.width, swapchainExtent.height, mipLevels, m_msaaSampleCount, format, tiling, imageUsageFlags, memoryPropertyFlags, m_colorImage, m_colorImageMemory);
-
-		m_colorImageView = VulkanUtils::CreateImageView(m_device->GetDevice(), m_colorImage, mipLevels, format, vk::ImageAspectFlagBits::eColor);
-	}
-
-	void VulkanRenderer::DestroyColorImage()
-	{
-		m_device->GetDevice().destroyImageView(m_colorImageView);
-		m_device->GetDevice().destroyImage(m_colorImage);
-		m_device->GetDevice().freeMemory(m_colorImageMemory);
-	}
-
-	void VulkanRenderer::CreateDepthImage()
-	{
-		m_depthFormat = VulkanUtils::FindDepthFormat(m_device->GetPhysicalDevice());
-		uint32_t mipLevels = 1;
-		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
-		vk::ImageTiling tiling = vk::ImageTiling::eOptimal;
-		vk::ImageUsageFlags imageUsageFlags = vk::ImageUsageFlagBits::eDepthStencilAttachment;
-		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-		VulkanUtils::CreateImage(m_device->GetDevice(), m_device->GetPhysicalDevice(), swapchainExtent.width, swapchainExtent.height, mipLevels, m_msaaSampleCount, m_depthFormat, tiling, imageUsageFlags, memoryPropertyFlags, m_depthImage, m_depthImageMemory);
-
-		m_depthImageView = VulkanUtils::CreateImageView(m_device->GetDevice(), m_depthImage, mipLevels, m_depthFormat, vk::ImageAspectFlagBits::eDepth);
-
-		//vk::ImageLayout oldLayout = vk::ImageLayout::eUndefined;
-		//vk::ImageLayout newLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-		//VulkanUtils::TransitionImageLayout(m_device->GetDevice(), m_commandPool, m_device->GetGraphicsQueue(), m_depthImage, mipLevels, m_depthFormat, oldLayout, newLayout);
-	}
-
-	void VulkanRenderer::DestroyDepthImage()
-	{
-		m_device->GetDevice().destroyImageView(m_depthImageView);
-		m_device->GetDevice().destroyImage(m_depthImage);
-		m_device->GetDevice().freeMemory(m_depthImageMemory);
+		CreateScreenTexturePassResources();
 	}
 
 	void VulkanRenderer::CreateRenderPass()
 	{
-		vk::AttachmentDescription colorAttachmentDescription{};
-		colorAttachmentDescription.flags = {};
-		colorAttachmentDescription.format = m_swapchain->GetImageFormat();
-		colorAttachmentDescription.samples = m_msaaSampleCount;
-		colorAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
-		colorAttachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
-		colorAttachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-		colorAttachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		colorAttachmentDescription.initialLayout = vk::ImageLayout::eUndefined;
-		colorAttachmentDescription.finalLayout = vk::ImageLayout::eColorAttachmentOptimal;
-
-		vk::AttachmentReference colorAttachmentReference{};
-		colorAttachmentReference.attachment = 0;
-		colorAttachmentReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
-
-		vk::AttachmentDescription depthAttachmentDescription{};
-		depthAttachmentDescription.flags = {};
-		depthAttachmentDescription.format = m_depthFormat;
-		depthAttachmentDescription.samples = m_msaaSampleCount;
-		depthAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
-		depthAttachmentDescription.storeOp = vk::AttachmentStoreOp::eDontCare;
-		depthAttachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-		depthAttachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		depthAttachmentDescription.initialLayout = vk::ImageLayout::eUndefined;
-		depthAttachmentDescription.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-
-		vk::AttachmentReference depthAttachmentReference{};
-		depthAttachmentReference.attachment = 1;
-		depthAttachmentReference.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
-
-		vk::AttachmentDescription colorResolveAttachmentDescription{};
-		colorResolveAttachmentDescription.flags = {};
-		colorResolveAttachmentDescription.format = m_swapchain->GetImageFormat();
-		colorResolveAttachmentDescription.samples = vk::SampleCountFlagBits::e1;
-		colorResolveAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
-		colorResolveAttachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
-		colorResolveAttachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
-		colorResolveAttachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		colorResolveAttachmentDescription.initialLayout = vk::ImageLayout::eUndefined;
-		colorResolveAttachmentDescription.finalLayout = vk::ImageLayout::ePresentSrcKHR;
-
-		vk::AttachmentReference colorResolveAttachmentReference{};
-		colorResolveAttachmentReference.attachment = 2;
-		colorResolveAttachmentReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
-
-		vk::SubpassDescription subpassDescription{};
-		subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-		subpassDescription.flags = {};
-		subpassDescription.colorAttachmentCount = 1;
-		subpassDescription.pColorAttachments = &colorAttachmentReference;
-		subpassDescription.inputAttachmentCount = 0;
-		subpassDescription.pInputAttachments = nullptr;
-		subpassDescription.pDepthStencilAttachment = &depthAttachmentReference;
-		subpassDescription.preserveAttachmentCount = 0;
-		subpassDescription.pPreserveAttachments = nullptr;
-		subpassDescription.pResolveAttachments = &colorResolveAttachmentReference;
-
-		vk::SubpassDependency subpassDependency{};
-		subpassDependency.dependencyFlags = {};
-		subpassDependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-		subpassDependency.dstSubpass = 0;
-		subpassDependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
-		subpassDependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
-		subpassDependency.srcAccessMask = {};
-		subpassDependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
-
-		std::array<vk::AttachmentDescription, 3> attachments = { colorAttachmentDescription, depthAttachmentDescription, colorResolveAttachmentDescription };
-		vk::RenderPassCreateInfo renderPassCreateInfo{};
-		renderPassCreateInfo.pNext = nullptr;
-		renderPassCreateInfo.flags = {};
-		renderPassCreateInfo.attachmentCount = attachments.size();
-		renderPassCreateInfo.pAttachments = attachments.data();
-		renderPassCreateInfo.subpassCount = 1;
-		renderPassCreateInfo.pSubpasses = &subpassDescription;
-		renderPassCreateInfo.dependencyCount = 1;
-		renderPassCreateInfo.pDependencies = &subpassDependency;
-
-		vk::Result result = m_device->GetDevice().createRenderPass(&renderPassCreateInfo, nullptr, &m_renderPass);
-		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan render pass!");
+		RenderPass::Description mainRenderPassDesc = {};
+		mainRenderPassDesc.isDepthTestingEnabled = true;
+		mainRenderPassDesc.depthCompareOperation = CompareOperation::LESS_OR_EQUAL;
+		mainRenderPassDesc.isMultisamplingEnabled = true;
+		mainRenderPassDesc.isSampleShadingEnabled = true;
+		mainRenderPassDesc.minSampleShading = 1.0f;
+		mainRenderPassDesc.colorAttachmentLayouts = { {Texture::Format::RGBA_8, m_msaaSampleCount} };
+		mainRenderPassDesc.colorResolveAttachmentLayouts = { {Texture::Format::RGBA_8, Texture::SampleCount::SAMPLE_1} };
+		mainRenderPassDesc.depthStencilAttachmentLayout = { Texture::Format::DEPTH_32_FLOAT, m_msaaSampleCount };
+		m_mainRenderPass = RenderingAPI::CreateRenderPass(mainRenderPassDesc);
 	}
 
 	void VulkanRenderer::DestroyRenderPass()
 	{
-		m_device->GetDevice().destroyRenderPass(m_renderPass);
+		m_mainRenderPass->Destroy();
 	}
 
 	void VulkanRenderer::CreateFramebuffers()
 	{
-		vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
-		m_framebuffers.resize(m_swapchain->GetImageCount());
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
-		{
-			std::vector<vk::ImageView> attachments = { m_colorImageView, m_depthImageView, m_swapchain->GetImageViews()[i] };
-			vk::FramebufferCreateInfo framebufferCreateInfo{};
-			framebufferCreateInfo.renderPass = m_renderPass;
-			framebufferCreateInfo.attachmentCount = attachments.size();
-			framebufferCreateInfo.pAttachments = attachments.data();
-			framebufferCreateInfo.width = swapchainExtent.width;
-			framebufferCreateInfo.height = swapchainExtent.height;
-			framebufferCreateInfo.layers = 1;
+		uint32_t width = m_vkContext->GetWidth();
+		uint32_t height = m_vkContext->GetHeight();
 
-			vk::Result result = m_device->GetDevice().createFramebuffer(&framebufferCreateInfo, nullptr, &m_framebuffers[i]);
-			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan framebuffer!");
+		Texture::Description colorTextureDesc = {};
+		colorTextureDesc.type = Texture::Type::TEXTURE_2D;
+		colorTextureDesc.width = width;
+		colorTextureDesc.height = height;
+		colorTextureDesc.format = Texture::Format::RGBA_8;
+		colorTextureDesc.sampleCount = m_msaaSampleCount;
+		colorTextureDesc.useAsAttachment = true;
+		colorTextureDesc.useSampler = false;
+		m_colorTexture = std::dynamic_pointer_cast<VulkanTexture>(RenderingAPI::CreateTexture(colorTextureDesc));
+
+		Texture::Description colorResolveTextureDesc = {};
+		colorResolveTextureDesc.type = Texture::Type::TEXTURE_2D;
+		colorResolveTextureDesc.width = width;
+		colorResolveTextureDesc.height = height;
+		colorResolveTextureDesc.format = Texture::Format::RGBA_8;
+		colorResolveTextureDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		colorResolveTextureDesc.useAsAttachment = true;
+		colorResolveTextureDesc.useSampler = true;
+		colorResolveTextureDesc.sampler.isMipMappingEnabled = false;
+		colorResolveTextureDesc.sampler.isAnisotropicFilteringEnabled = false;
+		colorResolveTextureDesc.sampler.wrapMode = Texture::WrapMode::CLAMP_TO_EDGE;
+		colorResolveTextureDesc.sampler.magnificationFilterMode = Texture::FilterMode::LINEAR;
+		colorResolveTextureDesc.sampler.minificationFilterMode = Texture::FilterMode::LINEAR;
+		for(size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
+			m_colorResolveTextures.push_back(std::dynamic_pointer_cast<VulkanTexture>(RenderingAPI::CreateTexture(colorResolveTextureDesc)));
+
+		Texture::Description depthTextureDesc = {};
+		depthTextureDesc.type = Texture::Type::TEXTURE_2D;
+		depthTextureDesc.width = width;
+		depthTextureDesc.height = height;
+		depthTextureDesc.format = Texture::Format::DEPTH_32_FLOAT;
+		depthTextureDesc.sampleCount = m_msaaSampleCount;
+		depthTextureDesc.useAsAttachment = true;
+		depthTextureDesc.useSampler = false;
+		m_depthTexture = std::dynamic_pointer_cast<VulkanTexture>(RenderingAPI::CreateTexture(depthTextureDesc));
+
+		FrameBuffer::Attachment colorAttachment;
+		colorAttachment.texture = m_colorTexture;
+
+		FrameBuffer::Attachment depthAttachment;
+		depthAttachment.texture = m_depthTexture;
+
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
+		{
+			FrameBuffer::Attachment colorResolveAttachment;
+			colorResolveAttachment.texture = m_colorResolveTextures[i];
+
+			FrameBuffer::Description frameBufferDesc = {};
+			frameBufferDesc.width = width;
+			frameBufferDesc.height = height;
+			frameBufferDesc.colorAttachments = { colorAttachment };
+			frameBufferDesc.colorResolveAttachments = { colorResolveAttachment };
+			frameBufferDesc.depthStencilAttachment = { depthAttachment };
+			m_mainFrameBuffers.push_back(RenderingAPI::CreateFrameBuffer(frameBufferDesc));
 		}
 	}
 
 	void VulkanRenderer::DestroyFramebuffers()
 	{
-		for (const vk::Framebuffer& framebuffer : m_framebuffers)
-			m_device->GetDevice().destroyFramebuffer(framebuffer);
-	}
+		for(auto frameBuffer : m_mainFrameBuffers)
+			frameBuffer->Destroy();
+		m_mainFrameBuffers.clear();
 
-	void VulkanRenderer::CreateSynchronizationPrimitivesForRendering()
-	{
-		vk::SemaphoreCreateInfo semaphoreCreateInfo{};
-		semaphoreCreateInfo.pNext = nullptr;
-		semaphoreCreateInfo.flags = {};
+		m_depthTexture->Destroy();
 
-		vk::FenceCreateInfo fenceCreateInfo{};
-		fenceCreateInfo.pNext = nullptr;
-		fenceCreateInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+		for(auto texture : m_colorResolveTextures)
+			texture->Destroy();
+		m_colorResolveTextures.clear();
 
-		m_isNewImageAvailableSemaphores.resize(m_swapchain->GetImageCount());
-		m_isRenderedImageAvailableSemaphores.resize(m_swapchain->GetImageCount());
-		m_isCommandBufferAvailableFences.resize(m_swapchain->GetImageCount());
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
-		{
-			vk::Result result = m_device->GetDevice().createSemaphore(&semaphoreCreateInfo, nullptr, &m_isNewImageAvailableSemaphores[i]);
-			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
-
-			result = m_device->GetDevice().createSemaphore(&semaphoreCreateInfo, nullptr, &m_isRenderedImageAvailableSemaphores[i]);
-			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
-
-			result = m_device->GetDevice().createFence(&fenceCreateInfo, nullptr, &m_isCommandBufferAvailableFences[i]);
-			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Fence!");
-		}
-	}
-
-	void VulkanRenderer::DestroySynchronizationPrimitivesForRendering()
-	{
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
-		{
-			m_device->GetDevice().destroyFence(m_isCommandBufferAvailableFences[i]);
-			m_device->GetDevice().destroySemaphore(m_isRenderedImageAvailableSemaphores[i]);
-			m_device->GetDevice().destroySemaphore(m_isNewImageAvailableSemaphores[i]);
-		}
+		m_colorTexture->Destroy();
 	}
 
 	void VulkanRenderer::CreateUniformBuffers()
@@ -517,7 +355,7 @@ namespace Firefly
 
 	void VulkanRenderer::DestroyUniformBuffers()
 	{
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
 		{
 			m_device->GetDevice().destroyBuffer(m_sceneDataUniformBuffers[i]);
 			m_device->GetDevice().freeMemory(m_sceneDataUniformBufferMemories[i]);
@@ -670,9 +508,9 @@ namespace Firefly
 		size_t bufferSize = sizeof(SceneData);
 		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
 		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-		m_sceneDataUniformBuffers.resize(m_swapchain->GetImageCount());
-		m_sceneDataUniformBufferMemories.resize(m_swapchain->GetImageCount());
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		m_sceneDataUniformBuffers.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		m_sceneDataUniformBufferMemories.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
 			VulkanUtils::CreateBuffer(m_device->GetDevice(), m_device->GetPhysicalDevice(), bufferSize, bufferUsageFlags, memoryPropertyFlags, m_sceneDataUniformBuffers[i], m_sceneDataUniformBufferMemories[i]);
 	}
 
@@ -687,9 +525,9 @@ namespace Firefly
 		m_materialData = (MaterialData*)_aligned_malloc(bufferSize, m_materialDataDynamicAlignment);
 		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
 		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-		m_materialDataUniformBuffers.resize(m_swapchain->GetImageCount());
-		m_materialDataUniformBufferMemories.resize(m_swapchain->GetImageCount());
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		m_materialDataUniformBuffers.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		m_materialDataUniformBufferMemories.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
 			VulkanUtils::CreateBuffer(m_device->GetDevice(), m_device->GetPhysicalDevice(), bufferSize, bufferUsageFlags, memoryPropertyFlags, m_materialDataUniformBuffers[i], m_materialDataUniformBufferMemories[i]);
 
 	}
@@ -705,26 +543,26 @@ namespace Firefly
 		m_objectData = (ObjectData*)_aligned_malloc(bufferSize, m_objectDataDynamicAlignment);
 		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
 		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
-		m_objectDataUniformBuffers.resize(m_swapchain->GetImageCount());
-		m_objectDataUniformBufferMemories.resize(m_swapchain->GetImageCount());
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		m_objectDataUniformBuffers.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		m_objectDataUniformBufferMemories.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
 			VulkanUtils::CreateBuffer(m_device->GetDevice(), m_device->GetPhysicalDevice(), bufferSize, bufferUsageFlags, memoryPropertyFlags, m_objectDataUniformBuffers[i], m_objectDataUniformBufferMemories[i]);
 	}
 
 	void VulkanRenderer::AllocateSceneDataDescriptorSets()
 	{
-		m_sceneDataDescriptorSets.resize(m_swapchain->GetImageCount());
-		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_swapchain->GetImageCount(), m_sceneDataDescriptorSetLayout);
+		m_sceneDataDescriptorSets.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_vkContext->GetSwapchain()->GetImageCount(), m_sceneDataDescriptorSetLayout);
 		vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
 		descriptorSetAllocateInfo.pNext = nullptr;
 		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
-		descriptorSetAllocateInfo.descriptorSetCount = m_swapchain->GetImageCount();
+		descriptorSetAllocateInfo.descriptorSetCount = m_vkContext->GetSwapchain()->GetImageCount();
 		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
 
 		vk::Result result = m_device->GetDevice().allocateDescriptorSets(&descriptorSetAllocateInfo, m_sceneDataDescriptorSets.data());
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
 
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
 		{
 			vk::DescriptorBufferInfo sceneDataDescriptorBufferInfo{};
 			sceneDataDescriptorBufferInfo.buffer = m_sceneDataUniformBuffers[i];
@@ -749,18 +587,18 @@ namespace Firefly
 
 	void VulkanRenderer::AllocateMaterialDataDescriptorSets()
 	{
-		m_materialDataDescriptorSets.resize(m_swapchain->GetImageCount());
-		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_swapchain->GetImageCount(), m_materialDataDescriptorSetLayout);
+		m_materialDataDescriptorSets.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_vkContext->GetSwapchain()->GetImageCount(), m_materialDataDescriptorSetLayout);
 		vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
 		descriptorSetAllocateInfo.pNext = nullptr;
 		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
-		descriptorSetAllocateInfo.descriptorSetCount = m_swapchain->GetImageCount();
+		descriptorSetAllocateInfo.descriptorSetCount = m_vkContext->GetSwapchain()->GetImageCount();
 		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
 
 		vk::Result result = m_device->GetDevice().allocateDescriptorSets(&descriptorSetAllocateInfo, m_materialDataDescriptorSets.data());
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
 
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
 		{
 			vk::DescriptorBufferInfo materialDataDescriptorBufferInfo{};
 			materialDataDescriptorBufferInfo.buffer = m_materialDataUniformBuffers[i];
@@ -785,18 +623,18 @@ namespace Firefly
 
 	void VulkanRenderer::AllocateObjectDataDescriptorSets()
 	{
-		m_objectDataDescriptorSets.resize(m_swapchain->GetImageCount());
-		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_swapchain->GetImageCount(), m_objectDataDescriptorSetLayout);
+		m_objectDataDescriptorSets.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_vkContext->GetSwapchain()->GetImageCount(), m_objectDataDescriptorSetLayout);
 		vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
 		descriptorSetAllocateInfo.pNext = nullptr;
 		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
-		descriptorSetAllocateInfo.descriptorSetCount = m_swapchain->GetImageCount();
+		descriptorSetAllocateInfo.descriptorSetCount = m_vkContext->GetSwapchain()->GetImageCount();
 		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
 
 		vk::Result result = m_device->GetDevice().allocateDescriptorSets(&descriptorSetAllocateInfo, m_objectDataDescriptorSets.data());
 		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
 
-		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
 		{
 			vk::DescriptorBufferInfo objectDataDescriptorBufferInfo{};
 			objectDataDescriptorBufferInfo.buffer = m_objectDataUniformBuffers[i];
@@ -869,18 +707,21 @@ namespace Firefly
 			inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
 			// ---------------------------------------------
 			// VIEWPORT STATE ------------------------------
-			vk::Extent2D swapchainExtent = m_swapchain->GetExtent();
+			vk::Extent2D extent;
+			extent.width = m_mainFrameBuffers[0]->GetWidth();
+			extent.height = m_mainFrameBuffers[0]->GetHeight();
+
 			vk::Viewport viewport{};
 			viewport.x = 0.f;
 			viewport.y = 0.f;
-			viewport.width = (float)swapchainExtent.width;
-			viewport.height = (float)swapchainExtent.height;
+			viewport.width = (float)extent.width;
+			viewport.height = (float)extent.height;
 			viewport.minDepth = 0.f;
 			viewport.maxDepth = 1.f;
 
 			vk::Rect2D scissor{};
 			scissor.offset = { 0, 0 };
-			scissor.extent = swapchainExtent;
+			scissor.extent = extent;
 
 			vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
 			viewportStateCreateInfo.pNext = nullptr;
@@ -910,9 +751,9 @@ namespace Firefly
 			vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
 			multisampleStateCreateInfo.pNext = nullptr;
 			multisampleStateCreateInfo.flags = {};
-			multisampleStateCreateInfo.rasterizationSamples = m_msaaSampleCount;
-			multisampleStateCreateInfo.sampleShadingEnable = true;
-			multisampleStateCreateInfo.minSampleShading = 1.0f;
+			multisampleStateCreateInfo.rasterizationSamples = VulkanTexture::ConvertToVulkanSampleCount(m_mainRenderPass->GetSampleCount());
+			multisampleStateCreateInfo.sampleShadingEnable = m_mainRenderPass->IsSampleShadingEnabled();
+			multisampleStateCreateInfo.minSampleShading = m_mainRenderPass->GetMinSampleShading();
 			multisampleStateCreateInfo.pSampleMask = nullptr;
 			multisampleStateCreateInfo.alphaToCoverageEnable = false;
 			multisampleStateCreateInfo.alphaToOneEnable = false;
@@ -942,9 +783,9 @@ namespace Firefly
 			vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
 			depthStencilStateCreateInfo.pNext = nullptr;
 			depthStencilStateCreateInfo.flags = {};
-			depthStencilStateCreateInfo.depthTestEnable = true;
-			depthStencilStateCreateInfo.depthWriteEnable = true;
-			depthStencilStateCreateInfo.depthCompareOp = vk::CompareOp::eLess;
+			depthStencilStateCreateInfo.depthTestEnable = m_mainRenderPass->isDepthTestingEnabled();
+			depthStencilStateCreateInfo.depthWriteEnable = m_mainRenderPass->isDepthTestingEnabled();
+			depthStencilStateCreateInfo.depthCompareOp = VulkanRenderPass::ConvertToVulkanCompareOperation(m_mainRenderPass->GetDepthCompareOperation());
 			depthStencilStateCreateInfo.depthBoundsTestEnable = false;
 			depthStencilStateCreateInfo.minDepthBounds = 0.0f;
 			depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
@@ -991,7 +832,7 @@ namespace Firefly
 			pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
 			pipelineCreateInfo.pDynamicState = nullptr;
 			pipelineCreateInfo.layout = pipelineLayout;
-			pipelineCreateInfo.renderPass = m_renderPass;
+			pipelineCreateInfo.renderPass = std::dynamic_pointer_cast<VulkanRenderPass>(m_mainRenderPass)->GetHandle();
 			pipelineCreateInfo.subpass = 0;
 			pipelineCreateInfo.basePipelineHandle = nullptr;
 			pipelineCreateInfo.basePipelineIndex = -1;
@@ -1014,5 +855,305 @@ namespace Firefly
 		for(auto pipelineLayoutEntry : m_pipelineLayouts)
 			m_device->GetDevice().destroyPipelineLayout(pipelineLayoutEntry.second);
 		m_pipelineLayouts.clear();
+	}
+
+	void VulkanRenderer::CreateScreenTexturePassResources()
+	{
+		m_quadMesh = Firefly::MeshGenerator::CreateQuad(glm::vec2(2.0f));
+
+		ShaderCode shaderCode = {};
+		shaderCode.vertex = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/screenTexture.vert.spv");
+		shaderCode.fragment = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/screenTexture.frag.spv");
+		m_screenTextureShader = RenderingAPI::CreateShader("screenTexture", shaderCode);
+
+		// RENDER PASS
+		vk::AttachmentDescription colorAttachmentDescription{};
+		colorAttachmentDescription.flags = {};
+		colorAttachmentDescription.format = m_vkContext->GetSwapchain()->GetImageFormat();
+		colorAttachmentDescription.samples = vk::SampleCountFlagBits::e1;
+		colorAttachmentDescription.loadOp = vk::AttachmentLoadOp::eClear;
+		colorAttachmentDescription.storeOp = vk::AttachmentStoreOp::eStore;
+		colorAttachmentDescription.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		colorAttachmentDescription.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		colorAttachmentDescription.initialLayout = vk::ImageLayout::eUndefined;
+		colorAttachmentDescription.finalLayout = vk::ImageLayout::ePresentSrcKHR;
+
+		vk::AttachmentReference colorAttachmentReference{};
+		colorAttachmentReference.attachment = 0;
+		colorAttachmentReference.layout = vk::ImageLayout::eColorAttachmentOptimal;
+
+		vk::SubpassDescription subpassDescription{};
+		subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+		subpassDescription.flags = {};
+		subpassDescription.colorAttachmentCount = 1;
+		subpassDescription.pColorAttachments = &colorAttachmentReference;
+		subpassDescription.inputAttachmentCount = 0;
+		subpassDescription.pInputAttachments = nullptr;
+		subpassDescription.pDepthStencilAttachment = nullptr;
+		subpassDescription.preserveAttachmentCount = 0;
+		subpassDescription.pPreserveAttachments = nullptr;
+		subpassDescription.pResolveAttachments = nullptr;
+
+		vk::RenderPassCreateInfo renderPassCreateInfo{};
+		renderPassCreateInfo.pNext = nullptr;
+		renderPassCreateInfo.flags = {};
+		renderPassCreateInfo.attachmentCount = 1;
+		renderPassCreateInfo.pAttachments = &colorAttachmentDescription;
+		renderPassCreateInfo.subpassCount = 1;
+		renderPassCreateInfo.pSubpasses = &subpassDescription;
+		renderPassCreateInfo.dependencyCount = 0;
+		renderPassCreateInfo.pDependencies = nullptr;
+
+		vk::Result result = m_device->GetDevice().createRenderPass(&renderPassCreateInfo, nullptr, &m_screenTextureRenderPass);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan render pass!");
+
+		// FRAME BUFFERS
+		vk::Extent2D swapchainExtent = m_vkContext->GetSwapchain()->GetExtent();
+		m_screenTextureFramebuffers.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
+		{
+			std::vector<vk::ImageView> attachments = { m_vkContext->GetSwapchain()->GetImageViews()[i] };
+			vk::FramebufferCreateInfo framebufferCreateInfo{};
+			framebufferCreateInfo.renderPass = m_screenTextureRenderPass;
+			framebufferCreateInfo.attachmentCount = attachments.size();
+			framebufferCreateInfo.pAttachments = attachments.data();
+			framebufferCreateInfo.width = swapchainExtent.width;
+			framebufferCreateInfo.height = swapchainExtent.height;
+			framebufferCreateInfo.layers = 1;
+
+			vk::Result result = m_device->GetDevice().createFramebuffer(&framebufferCreateInfo, nullptr, &m_screenTextureFramebuffers[i]);
+			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan framebuffer!");
+		}
+		
+		// DESCRIPTOR SETS
+		vk::DescriptorSetLayoutBinding textureLayoutBinding{};
+		textureLayoutBinding.binding = 0;
+		textureLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		textureLayoutBinding.descriptorCount = 1;
+		textureLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		textureLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutCreateInfo materialTexturesDescriptorSetLayoutCreateInfo{};
+		materialTexturesDescriptorSetLayoutCreateInfo.pNext = nullptr;
+		materialTexturesDescriptorSetLayoutCreateInfo.flags = {};
+		materialTexturesDescriptorSetLayoutCreateInfo.bindingCount = 1;
+		materialTexturesDescriptorSetLayoutCreateInfo.pBindings = &textureLayoutBinding;
+		result = m_device->GetDevice().createDescriptorSetLayout(&materialTexturesDescriptorSetLayoutCreateInfo, nullptr, &m_screenTextureDescriptorSetLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+
+		m_screenTextureDescriptorSets.resize(m_vkContext->GetSwapchain()->GetImageCount());
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(m_vkContext->GetSwapchain()->GetImageCount(), m_screenTextureDescriptorSetLayout);
+		vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+		descriptorSetAllocateInfo.pNext = nullptr;
+		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+		descriptorSetAllocateInfo.descriptorSetCount = m_vkContext->GetSwapchain()->GetImageCount();
+		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
+		result = m_device->GetDevice().allocateDescriptorSets(&descriptorSetAllocateInfo, m_screenTextureDescriptorSets.data());
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+
+		for (size_t i = 0; i < m_vkContext->GetSwapchain()->GetImageCount(); i++)
+		{
+			vk::DescriptorImageInfo descriptorImageInfo{};
+			descriptorImageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+			descriptorImageInfo.imageView = m_colorResolveTextures[i]->GetImageView();
+			descriptorImageInfo.sampler = m_colorResolveTextures[i]->GetSampler();
+
+			vk::WriteDescriptorSet writeDescriptorSet{};
+			writeDescriptorSet.dstSet = m_screenTextureDescriptorSets[i];
+			writeDescriptorSet.dstBinding = 0;
+			writeDescriptorSet.dstArrayElement = 0;
+			writeDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+			writeDescriptorSet.descriptorCount = 1;
+			writeDescriptorSet.pBufferInfo = nullptr;
+			writeDescriptorSet.pImageInfo = &descriptorImageInfo;
+			writeDescriptorSet.pTexelBufferView = nullptr;
+
+			std::vector<vk::WriteDescriptorSet> writeDescriptorSets = { writeDescriptorSet };
+			m_device->GetDevice().updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+		}
+
+		// PIPELINE
+		std::shared_ptr<VulkanShader> vkShader = std::dynamic_pointer_cast<VulkanShader>(m_screenTextureShader);
+		// VERTEX INPUT STATE --------------------------
+		vk::VertexInputBindingDescription vertexInputBindingDescription{};
+		vertexInputBindingDescription.binding = 0;
+		vertexInputBindingDescription.stride = sizeof(Mesh::Vertex);
+		vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
+
+		std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};
+		vertexInputAttributeDescriptions[0].binding = 0;
+		vertexInputAttributeDescriptions[0].location = 0;
+		vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
+		vertexInputAttributeDescriptions[0].offset = offsetof(Mesh::Vertex, position);
+		vertexInputAttributeDescriptions[1].binding = 0;
+		vertexInputAttributeDescriptions[1].location = 1;
+		vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
+		vertexInputAttributeDescriptions[1].offset = offsetof(Mesh::Vertex, normal);
+		vertexInputAttributeDescriptions[2].binding = 0;
+		vertexInputAttributeDescriptions[2].location = 2;
+		vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
+		vertexInputAttributeDescriptions[2].offset = offsetof(Mesh::Vertex, tangent);
+		vertexInputAttributeDescriptions[3].binding = 0;
+		vertexInputAttributeDescriptions[3].location = 3;
+		vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32Sfloat;
+		vertexInputAttributeDescriptions[3].offset = offsetof(Mesh::Vertex, bitangent);
+		vertexInputAttributeDescriptions[4].binding = 0;
+		vertexInputAttributeDescriptions[4].location = 4;
+		vertexInputAttributeDescriptions[4].format = vk::Format::eR32G32Sfloat;
+		vertexInputAttributeDescriptions[4].offset = offsetof(Mesh::Vertex, texCoords);
+
+		vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
+		vertexInputStateCreateInfo.pNext = nullptr;
+		vertexInputStateCreateInfo.flags = {};
+		vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
+		vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
+		vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescriptions.size();
+		vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data();
+		// ---------------------------------------------
+		// INPUT ASSEMBLY STATE ------------------------
+		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
+		inputAssemblyStateCreateInfo.pNext = nullptr;
+		inputAssemblyStateCreateInfo.flags = {};
+		inputAssemblyStateCreateInfo.topology = vk::PrimitiveTopology::eTriangleList;
+		inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
+		// ---------------------------------------------
+		// VIEWPORT STATE ------------------------------
+		vk::Extent2D extent = m_vkContext->GetSwapchain()->GetExtent();
+
+		vk::Viewport viewport{};
+		viewport.x = 0.f;
+		viewport.y = 0.f;
+		viewport.width = (float)extent.width;
+		viewport.height = (float)extent.height;
+		viewport.minDepth = 0.f;
+		viewport.maxDepth = 1.f;
+
+		vk::Rect2D scissor{};
+		scissor.offset = { 0, 0 };
+		scissor.extent = extent;
+
+		vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
+		viewportStateCreateInfo.pNext = nullptr;
+		viewportStateCreateInfo.flags = {};
+		viewportStateCreateInfo.viewportCount = 1;
+		viewportStateCreateInfo.pViewports = &viewport;
+		viewportStateCreateInfo.scissorCount = 1;
+		viewportStateCreateInfo.pScissors = &scissor;
+		// ---------------------------------------------
+		// RASTERIZATION STATE -------------------------
+		vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
+		rasterizationStateCreateInfo.pNext = nullptr;
+		rasterizationStateCreateInfo.flags = {};
+		rasterizationStateCreateInfo.depthClampEnable = false;
+		rasterizationStateCreateInfo.rasterizerDiscardEnable = false;
+		rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eFill;
+		rasterizationStateCreateInfo.lineWidth = 1.f;
+		rasterizationStateCreateInfo.cullMode = vk::CullModeFlagBits::eBack;
+		rasterizationStateCreateInfo.frontFace = vk::FrontFace::eCounterClockwise;
+		rasterizationStateCreateInfo.depthBiasEnable = false;
+		rasterizationStateCreateInfo.depthBiasConstantFactor = 0.f;
+		rasterizationStateCreateInfo.depthBiasClamp = 0.f;
+		rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.f;
+		rasterizationStateCreateInfo.depthClampEnable = false;
+		// ---------------------------------------------
+		// MULTISAMPLE STATE ---------------------------
+		vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
+		multisampleStateCreateInfo.pNext = nullptr;
+		multisampleStateCreateInfo.flags = {};
+		multisampleStateCreateInfo.rasterizationSamples = vk::SampleCountFlagBits::e1;
+		multisampleStateCreateInfo.sampleShadingEnable = false;
+		multisampleStateCreateInfo.minSampleShading = 0.0f;
+		multisampleStateCreateInfo.pSampleMask = nullptr;
+		multisampleStateCreateInfo.alphaToCoverageEnable = false;
+		multisampleStateCreateInfo.alphaToOneEnable = false;
+		// ---------------------------------------------
+		// COLOR BLEND STATE ---------------------------
+		vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{};
+		colorBlendAttachmentState.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+		colorBlendAttachmentState.blendEnable = false;
+		colorBlendAttachmentState.srcColorBlendFactor = vk::BlendFactor::eOne;
+		colorBlendAttachmentState.dstColorBlendFactor = vk::BlendFactor::eZero;
+		colorBlendAttachmentState.colorBlendOp = vk::BlendOp::eAdd;
+		colorBlendAttachmentState.srcAlphaBlendFactor = vk::BlendFactor::eOne;
+		colorBlendAttachmentState.dstAlphaBlendFactor = vk::BlendFactor::eZero;
+		colorBlendAttachmentState.alphaBlendOp = vk::BlendOp::eAdd;
+
+		vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{};
+		colorBlendStateCreateInfo.logicOpEnable = false;
+		colorBlendStateCreateInfo.logicOp = vk::LogicOp::eCopy;
+		colorBlendStateCreateInfo.attachmentCount = 1;
+		colorBlendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
+		colorBlendStateCreateInfo.blendConstants[0] = 0.f;
+		colorBlendStateCreateInfo.blendConstants[1] = 0.f;
+		colorBlendStateCreateInfo.blendConstants[2] = 0.f;
+		colorBlendStateCreateInfo.blendConstants[3] = 0.f;
+		// ---------------------------------------------
+		// DEPTH STENCIL STATE -------------------------
+		vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
+		depthStencilStateCreateInfo.pNext = nullptr;
+		depthStencilStateCreateInfo.flags = {};
+		depthStencilStateCreateInfo.depthTestEnable = false;
+		depthStencilStateCreateInfo.depthWriteEnable = false;
+		depthStencilStateCreateInfo.depthCompareOp = vk::CompareOp::eLess;
+		depthStencilStateCreateInfo.depthBoundsTestEnable = false;
+		depthStencilStateCreateInfo.minDepthBounds = 0.0f;
+		depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
+		depthStencilStateCreateInfo.stencilTestEnable = false;
+		depthStencilStateCreateInfo.front = {};
+		depthStencilStateCreateInfo.back = {};
+		// ---------------------------------------------
+		// PIPELINE LAYOUT -----------------------------
+		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+		pipelineLayoutCreateInfo.pNext = nullptr;
+		pipelineLayoutCreateInfo.flags = {};
+		pipelineLayoutCreateInfo.setLayoutCount = 1;
+		pipelineLayoutCreateInfo.pSetLayouts = &m_screenTextureDescriptorSetLayout;
+		pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
+		pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+
+		result = m_device->GetDevice().createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &m_screenTexturePipelineLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan pipeline layout!");
+		// ---------------------------------------------
+		// SHADER STAGE STATE --------------------------
+		std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos = vkShader->GetShaderStageCreateInfos();
+		// ---------------------------------------------
+		// GRAPHICS PIPELINE ---------------------------
+		vk::GraphicsPipelineCreateInfo pipelineCreateInfo{};
+		pipelineCreateInfo.pNext = nullptr;
+		pipelineCreateInfo.flags = {};
+		pipelineCreateInfo.stageCount = shaderStageCreateInfos.size();
+		pipelineCreateInfo.pStages = shaderStageCreateInfos.data();
+		pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
+		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyStateCreateInfo;
+		pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
+		pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
+		pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
+		pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
+		pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
+		pipelineCreateInfo.pDynamicState = nullptr;
+		pipelineCreateInfo.layout = m_screenTexturePipelineLayout;
+		pipelineCreateInfo.renderPass = m_screenTextureRenderPass;
+		pipelineCreateInfo.subpass = 0;
+		pipelineCreateInfo.basePipelineHandle = nullptr;
+		pipelineCreateInfo.basePipelineIndex = -1;
+
+		result = m_device->GetDevice().createGraphicsPipelines(nullptr, 1, &pipelineCreateInfo, nullptr, &m_screenTexturePipeline);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan graphics pipeline!");
+		// ---------------------------------------------
+	}
+
+	void VulkanRenderer::DestroyScreenTexturePassResources()
+	{
+		m_device->GetDevice().destroyPipeline(m_screenTexturePipeline);
+		m_device->GetDevice().destroyPipelineLayout(m_screenTexturePipelineLayout);
+		m_device->GetDevice().destroyDescriptorSetLayout(m_screenTextureDescriptorSetLayout);
+
+		for (const vk::Framebuffer& framebuffer : m_screenTextureFramebuffers)
+			m_device->GetDevice().destroyFramebuffer(framebuffer);
+		m_screenTextureFramebuffers.clear();
+
+		m_device->GetDevice().destroyRenderPass(m_screenTextureRenderPass);
+		m_screenTextureShader->Destroy();
+		m_quadMesh->Destroy();
 	}
 }

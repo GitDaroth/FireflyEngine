@@ -2,7 +2,10 @@
 
 #include "Rendering/Renderer.h"
 #include "Rendering/Vulkan/VulkanSwapchain.h"
+#include "Rendering/RenderPass.h"
+#include "Rendering/Mesh.h"
 #include "Rendering/Material.h"
+#include "Rendering/Vulkan/VulkanTexture.h"
 #include <unordered_map>
 
 namespace Firefly
@@ -23,27 +26,13 @@ namespace Firefly
 	private:
 		void UpdateUniformBuffers(std::shared_ptr<Camera> camera);
 
-		void RecreateSwapchain();
-		void CreateSwapchain();
-		void DestroySwapchain();
-
-		void AllocateCommandBuffers();
-		void FreeCommandBuffers();
-
-		void CreateColorImage();
-		void DestroyColorImage();
-
-		void CreateDepthImage();
-		void DestroyDepthImage();
+		void RecreateResources();
 
 		void CreateRenderPass();
 		void DestroyRenderPass();
 
 		void CreateFramebuffers();
 		void DestroyFramebuffers();
-
-		void CreateSynchronizationPrimitivesForRendering();
-		void DestroySynchronizationPrimitivesForRendering();
 
 		void CreateUniformBuffers();
 		void DestroyUniformBuffers();
@@ -61,19 +50,31 @@ namespace Firefly
 
 		void CreatePipelines();
 		void DestroyPipelines();
+
+		void CreateScreenTexturePassResources();
+		void DestroyScreenTexturePassResources();
 		
 		std::shared_ptr<VulkanContext> m_vkContext;
 		std::shared_ptr<VulkanDevice> m_device;
-		std::shared_ptr<VulkanSwapchain> m_swapchain;
 
 		std::unordered_map<std::string, vk::Pipeline> m_pipelines;
 		std::unordered_map<std::string, vk::PipelineLayout> m_pipelineLayouts;
 
-		vk::RenderPass m_renderPass;
-		std::vector<vk::Framebuffer> m_framebuffers;
+		Texture::SampleCount m_msaaSampleCount = Texture::SampleCount::SAMPLE_4;
+		std::shared_ptr<RenderPass> m_mainRenderPass;
+		std::vector<std::shared_ptr<FrameBuffer>> m_mainFrameBuffers;
+		std::shared_ptr<VulkanTexture> m_depthTexture;
+		std::shared_ptr<VulkanTexture> m_colorTexture;
+		std::vector<std::shared_ptr<VulkanTexture>> m_colorResolveTextures;
 
-		vk::CommandPool m_commandPool;
-		std::vector<vk::CommandBuffer> m_commandBuffers;
+		vk::RenderPass m_screenTextureRenderPass;
+		std::vector<vk::Framebuffer> m_screenTextureFramebuffers;
+		vk::PipelineLayout m_screenTexturePipelineLayout;
+		vk::Pipeline m_screenTexturePipeline;
+		vk::DescriptorSetLayout m_screenTextureDescriptorSetLayout;
+		std::vector<vk::DescriptorSet> m_screenTextureDescriptorSets;
+		std::shared_ptr<Shader> m_screenTextureShader;
+		std::shared_ptr<Mesh> m_quadMesh;
 
 		vk::DescriptorPool m_descriptorPool;
 
@@ -99,23 +100,6 @@ namespace Firefly
 		ObjectData* m_objectData;
 		size_t m_objectDataCount = 1000;
 		size_t m_objectDataDynamicAlignment;
-
-		vk::SampleCountFlagBits m_msaaSampleCount;
-
-		vk::Image m_colorImage;
-		vk::DeviceMemory m_colorImageMemory;
-		vk::ImageView m_colorImageView;
-
-		vk::Image m_depthImage;
-		vk::DeviceMemory m_depthImageMemory;
-		vk::ImageView m_depthImageView;
-		vk::Format m_depthFormat;
-
-		uint32_t m_currentFrameIndex = 0;
-		uint32_t m_currentImageIndex = 0;
-		std::vector<vk::Semaphore> m_isNewImageAvailableSemaphores;
-		std::vector<vk::Semaphore> m_isRenderedImageAvailableSemaphores;
-		std::vector<vk::Fence> m_isCommandBufferAvailableFences;
 
 		std::vector<Entity> m_entities;
 		std::vector<std::shared_ptr<Material>> m_materials;

@@ -1,32 +1,34 @@
 #include "pch.h"
 #include "Rendering/Vulkan/VulkanSwapchain.h"
 
+#include "Rendering/RenderingAPI.h"
+
 namespace Firefly
 {
-	void VulkanSwapchain::Init(std::shared_ptr<VulkanContext> context)
+	void VulkanSwapchain::Init(vk::Device device, vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface, uint32_t width, uint32_t height)
 	{
-		m_device = context->GetDevice()->GetDevice();
-		m_physicalDevice = context->GetDevice()->GetPhysicalDevice();
+		m_device = device;
+		m_physicalDevice = physicalDevice;
 
 		m_swapchainData.imageCount = 2;
 		m_swapchainData.presentMode = vk::PresentModeKHR::eFifoRelaxed;
 		m_swapchainData.imageFormat = vk::Format::eR8G8B8A8Srgb;
 		m_swapchainData.colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 
-		vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(context->GetSurface());
+		vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(surface);
 		if (surfaceCapabilities.currentExtent.width != UINT32_MAX)
 		{
 			m_swapchainData.extent = surfaceCapabilities.currentExtent;
 		}
 		else
 		{
-			vk::Extent2D actualExtent = { static_cast<uint32_t>(context->GetWidth()), static_cast<uint32_t>(context->GetHeight()) };
+			vk::Extent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
 			actualExtent.width = std::max(surfaceCapabilities.minImageExtent.width, std::min(surfaceCapabilities.maxImageExtent.width, actualExtent.width));
 			actualExtent.height = std::max(surfaceCapabilities.minImageExtent.height, std::min(surfaceCapabilities.maxImageExtent.height, actualExtent.height));
 			m_swapchainData.extent = actualExtent;
 		}
 
-		m_swapchain = VulkanUtils::CreateSwapchain(m_device, m_physicalDevice, context->GetSurface(), m_swapchainData);
+		m_swapchain = VulkanUtils::CreateSwapchain(m_device, m_physicalDevice, surface, m_swapchainData);
 
 		m_images = m_device.getSwapchainImagesKHR(m_swapchain);
 

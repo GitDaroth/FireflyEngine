@@ -27,6 +27,8 @@ set(openGLShaders
 set(vulkanShaders 
 	assets/shaders/Vulkan/pbr.vert
 	assets/shaders/Vulkan/pbr.frag
+	assets/shaders/Vulkan/screenTexture.vert
+	assets/shaders/Vulkan/screenTexture.frag
 	assets/shaders/Vulkan/drawNormals.vert
 	assets/shaders/Vulkan/drawNormals.frag
 	assets/shaders/Vulkan/drawNormals.geom)

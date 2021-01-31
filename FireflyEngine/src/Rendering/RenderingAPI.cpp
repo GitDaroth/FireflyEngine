@@ -22,8 +22,8 @@
 #include "Rendering/Vulkan/VulkanMesh.h"
 #include "Rendering/Vulkan/VulkanTexture.h"
 #include "Rendering/Vulkan/VulkanMaterial.h"
-//#include "Rendering/Vulkan/VulkanFrameBuffer.h"
-//#include "Rendering/Vulkan/VulkanRenderPass.h"
+#include "Rendering/Vulkan/VulkanFrameBuffer.h"
+#include "Rendering/Vulkan/VulkanRenderPass.h"
 #endif
 
 namespace Firefly
@@ -174,9 +174,9 @@ namespace Firefly
 		#ifdef GFX_API_OPENGL
 			frameBuffer = std::make_shared<OpenGLFrameBuffer>();
 		#endif
-		//#ifdef GFX_API_VULKAN
-		//	frameBuffer = std::make_shared<VulkanFrameBuffer>();
-		//#endif
+		#ifdef GFX_API_VULKAN
+			frameBuffer = std::make_shared<VulkanFrameBuffer>();
+		#endif
 
 		frameBuffer->Init(description);
 		return frameBuffer;
@@ -189,9 +189,9 @@ namespace Firefly
 		#ifdef GFX_API_OPENGL
 			renderPass = std::make_shared<OpenGLRenderPass>();
 		#endif
-		//#ifdef GFX_API_VULKAN
-		//	renderPass = std::make_shared<VulkanRenderPass>();
-		//#endif
+		#ifdef GFX_API_VULKAN
+			renderPass = std::make_shared<VulkanRenderPass>();
+		#endif
 
 		renderPass->Init(description);
 		return renderPass;

@@ -45,6 +45,13 @@ namespace Firefly
 		void Begin(std::shared_ptr<FrameBuffer> frameBuffer);
 		void End();
 
+		bool isDepthTestingEnabled() const;
+		CompareOperation GetDepthCompareOperation() const;
+		bool IsMultisamplingEnabled() const;
+		bool IsSampleShadingEnabled() const;
+		float GetMinSampleShading() const;
+		Texture::SampleCount GetSampleCount() const;
+
 	protected:
 		virtual void OnInit() = 0;
 		virtual void OnBegin() = 0;

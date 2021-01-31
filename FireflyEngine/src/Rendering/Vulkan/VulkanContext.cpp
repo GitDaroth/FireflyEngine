@@ -1,5 +1,6 @@
 #include "Rendering/Vulkan/VulkanContext.h"
 
+#include "Rendering/Vulkan/VulkanSwapchain.h"
 #include "Window/WindowsWindow.h"
 
 namespace Firefly
@@ -11,8 +12,11 @@ namespace Firefly
 			CreateDebugMessenger();
 		CreateSurface();
 		CreateDevice();
+		CreateSwapchain();
 		CreateCommandPool();
+		AllocateCommandBuffers();
 		CreateDescriptorPool();
+		CreateSynchronizationPrimitives();
 
 		PrintGpuInfo();
 	}
@@ -21,8 +25,11 @@ namespace Firefly
 	{
 		m_device->WaitIdle();
 
+		DestroySynchronizationPrimitives();
 		DestroyDescriptorPool();
+		FreeCommandBuffers();
 		DestroyCommandPool();
+		DestroySwapchain();
 		DestroyDevice();
 		DestroySurface();
 		if (AreValidationLayersEnabled())
@@ -30,9 +37,93 @@ namespace Firefly
 		DestroyInstance();
 	}
 
+	bool VulkanContext::AquireNextImage()
+	{
+		vk::Result result = m_device->GetDevice().acquireNextImageKHR(m_swapchain->GetSwapchain(), UINT64_MAX, m_isNewImageAvailableSemaphores[m_currentFrameIndex], nullptr, &m_currentImageIndex);
+		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+		{
+			m_device->WaitIdle();
+			DestroySwapchain();
+			CreateSwapchain();
+			return false;
+		}
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to aquire next image from the swapchain!");
+
+		// wait until the indexed command buffer is not used anymore before recording new commands to it
+		m_device->GetDevice().waitForFences(1, &m_isCommandBufferAvailableFences[m_currentImageIndex], true, UINT64_MAX);
+		m_device->GetDevice().resetFences(1, &m_isCommandBufferAvailableFences[m_currentImageIndex]);
+
+		m_commandBuffers[m_currentImageIndex].reset({});
+		vk::CommandBufferBeginInfo commandBufferBeginInfo{};
+		commandBufferBeginInfo.flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit;
+		result = m_commandBuffers[m_currentImageIndex].begin(&commandBufferBeginInfo);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to begin recording Vulkan command buffer!");
+
+		return true;
+	}
+
+	void VulkanContext::SubmitCommands()
+	{
+		m_commandBuffers[m_currentImageIndex].end();
+
+		vk::PipelineStageFlags waitStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput; // ColorAttachmentOutputStage waits for isImageAvailableSemaphore
+		vk::SubmitInfo submitInfo{};
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &m_isNewImageAvailableSemaphores[m_currentFrameIndex];
+		submitInfo.pWaitDstStageMask = &waitStageMask;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &m_commandBuffers[m_currentImageIndex];
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &m_isRenderedImageAvailableSemaphores[m_currentFrameIndex];
+
+		vk::Result result = m_device->GetGraphicsQueue().submit(1, &submitInfo, m_isCommandBufferAvailableFences[m_currentImageIndex]);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to submit commands to the graphics queue!");
+	}
+
+	bool VulkanContext::PresentImage()
+	{
+		vk::PresentInfoKHR presentInfo{};
+		std::vector<vk::SwapchainKHR> swapchains = { m_swapchain->GetSwapchain() };
+		presentInfo.waitSemaphoreCount = 1;
+		presentInfo.pWaitSemaphores = &m_isRenderedImageAvailableSemaphores[m_currentFrameIndex];
+		presentInfo.swapchainCount = swapchains.size();
+		presentInfo.pSwapchains = swapchains.data();
+		presentInfo.pImageIndices = &m_currentImageIndex;
+		presentInfo.pResults = nullptr;
+
+		vk::Result result = m_device->GetPresentQueue().presentKHR(&presentInfo);
+		if (result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+		{
+			m_device->WaitIdle();
+			DestroySwapchain();
+			CreateSwapchain();
+			return false;
+		}
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to present the image with the present queue!");
+
+		m_currentFrameIndex = (m_currentFrameIndex + 1) % m_swapchain->GetImageCount();
+
+		return true;
+	}
+
+	vk::CommandBuffer VulkanContext::GetCurrentCommandBuffer()
+	{
+		return m_commandBuffers[m_currentImageIndex];
+	}
+
+	uint32_t VulkanContext::GetCurrentImageIndex() const
+	{
+		return m_currentImageIndex;
+	}
+
 	std::shared_ptr<VulkanDevice> VulkanContext::GetDevice() const
 	{
 		return m_device;
+	}
+
+	std::shared_ptr<VulkanSwapchain> VulkanContext::GetSwapchain() const
+	{
+		return m_swapchain;
 	}
 
 	vk::SurfaceKHR VulkanContext::GetSurface() const
@@ -152,6 +243,17 @@ namespace Firefly
 		m_device->Destroy();
 	}
 
+	void VulkanContext::CreateSwapchain()
+	{
+		m_swapchain = std::make_shared<VulkanSwapchain>();
+		m_swapchain->Init(m_device->GetDevice(), m_device->GetPhysicalDevice(), m_surface, m_window->GetWidth(), m_window->GetHeight());
+	}
+
+	void VulkanContext::DestroySwapchain()
+	{
+		m_swapchain->Destroy();
+	}
+
 	void VulkanContext::CreateCommandPool()
 	{
 		vk::CommandPoolCreateInfo commandPoolCreateInfo{};
@@ -166,6 +268,24 @@ namespace Firefly
 	void VulkanContext::DestroyCommandPool()
 	{
 		m_device->GetDevice().destroyCommandPool(m_commandPool);
+	}
+
+	void VulkanContext::AllocateCommandBuffers()
+	{
+		m_commandBuffers.resize(m_swapchain->GetImageCount());
+		vk::CommandBufferAllocateInfo commandBufferAllocateInfo{};
+		commandBufferAllocateInfo.pNext = nullptr;
+		commandBufferAllocateInfo.commandPool = m_commandPool;
+		commandBufferAllocateInfo.level = vk::CommandBufferLevel::ePrimary;
+		commandBufferAllocateInfo.commandBufferCount = m_commandBuffers.size();
+
+		vk::Result result = m_device->GetDevice().allocateCommandBuffers(&commandBufferAllocateInfo, m_commandBuffers.data());
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan command buffers!");
+	}
+
+	void VulkanContext::FreeCommandBuffers()
+	{
+		m_device->GetDevice().freeCommandBuffers(m_commandPool, m_commandBuffers.size(), m_commandBuffers.data());
 	}
 
 	void VulkanContext::CreateDescriptorPool()
@@ -204,6 +324,42 @@ namespace Firefly
 	{
 		m_device->GetDevice().resetDescriptorPool(m_descriptorPool, {});
 		m_device->GetDevice().destroyDescriptorPool(m_descriptorPool);
+	}
+
+	void VulkanContext::CreateSynchronizationPrimitives()
+	{
+		vk::SemaphoreCreateInfo semaphoreCreateInfo{};
+		semaphoreCreateInfo.pNext = nullptr;
+		semaphoreCreateInfo.flags = {};
+
+		vk::FenceCreateInfo fenceCreateInfo{};
+		fenceCreateInfo.pNext = nullptr;
+		fenceCreateInfo.flags = vk::FenceCreateFlagBits::eSignaled;
+
+		m_isNewImageAvailableSemaphores.resize(m_swapchain->GetImageCount());
+		m_isRenderedImageAvailableSemaphores.resize(m_swapchain->GetImageCount());
+		m_isCommandBufferAvailableFences.resize(m_swapchain->GetImageCount());
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		{
+			vk::Result result = m_device->GetDevice().createSemaphore(&semaphoreCreateInfo, nullptr, &m_isNewImageAvailableSemaphores[i]);
+			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
+
+			result = m_device->GetDevice().createSemaphore(&semaphoreCreateInfo, nullptr, &m_isRenderedImageAvailableSemaphores[i]);
+			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Semaphore!");
+
+			result = m_device->GetDevice().createFence(&fenceCreateInfo, nullptr, &m_isCommandBufferAvailableFences[i]);
+			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Fence!");
+		}
+	}
+
+	void VulkanContext::DestroySynchronizationPrimitives()
+	{
+		for (size_t i = 0; i < m_swapchain->GetImageCount(); i++)
+		{
+			m_device->GetDevice().destroyFence(m_isCommandBufferAvailableFences[i]);
+			m_device->GetDevice().destroySemaphore(m_isRenderedImageAvailableSemaphores[i]);
+			m_device->GetDevice().destroySemaphore(m_isNewImageAvailableSemaphores[i]);
+		}
 	}
 
 	void VulkanContext::PrintGpuInfo()

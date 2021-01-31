@@ -10,11 +10,10 @@ namespace Firefly
 	public:
 		virtual void Destroy() override;
 
-		virtual void OnBegin() override;
-		virtual void OnEnd() override;
-
 	protected:
 		virtual void OnInit() override;
+		virtual void OnBegin() override;
+		virtual void OnEnd() override;
 
 	private:
 		GLenum ConvertToOpenGLDepthFunction(CompareOperation compareOperation);

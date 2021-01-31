@@ -42,6 +42,11 @@ namespace Firefly
         return m_sampler;
     }
 
+    bool VulkanTexture::HasSampler() const
+    {
+        return m_description.useSampler;
+    }
+
 	void VulkanTexture::OnInit(void* pixelData)
 	{
         m_format = ConvertToVulkanFormat(m_description.format);
@@ -54,11 +59,9 @@ namespace Firefly
 
     void VulkanTexture::CreateImage(void* pixelData)
     {
-        vk::ImageUsageFlags usage;
+        vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eSampled;
         if (pixelData)
             usage |= vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
-        if (m_description.useSampler)
-            usage |= vk::ImageUsageFlagBits::eSampled;
         if (m_description.useAsAttachment)
         {
             if (HasColorFormat())
@@ -67,19 +70,22 @@ namespace Firefly
                 usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
         }
 
-        vk::Format format = ConvertToVulkanFormat(m_description.format);
+        vk::ImageCreateFlags createFlags = {};
+        if (m_description.type == Type::TEXTURE_CUBE_MAP)
+            createFlags |= vk::ImageCreateFlagBits::eCubeCompatible;
+
         vk::SampleCountFlagBits sampleCount = ConvertToVulkanSampleCount(m_description.sampleCount);
         vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eDeviceLocal;
-        CreateVulkanImage(m_description.width, m_description.height, format,
+        CreateVulkanImage(m_description.width, m_description.height, m_format,
                           m_mipMapLevels, m_arrayLayers, sampleCount,
-                          usage, memoryPropertyFlags,
+                          usage, memoryPropertyFlags, createFlags,
                           m_image, m_imageMemory);
 
         if (pixelData)
         {
             vk::ImageLayout oldLayout = vk::ImageLayout::eUndefined;
             vk::ImageLayout newLayout = vk::ImageLayout::eTransferDstOptimal;
-            TransitionImageLayout(m_image, oldLayout, newLayout, format, m_mipMapLevels, m_arrayLayers);
+            TransitionImageLayout(m_image, oldLayout, newLayout, m_format, m_mipMapLevels, m_arrayLayers);
 
             uint32_t bytePerPixel = GetBytePerPixel(m_description.format);
             vk::DeviceSize bufferSize = m_description.width * m_description.height * m_arrayLayers * bytePerPixel;
@@ -95,20 +101,20 @@ namespace Firefly
             memcpy(mappedMemory, pixelData, bufferSize);
             m_device.unmapMemory(stagingBufferMemory);
 
-            CopyBufferToImage(stagingBuffer, m_image, m_description.width, m_description.height, format, m_arrayLayers);
+            CopyBufferToImage(stagingBuffer, m_image, m_description.width, m_description.height, m_format, m_arrayLayers);
 
             if (m_description.useSampler)
             {
                 if (m_description.sampler.isMipMappingEnabled)
                 {
                     // automatically transitions image layout into "eShaderReadOnlyOptimal"
-                    GenerateMipMaps(m_image, m_description.width, m_description.height, format, m_mipMapLevels, m_arrayLayers);
+                    GenerateMipMaps(m_image, m_description.width, m_description.height, m_format, m_mipMapLevels, m_arrayLayers);
                 }
                 else
                 {
                     vk::ImageLayout oldLayout = vk::ImageLayout::eTransferDstOptimal;
                     vk::ImageLayout newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-                    TransitionImageLayout(m_image, oldLayout, newLayout, format, m_mipMapLevels, m_arrayLayers);
+                    TransitionImageLayout(m_image, oldLayout, newLayout, m_format, m_mipMapLevels, m_arrayLayers);
                 }
             }
 
@@ -125,19 +131,17 @@ namespace Firefly
 
     void VulkanTexture::CreateImageView()
     {
-        vk::Format format = ConvertToVulkanFormat(m_description.format);
-
         vk::ImageViewCreateInfo imageViewCreateInfo{};
         imageViewCreateInfo.pNext = nullptr;
         imageViewCreateInfo.flags = {};
         imageViewCreateInfo.image = m_image;
         imageViewCreateInfo.viewType = ConvertToVulkanTextureType(m_description.type);
-        imageViewCreateInfo.format = format;
+        imageViewCreateInfo.format = m_format;
         imageViewCreateInfo.components.r = vk::ComponentSwizzle::eIdentity;
         imageViewCreateInfo.components.g = vk::ComponentSwizzle::eIdentity;
         imageViewCreateInfo.components.b = vk::ComponentSwizzle::eIdentity;
         imageViewCreateInfo.components.a = vk::ComponentSwizzle::eIdentity;
-        imageViewCreateInfo.subresourceRange.aspectMask = GetImageAspectFlags(format);
+        imageViewCreateInfo.subresourceRange.aspectMask = GetImageAspectFlags(m_format);
         imageViewCreateInfo.subresourceRange.baseMipLevel = 0;
         imageViewCreateInfo.subresourceRange.levelCount = m_mipMapLevels;
         imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
@@ -226,7 +230,7 @@ namespace Firefly
 
     void VulkanTexture::CreateVulkanImage(uint32_t width, uint32_t height, vk::Format format,
                                           uint32_t mipMapLevels, uint32_t arrayLayers, vk::SampleCountFlagBits sampleCount,
-                                          vk::ImageUsageFlags usage, vk::MemoryPropertyFlags memoryPropertyFlags, 
+                                          vk::ImageUsageFlags usage, vk::MemoryPropertyFlags memoryPropertyFlags, vk::ImageCreateFlags createFlags,
                                           vk::Image& image, vk::DeviceMemory& imageMemory)
     {
         std::shared_ptr<VulkanContext> vkContext = std::dynamic_pointer_cast<VulkanContext>(RenderingAPI::GetContext());
@@ -234,7 +238,7 @@ namespace Firefly
 
         vk::ImageCreateInfo imageCreateInfo{};
         imageCreateInfo.pNext = nullptr;
-        imageCreateInfo.flags = {};
+        imageCreateInfo.flags = createFlags;
         imageCreateInfo.imageType = vk::ImageType::e2D;
         imageCreateInfo.extent.width = width;
         imageCreateInfo.extent.height = height;

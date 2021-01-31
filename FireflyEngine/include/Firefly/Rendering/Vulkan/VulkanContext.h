@@ -6,12 +6,22 @@
 
 namespace Firefly
 {
+	class VulkanSwapchain;
+
 	class VulkanContext : public GraphicsContext
 	{
 	public:
 		virtual void Destroy() override;
 
+		bool AquireNextImage();
+		void SubmitCommands();
+		bool PresentImage();
+
+		vk::CommandBuffer GetCurrentCommandBuffer();
+		uint32_t GetCurrentImageIndex() const;
+
 		std::shared_ptr<VulkanDevice> GetDevice() const;
+		std::shared_ptr<VulkanSwapchain> GetSwapchain() const;
 		vk::SurfaceKHR GetSurface() const;
 		vk::CommandPool GetCommandPool() const;
 		vk::DescriptorPool GetDescriptorPool() const;
@@ -33,11 +43,20 @@ namespace Firefly
 		void CreateDevice();
 		void DestroyDevice();
 
+		void CreateSwapchain();
+		void DestroySwapchain();
+
 		void CreateCommandPool();
 		void DestroyCommandPool();
 
+		void AllocateCommandBuffers();
+		void FreeCommandBuffers();
+
 		void CreateDescriptorPool();
 		void DestroyDescriptorPool();
+
+		void CreateSynchronizationPrimitives();
+		void DestroySynchronizationPrimitives();
 
 		void PrintGpuInfo();
 
@@ -51,8 +70,16 @@ namespace Firefly
 		vk::SurfaceKHR m_surface;
 		vk::DebugUtilsMessengerEXT m_debugMessenger;
 		std::shared_ptr<VulkanDevice> m_device;
+		std::shared_ptr<VulkanSwapchain> m_swapchain;
 		vk::CommandPool m_commandPool;
+		std::vector<vk::CommandBuffer> m_commandBuffers;
 		vk::DescriptorPool m_descriptorPool;
+
+		uint32_t m_currentFrameIndex = 0;
+		uint32_t m_currentImageIndex = 0;
+		std::vector<vk::Semaphore> m_isNewImageAvailableSemaphores;
+		std::vector<vk::Semaphore> m_isRenderedImageAvailableSemaphores;
+		std::vector<vk::Fence> m_isCommandBufferAvailableFences;
 
 		static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
 			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

@@ -17,6 +17,8 @@ namespace Firefly
 		CheckDepthStencilAttachmentLayout();
 
 		CheckSampleCounts();
+
+		OnInit();
 	}
 
 	void RenderPass::Begin(std::shared_ptr<FrameBuffer> frameBuffer)
@@ -33,6 +35,38 @@ namespace Firefly
 		OnEnd();
 
 		m_currentFrameBuffer = nullptr;
+	}
+
+	bool RenderPass::isDepthTestingEnabled() const
+	{
+		return m_description.isDepthTestingEnabled;
+	}
+
+	CompareOperation RenderPass::GetDepthCompareOperation() const
+	{
+		return m_description.depthCompareOperation;
+	}
+
+	bool RenderPass::IsMultisamplingEnabled() const
+	{
+		return m_description.isMultisamplingEnabled;
+	}
+
+	bool RenderPass::IsSampleShadingEnabled() const
+	{
+		return m_description.isSampleShadingEnabled;
+	}
+
+	float RenderPass::GetMinSampleShading() const
+	{
+		return m_description.minSampleShading;
+	}
+
+	Texture::SampleCount RenderPass::GetSampleCount() const
+	{
+		if(m_description.colorAttachmentLayouts.size() > 0)
+			return m_description.colorAttachmentLayouts[0].sampleCount;
+		return Texture::SampleCount::SAMPLE_1;
 	}
 
 	void RenderPass::CheckColorAttachmentLayouts()

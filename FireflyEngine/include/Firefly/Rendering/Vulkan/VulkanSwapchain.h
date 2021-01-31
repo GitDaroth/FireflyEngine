@@ -8,7 +8,7 @@ namespace Firefly
 	class VulkanSwapchain
 	{
 	public:
-		void Init(std::shared_ptr<VulkanContext> context);
+		void Init(vk::Device device, vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface, uint32_t width, uint32_t height);
 		void Destroy();
 
 		vk::SwapchainKHR GetSwapchain() const;
