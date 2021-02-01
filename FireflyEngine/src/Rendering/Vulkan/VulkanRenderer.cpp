@@ -105,9 +105,9 @@ namespace Firefly
 		uint32_t currentImageIndex = m_vkContext->GetCurrentImageIndex();
 		vk::CommandBuffer currentCommandBuffer = m_vkContext->GetCurrentCommandBuffer();
 
-		m_mainRenderPass->Begin(m_mainFrameBuffers[currentImageIndex]);
-
 		UpdateUniformBuffers(camera);
+
+		m_mainRenderPass->Begin(m_mainFrameBuffers[currentImageIndex]);
 
 		for (size_t i = 0; i < m_entities.size(); i++)
 		{
@@ -145,7 +145,7 @@ namespace Firefly
 
 		// RENDER RESOLVED COLOR TEXTURE TO SCREEN
 		vk::ClearValue clearValue;
-		clearValue.color = std::array<float, 4>{ 0.1f, 0.1f, 0.1f, 1.0f };
+		clearValue.color = std::array<float, 4>{ 0.0f, 0.0f, 0.0f, 1.0f };
 
 		vk::RenderPassBeginInfo renderPassBeginInfo{};
 		renderPassBeginInfo.pNext = nullptr;
@@ -707,29 +707,29 @@ namespace Firefly
 			inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
 			// ---------------------------------------------
 			// VIEWPORT STATE ------------------------------
-			vk::Extent2D extent;
-			extent.width = m_mainFrameBuffers[0]->GetWidth();
-			extent.height = m_mainFrameBuffers[0]->GetHeight();
+			//vk::Extent2D extent;
+			//extent.width = m_mainFrameBuffers[0]->GetWidth();
+			//extent.height = m_mainFrameBuffers[0]->GetHeight();
 
-			vk::Viewport viewport{};
-			viewport.x = 0.f;
-			viewport.y = 0.f;
-			viewport.width = (float)extent.width;
-			viewport.height = (float)extent.height;
-			viewport.minDepth = 0.f;
-			viewport.maxDepth = 1.f;
+			//vk::Viewport viewport{};
+			//viewport.x = 0.f;
+			//viewport.y = 0.f;
+			//viewport.width = (float)extent.width;
+			//viewport.height = (float)extent.height;
+			//viewport.minDepth = 0.f;
+			//viewport.maxDepth = 1.f;
 
-			vk::Rect2D scissor{};
-			scissor.offset = { 0, 0 };
-			scissor.extent = extent;
+			//vk::Rect2D scissor{};
+			//scissor.offset = { 0, 0 };
+			//scissor.extent = extent;
 
 			vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
 			viewportStateCreateInfo.pNext = nullptr;
 			viewportStateCreateInfo.flags = {};
 			viewportStateCreateInfo.viewportCount = 1;
-			viewportStateCreateInfo.pViewports = &viewport;
+			viewportStateCreateInfo.pViewports = nullptr;
 			viewportStateCreateInfo.scissorCount = 1;
-			viewportStateCreateInfo.pScissors = &scissor;
+			viewportStateCreateInfo.pScissors = nullptr;
 			// ---------------------------------------------
 			// RASTERIZATION STATE -------------------------
 			vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
@@ -793,6 +793,14 @@ namespace Firefly
 			depthStencilStateCreateInfo.front = {};
 			depthStencilStateCreateInfo.back = {};
 			// ---------------------------------------------
+			// DYNAMIC STATE -------------------------------
+			std::vector<vk::DynamicState> dynamicStates = { vk::DynamicState::eViewport, vk::DynamicState::eScissor };
+			vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
+			dynamicStateCreateInfo.pNext = nullptr;
+			dynamicStateCreateInfo.flags = {};
+			dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
+			dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
+			// ---------------------------------------------
 			// PIPELINE LAYOUT -----------------------------
 			std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = 
 			{ 
@@ -830,7 +838,7 @@ namespace Firefly
 			pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
 			pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
 			pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
-			pipelineCreateInfo.pDynamicState = nullptr;
+			pipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
 			pipelineCreateInfo.layout = pipelineLayout;
 			pipelineCreateInfo.renderPass = std::dynamic_pointer_cast<VulkanRenderPass>(m_mainRenderPass)->GetHandle();
 			pipelineCreateInfo.subpass = 0;

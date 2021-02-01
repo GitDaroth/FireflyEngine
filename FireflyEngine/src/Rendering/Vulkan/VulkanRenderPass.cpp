@@ -151,6 +151,20 @@ namespace Firefly
 
 		std::shared_ptr<VulkanContext> vkContext = std::dynamic_pointer_cast<VulkanContext>(RenderingAPI::GetContext());
 		vkContext->GetCurrentCommandBuffer().beginRenderPass(&renderPassBeginInfo, vk::SubpassContents::eInline);
+
+		vk::Viewport viewport{};
+		viewport.x = 0.f;
+		viewport.y = 0.f;
+		viewport.width = (float)extent.width;
+		viewport.height = (float)extent.height;
+		viewport.minDepth = 0.f;
+		viewport.maxDepth = 1.f;
+		vkContext->GetCurrentCommandBuffer().setViewport(0, 1, &viewport);
+
+		vk::Rect2D scissor{};
+		scissor.offset = { 0, 0 };
+		scissor.extent = extent;
+		vkContext->GetCurrentCommandBuffer().setScissor(0, 1, &scissor);
 	}
 
 	void VulkanRenderPass::OnEnd()
