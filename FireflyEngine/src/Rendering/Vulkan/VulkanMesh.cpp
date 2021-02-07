@@ -10,7 +10,7 @@ namespace Firefly
 	VulkanMesh::VulkanMesh()
 	{
 		std::shared_ptr<VulkanContext> vkContext = std::dynamic_pointer_cast<VulkanContext>(RenderingAPI::GetContext());
-		m_device = vkContext->GetDevice()->GetDevice();
+		m_device = vkContext->GetDevice()->GetHandle();
 		m_physicalDevice = vkContext->GetDevice()->GetPhysicalDevice();
 		m_commandPool = vkContext->GetCommandPool();
 		m_queue = vkContext->GetDevice()->GetGraphicsQueue();

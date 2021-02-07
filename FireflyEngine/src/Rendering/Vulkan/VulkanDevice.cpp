@@ -6,8 +6,8 @@
 namespace Firefly
 {
 	void VulkanDevice::Init(vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface,
-							const std::vector<const char*>& requiredDeviceExtensions, 
-							const std::vector<const char*>& requiredDeviceLayers)
+		const std::vector<const char*>& requiredDeviceExtensions,
+		const std::vector<const char*>& requiredDeviceLayers)
 	{
 		m_physicalDevice = physicalDevice;
 
@@ -53,7 +53,7 @@ namespace Firefly
 			queueCreateInfos.push_back(presentQueueCreateInfo);
 		}
 
-		vk::PhysicalDeviceFeatures requiredDeviceFeatures {};
+		vk::PhysicalDeviceFeatures requiredDeviceFeatures{};
 		requiredDeviceFeatures.samplerAnisotropy = true;
 		requiredDeviceFeatures.sampleRateShading = true;
 		requiredDeviceFeatures.geometryShader = true;
@@ -74,7 +74,7 @@ namespace Firefly
 		m_device.destroy();
 	}
 
-	vk::Device VulkanDevice::GetDevice() const
+	vk::Device VulkanDevice::GetHandle() const
 	{
 		return m_device;
 	}

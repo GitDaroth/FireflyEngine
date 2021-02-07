@@ -45,7 +45,7 @@ namespace Firefly
 		m_device.destroySwapchainKHR(m_swapchain);
 	}
 
-	vk::SwapchainKHR VulkanSwapchain::GetSwapchain() const
+	vk::SwapchainKHR VulkanSwapchain::GetHandle() const
 	{
 		return m_swapchain;
 	}

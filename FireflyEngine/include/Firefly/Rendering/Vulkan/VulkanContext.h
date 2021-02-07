@@ -13,9 +13,11 @@ namespace Firefly
 	public:
 		virtual void Destroy() override;
 
-		bool AquireNextImage();
-		void SubmitCommands();
-		bool PresentImage();
+		bool BeginScreenFrame();
+		bool EndScreenFrame();
+
+		void BeginOffscreenFrame();
+		void EndOffscreenFrame();
 
 		vk::CommandBuffer GetCurrentCommandBuffer();
 		uint32_t GetCurrentImageIndex() const;
@@ -71,15 +73,19 @@ namespace Firefly
 		vk::DebugUtilsMessengerEXT m_debugMessenger;
 		std::shared_ptr<VulkanDevice> m_device;
 		std::shared_ptr<VulkanSwapchain> m_swapchain;
-		vk::CommandPool m_commandPool;
-		std::vector<vk::CommandBuffer> m_commandBuffers;
 		vk::DescriptorPool m_descriptorPool;
+
+		vk::CommandPool m_commandPool;
+		std::vector<vk::CommandBuffer> m_screenCommandBuffers;
+		vk::CommandBuffer m_offscreenCommandBuffer;
+		vk::CommandBuffer m_currentCommandBuffer;
 
 		uint32_t m_currentFrameIndex = 0;
 		uint32_t m_currentImageIndex = 0;
 		std::vector<vk::Semaphore> m_isNewImageAvailableSemaphores;
 		std::vector<vk::Semaphore> m_isRenderedImageAvailableSemaphores;
-		std::vector<vk::Fence> m_isCommandBufferAvailableFences;
+		std::vector<vk::Fence> m_isScreenCommandBufferAvailableFences;
+		vk::Fence m_isOffscreenCommandBufferAvailableFence;
 
 		static VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
 			VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

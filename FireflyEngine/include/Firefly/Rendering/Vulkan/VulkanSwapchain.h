@@ -11,7 +11,7 @@ namespace Firefly
 		void Init(vk::Device device, vk::PhysicalDevice physicalDevice, vk::SurfaceKHR surface, uint32_t width, uint32_t height);
 		void Destroy();
 
-		vk::SwapchainKHR GetSwapchain() const;
+		vk::SwapchainKHR GetHandle() const;
 		uint32_t GetImageCount() const;
 		std::vector<vk::ImageView> GetImageViews() const;
 

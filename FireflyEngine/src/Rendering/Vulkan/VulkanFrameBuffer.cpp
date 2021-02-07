@@ -30,7 +30,7 @@ namespace Firefly
 	void VulkanFrameBuffer::OnInit()
 	{
 		std::shared_ptr<VulkanContext> vkContext = std::dynamic_pointer_cast<VulkanContext>(RenderingAPI::GetContext());
-		m_device = vkContext->GetDevice()->GetDevice();
+		m_device = vkContext->GetDevice()->GetHandle();
 
 		CreateCompatibilityRenderPass();
 

@@ -12,7 +12,7 @@ namespace Firefly
 			const std::vector<const char*>& requiredDeviceLayers);
 		void Destroy();
 
-		vk::Device GetDevice() const;
+		vk::Device GetHandle() const;
 		vk::PhysicalDevice GetPhysicalDevice() const;
 
 		vk::Queue GetGraphicsQueue() const;
