@@ -3,7 +3,6 @@
 
 #include "Core/ResourceRegistry.h"
 #include "Rendering/RenderingAPI.h"
-#include "Rendering/Vulkan/VulkanMesh.h"
 #include "Rendering/Vulkan/VulkanShader.h"
 #include "Rendering/Vulkan/VulkanMaterial.h"
 #include "Rendering/Vulkan/VulkanUtils.h"
@@ -25,15 +24,24 @@ namespace Firefly
 
 	void VulkanRenderer::Init()
 	{
+		m_quadMesh = std::dynamic_pointer_cast<VulkanMesh>(Firefly::MeshGenerator::CreateQuad(glm::vec2(2.0f)));
+		m_cubeMesh = std::dynamic_pointer_cast<VulkanMesh>(Firefly::MeshGenerator::CreateBox(glm::vec3(2.0f)));
+
+		CreatePBRShaderResources();
+
 		CreateRenderPass();
 		CreateFramebuffers();
 
 		CreateUniformBuffers();
 		CreateDescriptorSetLayouts();
 		AllocateDescriptorSets();
+
+		CreateImageBasedLightingResources();
+
 		CreatePipelines();
 
 		CreateScreenTexturePassResources();
+
 	}
 
 	void VulkanRenderer::Destroy()
@@ -43,11 +51,19 @@ namespace Firefly
 		DestroyScreenTexturePassResources();
 
 		DestroyPipelines();
+
+		DestroyImageBasedLightingResources();
+
 		DestroyDescriptorSetLayouts();
 		DestroyUniformBuffers();
 
 		DestroyFramebuffers();
 		DestroyRenderPass();
+
+		DestroyPBRShaderResources();
+
+		m_cubeMesh->Destroy();
+		m_quadMesh->Destroy();
 	}
 
 	void VulkanRenderer::BeginDrawRecording()
@@ -122,7 +138,8 @@ namespace Firefly
 				m_sceneDataDescriptorSets[currentImageIndex],
 				m_materialDataDescriptorSets[currentImageIndex],
 				material->GetTexturesDescriptorSet(),
-				m_objectDataDescriptorSets[currentImageIndex]
+				m_objectDataDescriptorSets[currentImageIndex],
+				m_imageBasedLightingDescriptorSet
 			};
 			std::vector<uint32_t> dynamicOffsets =
 			{
@@ -133,13 +150,29 @@ namespace Firefly
 				descriptorSets.size(), descriptorSets.data(),
 				dynamicOffsets.size(), dynamicOffsets.data());
 
-			std::vector<vk::Buffer> vertexBuffers = { mesh->GetVertexBuffer() };
 			vk::DeviceSize offsets[] = { 0 };
-			currentCommandBuffer.bindVertexBuffers(0, vertexBuffers.size(), vertexBuffers.data(), offsets);
+			currentCommandBuffer.bindVertexBuffers(0, 1, &mesh->GetVertexBuffer(), offsets);
 			currentCommandBuffer.bindIndexBuffer(mesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
 
 			currentCommandBuffer.drawIndexed(mesh->GetIndexCount(), 1, 0, 0, 0);
 		}
+
+		// Render environment map
+		currentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_environmentMapPipeline);
+
+		std::vector<vk::DescriptorSet> descriptorSets =
+		{
+			m_sceneDataDescriptorSets[currentImageIndex],
+			m_environmentMapDescriptorSet
+		};
+		currentCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_environmentMapPipelineLayout, 0,
+			descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+
+		vk::DeviceSize offsets[] = { 0 };
+		currentCommandBuffer.bindVertexBuffers(0, 1, &m_cubeMesh->GetVertexBuffer(), offsets);
+		currentCommandBuffer.bindIndexBuffer(m_cubeMesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
+
+		currentCommandBuffer.drawIndexed(m_cubeMesh->GetIndexCount(), 1, 0, 0, 0);
 
 		m_mainRenderPass->End();
 
@@ -161,13 +194,10 @@ namespace Firefly
 
 		currentCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_screenTexturePipelineLayout, 0, 1, &m_screenTextureDescriptorSets[currentImageIndex], 0, nullptr);
 
-		std::shared_ptr<VulkanMesh> quadMesh = std::dynamic_pointer_cast<VulkanMesh>(m_quadMesh);
-		std::vector<vk::Buffer> vertexBuffers = { quadMesh->GetVertexBuffer() };
-		vk::DeviceSize offsets[] = { 0 };
-		currentCommandBuffer.bindVertexBuffers(0, vertexBuffers.size(), vertexBuffers.data(), offsets);
-		currentCommandBuffer.bindIndexBuffer(quadMesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
+		currentCommandBuffer.bindVertexBuffers(0, 1, &m_quadMesh->GetVertexBuffer(), offsets);
+		currentCommandBuffer.bindIndexBuffer(m_quadMesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
 
-		currentCommandBuffer.drawIndexed(quadMesh->GetIndexCount(), 1, 0, 0, 0);
+		currentCommandBuffer.drawIndexed(m_quadMesh->GetIndexCount(), 1, 0, 0, 0);
 
 		currentCommandBuffer.endRenderPass();
 
@@ -187,7 +217,6 @@ namespace Firefly
 		glm::vec4 cameraPosition = glm::vec4(camera->GetPosition(), 1.0f);
 		glm::mat4 viewMatrix = camera->GetViewMatrix();
 		glm::mat4 projectionMatrix = camera->GetProjectionMatrix();
-		projectionMatrix[1][1] *= -1; // Vulkan has inverted y axis in comparison to OpenGL
 
 		SceneData sceneData;
 		sceneData.viewMatrix = viewMatrix;
@@ -240,11 +269,9 @@ namespace Firefly
 		m_device->WaitIdle();
 
 		DestroyScreenTexturePassResources();
-		DestroyPipelines();
 		DestroyFramebuffers();
 
 		CreateFramebuffers();
-		CreatePipelines();
 		CreateScreenTexturePassResources();
 	}
 
@@ -657,182 +684,25 @@ namespace Firefly
 
 	void VulkanRenderer::CreatePipelines()
 	{
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts =
+		{
+			m_sceneDataDescriptorSetLayout,
+			m_materialDataDescriptorSetLayout,
+			m_materialTexturesDescriptorSetLayout,
+			m_objectDataDescriptorSetLayout,
+			m_imageBasedLightingDescriptorSetLayout
+		};
+
 		std::vector<std::shared_ptr<Shader>> shaders = ShaderRegistry::Instance().GetAll();
 		for (auto shader : shaders)
 		{
-			std::shared_ptr<VulkanShader> vkShader = std::dynamic_pointer_cast<VulkanShader>(shader);
-			// VERTEX INPUT STATE --------------------------
-			vk::VertexInputBindingDescription vertexInputBindingDescription{};
-			vertexInputBindingDescription.binding = 0;
-			vertexInputBindingDescription.stride = sizeof(Mesh::Vertex);
-			vertexInputBindingDescription.inputRate = vk::VertexInputRate::eVertex;
+			vk::PipelineLayout pipelineLayout = VulkanUtils::CreatePipelineLayout(descriptorSetLayouts);
+			vk::Pipeline pipeline = VulkanUtils::CreatePipeline(pipelineLayout,
+				std::dynamic_pointer_cast<VulkanRenderPass>(m_mainRenderPass),
+				std::dynamic_pointer_cast<VulkanShader>(shader));
 
-			std::array<vk::VertexInputAttributeDescription, 5> vertexInputAttributeDescriptions{};
-			vertexInputAttributeDescriptions[0].binding = 0;
-			vertexInputAttributeDescriptions[0].location = 0;
-			vertexInputAttributeDescriptions[0].format = vk::Format::eR32G32B32Sfloat;
-			vertexInputAttributeDescriptions[0].offset = offsetof(Mesh::Vertex, position);
-			vertexInputAttributeDescriptions[1].binding = 0;
-			vertexInputAttributeDescriptions[1].location = 1;
-			vertexInputAttributeDescriptions[1].format = vk::Format::eR32G32B32Sfloat;
-			vertexInputAttributeDescriptions[1].offset = offsetof(Mesh::Vertex, normal);
-			vertexInputAttributeDescriptions[2].binding = 0;
-			vertexInputAttributeDescriptions[2].location = 2;
-			vertexInputAttributeDescriptions[2].format = vk::Format::eR32G32B32Sfloat;
-			vertexInputAttributeDescriptions[2].offset = offsetof(Mesh::Vertex, tangent);
-			vertexInputAttributeDescriptions[3].binding = 0;
-			vertexInputAttributeDescriptions[3].location = 3;
-			vertexInputAttributeDescriptions[3].format = vk::Format::eR32G32B32Sfloat;
-			vertexInputAttributeDescriptions[3].offset = offsetof(Mesh::Vertex, bitangent);
-			vertexInputAttributeDescriptions[4].binding = 0;
-			vertexInputAttributeDescriptions[4].location = 4;
-			vertexInputAttributeDescriptions[4].format = vk::Format::eR32G32Sfloat;
-			vertexInputAttributeDescriptions[4].offset = offsetof(Mesh::Vertex, texCoords);
-
-			vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{};
-			vertexInputStateCreateInfo.pNext = nullptr;
-			vertexInputStateCreateInfo.flags = {};
-			vertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
-			vertexInputStateCreateInfo.pVertexBindingDescriptions = &vertexInputBindingDescription;
-			vertexInputStateCreateInfo.vertexAttributeDescriptionCount = vertexInputAttributeDescriptions.size();
-			vertexInputStateCreateInfo.pVertexAttributeDescriptions = vertexInputAttributeDescriptions.data();
-			// ---------------------------------------------
-			// INPUT ASSEMBLY STATE ------------------------
-			vk::PipelineInputAssemblyStateCreateInfo inputAssemblyStateCreateInfo{};
-			inputAssemblyStateCreateInfo.pNext = nullptr;
-			inputAssemblyStateCreateInfo.flags = {};
-			inputAssemblyStateCreateInfo.topology = vk::PrimitiveTopology::eTriangleList;
-			inputAssemblyStateCreateInfo.primitiveRestartEnable = false;
-			// ---------------------------------------------
-			// VIEWPORT STATE ------------------------------
-			vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{};
-			viewportStateCreateInfo.pNext = nullptr;
-			viewportStateCreateInfo.flags = {};
-			viewportStateCreateInfo.viewportCount = 1;
-			viewportStateCreateInfo.pViewports = nullptr;
-			viewportStateCreateInfo.scissorCount = 1;
-			viewportStateCreateInfo.pScissors = nullptr;
-			// ---------------------------------------------
-			// RASTERIZATION STATE -------------------------
-			vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{};
-			rasterizationStateCreateInfo.pNext = nullptr;
-			rasterizationStateCreateInfo.flags = {};
-			rasterizationStateCreateInfo.depthClampEnable = false;
-			rasterizationStateCreateInfo.rasterizerDiscardEnable = false;
-			rasterizationStateCreateInfo.polygonMode = vk::PolygonMode::eFill;
-			rasterizationStateCreateInfo.lineWidth = 1.f;
-			rasterizationStateCreateInfo.cullMode = vk::CullModeFlagBits::eBack;
-			rasterizationStateCreateInfo.frontFace = vk::FrontFace::eCounterClockwise;
-			rasterizationStateCreateInfo.depthBiasEnable = false;
-			rasterizationStateCreateInfo.depthBiasConstantFactor = 0.f;
-			rasterizationStateCreateInfo.depthBiasClamp = 0.f;
-			rasterizationStateCreateInfo.depthBiasSlopeFactor = 0.f;
-			rasterizationStateCreateInfo.depthClampEnable = false;
-			// ---------------------------------------------
-			// MULTISAMPLE STATE ---------------------------
-			vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{};
-			multisampleStateCreateInfo.pNext = nullptr;
-			multisampleStateCreateInfo.flags = {};
-			multisampleStateCreateInfo.rasterizationSamples = VulkanTexture::ConvertToVulkanSampleCount(m_mainRenderPass->GetSampleCount());
-			multisampleStateCreateInfo.sampleShadingEnable = m_mainRenderPass->IsSampleShadingEnabled();
-			multisampleStateCreateInfo.minSampleShading = m_mainRenderPass->GetMinSampleShading();
-			multisampleStateCreateInfo.pSampleMask = nullptr;
-			multisampleStateCreateInfo.alphaToCoverageEnable = false;
-			multisampleStateCreateInfo.alphaToOneEnable = false;
-			// ---------------------------------------------
-			// COLOR BLEND STATE ---------------------------
-			vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{};
-			colorBlendAttachmentState.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-			colorBlendAttachmentState.blendEnable = false;
-			colorBlendAttachmentState.srcColorBlendFactor = vk::BlendFactor::eOne;
-			colorBlendAttachmentState.dstColorBlendFactor = vk::BlendFactor::eZero;
-			colorBlendAttachmentState.colorBlendOp = vk::BlendOp::eAdd;
-			colorBlendAttachmentState.srcAlphaBlendFactor = vk::BlendFactor::eOne;
-			colorBlendAttachmentState.dstAlphaBlendFactor = vk::BlendFactor::eZero;
-			colorBlendAttachmentState.alphaBlendOp = vk::BlendOp::eAdd;
-
-			vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{};
-			colorBlendStateCreateInfo.logicOpEnable = false;
-			colorBlendStateCreateInfo.logicOp = vk::LogicOp::eCopy;
-			colorBlendStateCreateInfo.attachmentCount = 1;
-			colorBlendStateCreateInfo.pAttachments = &colorBlendAttachmentState;
-			colorBlendStateCreateInfo.blendConstants[0] = 0.f;
-			colorBlendStateCreateInfo.blendConstants[1] = 0.f;
-			colorBlendStateCreateInfo.blendConstants[2] = 0.f;
-			colorBlendStateCreateInfo.blendConstants[3] = 0.f;
-			// ---------------------------------------------
-			// DEPTH STENCIL STATE -------------------------
-			vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{};
-			depthStencilStateCreateInfo.pNext = nullptr;
-			depthStencilStateCreateInfo.flags = {};
-			depthStencilStateCreateInfo.depthTestEnable = m_mainRenderPass->isDepthTestingEnabled();
-			depthStencilStateCreateInfo.depthWriteEnable = m_mainRenderPass->isDepthTestingEnabled();
-			depthStencilStateCreateInfo.depthCompareOp = VulkanRenderPass::ConvertToVulkanCompareOperation(m_mainRenderPass->GetDepthCompareOperation());
-			depthStencilStateCreateInfo.depthBoundsTestEnable = false;
-			depthStencilStateCreateInfo.minDepthBounds = 0.0f;
-			depthStencilStateCreateInfo.maxDepthBounds = 1.0f;
-			depthStencilStateCreateInfo.stencilTestEnable = false;
-			depthStencilStateCreateInfo.front = {};
-			depthStencilStateCreateInfo.back = {};
-			// ---------------------------------------------
-			// DYNAMIC STATE -------------------------------
-			std::vector<vk::DynamicState> dynamicStates = { vk::DynamicState::eViewport, vk::DynamicState::eScissor };
-			vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo{};
-			dynamicStateCreateInfo.pNext = nullptr;
-			dynamicStateCreateInfo.flags = {};
-			dynamicStateCreateInfo.dynamicStateCount = dynamicStates.size();
-			dynamicStateCreateInfo.pDynamicStates = dynamicStates.data();
-			// ---------------------------------------------
-			// PIPELINE LAYOUT -----------------------------
-			std::vector<vk::DescriptorSetLayout> descriptorSetLayouts =
-			{
-				m_sceneDataDescriptorSetLayout,
-				m_materialDataDescriptorSetLayout,
-				m_materialTexturesDescriptorSetLayout,
-				m_objectDataDescriptorSetLayout
-			};
-
-			vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-			pipelineLayoutCreateInfo.pNext = nullptr;
-			pipelineLayoutCreateInfo.flags = {};
-			pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayouts.size();
-			pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
-			pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-			pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
-
-			vk::PipelineLayout pipelineLayout;
-			vk::Result result = m_device->GetHandle().createPipelineLayout(&pipelineLayoutCreateInfo, nullptr, &pipelineLayout);
-			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan pipeline layout!");
-			// ---------------------------------------------
-			// SHADER STAGE STATE --------------------------
-			std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos = vkShader->GetShaderStageCreateInfos();
-			// ---------------------------------------------
-			// GRAPHICS PIPELINE ---------------------------
-			vk::GraphicsPipelineCreateInfo pipelineCreateInfo{};
-			pipelineCreateInfo.pNext = nullptr;
-			pipelineCreateInfo.flags = {};
-			pipelineCreateInfo.stageCount = shaderStageCreateInfos.size();
-			pipelineCreateInfo.pStages = shaderStageCreateInfos.data();
-			pipelineCreateInfo.pVertexInputState = &vertexInputStateCreateInfo;
-			pipelineCreateInfo.pInputAssemblyState = &inputAssemblyStateCreateInfo;
-			pipelineCreateInfo.pViewportState = &viewportStateCreateInfo;
-			pipelineCreateInfo.pRasterizationState = &rasterizationStateCreateInfo;
-			pipelineCreateInfo.pMultisampleState = &multisampleStateCreateInfo;
-			pipelineCreateInfo.pDepthStencilState = &depthStencilStateCreateInfo;
-			pipelineCreateInfo.pColorBlendState = &colorBlendStateCreateInfo;
-			pipelineCreateInfo.pDynamicState = &dynamicStateCreateInfo;
-			pipelineCreateInfo.layout = pipelineLayout;
-			pipelineCreateInfo.renderPass = std::dynamic_pointer_cast<VulkanRenderPass>(m_mainRenderPass)->GetHandle();
-			pipelineCreateInfo.subpass = 0;
-			pipelineCreateInfo.basePipelineHandle = nullptr;
-			pipelineCreateInfo.basePipelineIndex = -1;
-
-			vk::Pipeline pipeline;
-			result = m_device->GetHandle().createGraphicsPipelines(nullptr, 1, &pipelineCreateInfo, nullptr, &pipeline);
-			FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to create Vulkan graphics pipeline!");
-			// ---------------------------------------------
-			m_pipelineLayouts[vkShader->GetTag()] = pipelineLayout;
-			m_pipelines[vkShader->GetTag()] = pipeline;
+			m_pipelineLayouts[shader->GetTag()] = pipelineLayout;
+			m_pipelines[shader->GetTag()] = pipeline;
 		}
 	}
 
@@ -849,8 +719,6 @@ namespace Firefly
 
 	void VulkanRenderer::CreateScreenTexturePassResources()
 	{
-		m_quadMesh = Firefly::MeshGenerator::CreateQuad(glm::vec2(2.0f));
-
 		ShaderCode shaderCode = {};
 		shaderCode.vertex = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/screenTexture.vert.spv");
 		shaderCode.fragment = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/screenTexture.frag.spv");
@@ -1144,6 +1012,710 @@ namespace Firefly
 
 		m_device->GetHandle().destroyRenderPass(m_screenTextureRenderPass);
 		m_screenTextureShader->Destroy();
-		m_quadMesh->Destroy();
+	}
+
+	void VulkanRenderer::CreatePBRShaderResources()
+	{
+		// SHADERS
+		ShaderCode shaderCode{};
+		shaderCode.vertex = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/hdrImageToCubeMap.vert.spv");
+		shaderCode.fragment = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/hdrImageToCubeMap.frag.spv");
+		std::shared_ptr<VulkanShader> hdrImageToCubeMapShader = std::dynamic_pointer_cast<VulkanShader>(RenderingAPI::CreateShader("HdrImageToCubeMap", shaderCode));
+
+		shaderCode.vertex = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/irradianceCubeMap.vert.spv");
+		shaderCode.fragment = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/irradianceCubeMap.frag.spv");
+		std::shared_ptr<VulkanShader> irradianceCubeMapShader = std::dynamic_pointer_cast<VulkanShader>(RenderingAPI::CreateShader("IrradianceCubeMap", shaderCode));
+
+		shaderCode.vertex = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/prefilterCubeMap.vert.spv");
+		shaderCode.fragment = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/prefilterCubeMap.frag.spv");
+		std::shared_ptr<VulkanShader> prefilterCubeMapShader = std::dynamic_pointer_cast<VulkanShader>(RenderingAPI::CreateShader("PrefilterCubeMap", shaderCode));
+
+		shaderCode.vertex = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/brdfLUT.vert.spv");
+		shaderCode.fragment = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/brdfLUT.frag.spv");
+		std::shared_ptr<VulkanShader> brdfLUTShader = std::dynamic_pointer_cast<VulkanShader>(RenderingAPI::CreateShader("BrdfLUTShader", shaderCode));
+
+		// LOAD HDR IMAGE
+		//std::string environmentMapPath = "assets/textures/environment/FactoryCatwalk.hdr";
+		//std::string environmentMapPath = "assets/textures/environment/HamarikyuBridge.hdr";
+		//std::string environmentMapPath = "assets/textures/environment/MonValley.hdr";
+		std::string environmentMapPath = "assets/textures/environment/TopangaForest.hdr";
+		//std::string environmentMapPath = "assets/textures/environment/TropicalBeach.hdr";
+		//std::string environmentMapPath = "assets/textures/environment/WinterForest.hdr";
+
+		std::shared_ptr<VulkanTexture> hdrTexture = std::dynamic_pointer_cast<VulkanTexture>(RenderingAPI::CreateTexture(environmentMapPath));
+
+		RenderPass::Description imageBasedLightingRenderPassDesc = {};
+		imageBasedLightingRenderPassDesc.isDepthTestingEnabled = false;
+		imageBasedLightingRenderPassDesc.isMultisamplingEnabled = false;
+		imageBasedLightingRenderPassDesc.colorAttachmentLayouts = { {Texture::Format::RGBA_16_FLOAT, Texture::SampleCount::SAMPLE_1} };
+		imageBasedLightingRenderPassDesc.colorResolveAttachmentLayouts = {};
+		imageBasedLightingRenderPassDesc.depthStencilAttachmentLayout = {};
+		std::shared_ptr<RenderPass> imageBasedLightingRenderPass = RenderingAPI::CreateRenderPass(imageBasedLightingRenderPassDesc);
+
+		// ENVIRONMENT MAP RESOURCES ------------------
+		uint32_t environmentCubeMapSize = 1024;
+
+		Texture::Description environmentCubeMapDesc = {};
+		environmentCubeMapDesc.type = Texture::Type::TEXTURE_CUBE_MAP;
+		environmentCubeMapDesc.width = environmentCubeMapSize;
+		environmentCubeMapDesc.height = environmentCubeMapSize;
+		environmentCubeMapDesc.format = Texture::Format::RGBA_16_FLOAT;
+		environmentCubeMapDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		environmentCubeMapDesc.useAsAttachment = true;
+		environmentCubeMapDesc.useSampler = true;
+		environmentCubeMapDesc.sampler.isMipMappingEnabled = false;
+		environmentCubeMapDesc.sampler.isAnisotropicFilteringEnabled = true;
+		environmentCubeMapDesc.sampler.maxAnisotropy = 16;
+		environmentCubeMapDesc.sampler.wrapMode = Texture::WrapMode::CLAMP_TO_EDGE;
+		environmentCubeMapDesc.sampler.magnificationFilterMode = Texture::FilterMode::LINEAR;
+		environmentCubeMapDesc.sampler.minificationFilterMode = Texture::FilterMode::LINEAR;
+		m_environmentCubeMap = std::dynamic_pointer_cast<VulkanTexture>(RenderingAPI::CreateTexture(environmentCubeMapDesc));
+
+		std::vector<std::shared_ptr<FrameBuffer>> environmentCubeMapFrameBuffers;
+		for (size_t cubeFaceIndex = 0; cubeFaceIndex < 6; cubeFaceIndex++)
+		{
+			FrameBuffer::Attachment colorAttachment;
+			colorAttachment.texture = m_environmentCubeMap;
+			colorAttachment.arrayLayer = cubeFaceIndex;
+
+			FrameBuffer::Description frameBufferDesc = {};
+			frameBufferDesc.width = environmentCubeMapSize;
+			frameBufferDesc.height = environmentCubeMapSize;
+			frameBufferDesc.colorAttachments = { colorAttachment };
+			frameBufferDesc.colorResolveAttachments = {};
+			frameBufferDesc.depthStencilAttachment = {};
+			std::shared_ptr<FrameBuffer> frameBuffer = RenderingAPI::CreateFrameBuffer(frameBufferDesc);
+			environmentCubeMapFrameBuffers.push_back(frameBuffer);
+		}
+
+		glm::mat4 projectionMatrix = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+		glm::mat4 viewMatrices[] =
+		{
+			glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f,  0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+			glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f,  0.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+			glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f,  0.0f), glm::vec3(0.0f,  0.0f, -1.0f)),
+			glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  1.0f,  0.0f), glm::vec3(0.0f,  0.0f,  1.0f)),
+			glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f,  1.0f), glm::vec3(0.0f, -1.0f,  0.0f)),
+			glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f,  0.0f, -1.0f), glm::vec3(0.0f, -1.0f,  0.0f))
+		};
+
+		// descriptor set layouts
+		vk::DescriptorSetLayoutBinding cameraLayoutBinding{};
+		cameraLayoutBinding.binding = 0;
+		cameraLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+		cameraLayoutBinding.descriptorCount = 1;
+		cameraLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+		cameraLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutCreateInfo cameraDescriptorSetLayoutCreateInfo{};
+		cameraDescriptorSetLayoutCreateInfo.bindingCount = 1;
+		cameraDescriptorSetLayoutCreateInfo.pBindings = &cameraLayoutBinding;
+
+		vk::DescriptorSetLayout cameraDescriptorSetLayout;
+		vk::Result result = m_device->GetHandle().createDescriptorSetLayout(&cameraDescriptorSetLayoutCreateInfo, nullptr, &cameraDescriptorSetLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+
+		vk::DescriptorSetLayoutBinding imageLayoutBinding{};
+		imageLayoutBinding.binding = 0;
+		imageLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		imageLayoutBinding.descriptorCount = 1;
+		imageLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		imageLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutCreateInfo imageDescriptorSetLayoutCreateInfo{};
+		imageDescriptorSetLayoutCreateInfo.bindingCount = 1;
+		imageDescriptorSetLayoutCreateInfo.pBindings = &imageLayoutBinding;
+
+		vk::DescriptorSetLayout imageDescriptorSetLayout;
+		result = m_device->GetHandle().createDescriptorSetLayout(&imageDescriptorSetLayoutCreateInfo, nullptr, &imageDescriptorSetLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+
+		std::vector<vk::DescriptorSetLayout> hdrImageToCubeMapDescriptorSetLayouts = { cameraDescriptorSetLayout, imageDescriptorSetLayout };
+		vk::PipelineLayout hdrImageToCubeMapPipelineLayout = VulkanUtils::CreatePipelineLayout(hdrImageToCubeMapDescriptorSetLayouts);
+		vk::Pipeline hdrImageToCubeMapPipeline = VulkanUtils::CreatePipeline(hdrImageToCubeMapPipelineLayout,
+			std::dynamic_pointer_cast<VulkanRenderPass>(imageBasedLightingRenderPass), hdrImageToCubeMapShader, vk::FrontFace::eClockwise);
+
+		// uniform buffers
+		size_t bufferSize = 2 * sizeof(glm::mat4);
+		vk::BufferUsageFlags bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
+		vk::MemoryPropertyFlags memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+		std::vector<vk::Buffer> cameraUniformBuffers;
+		std::vector<vk::DeviceMemory> cameraUniformBufferMemories;
+		cameraUniformBuffers.resize(6);
+		cameraUniformBufferMemories.resize(6);
+		for (size_t cubeFaceIndex = 0; cubeFaceIndex < 6; cubeFaceIndex++)
+		{
+			VulkanUtils::CreateBuffer(m_device->GetHandle(), m_device->GetPhysicalDevice(), bufferSize, bufferUsageFlags, memoryPropertyFlags, cameraUniformBuffers[cubeFaceIndex], cameraUniformBufferMemories[cubeFaceIndex]);
+
+			// update buffer
+			std::vector<glm::mat4> cameraData = { projectionMatrix, viewMatrices[cubeFaceIndex] };
+			void* mappedMemory;
+			m_device->GetHandle().mapMemory(cameraUniformBufferMemories[cubeFaceIndex], 0, 2 * sizeof(glm::mat4), {}, &mappedMemory);
+			memcpy(mappedMemory, cameraData.data(), 2 * sizeof(glm::mat4));
+			m_device->GetHandle().unmapMemory(cameraUniformBufferMemories[cubeFaceIndex]);
+		}
+
+		// create and write descriptor sets
+		std::vector<vk::DescriptorSet> cameraDescriptorSets;
+		cameraDescriptorSets.resize(6);
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts(6, cameraDescriptorSetLayout);
+		vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+		descriptorSetAllocateInfo.pNext = nullptr;
+		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+		descriptorSetAllocateInfo.descriptorSetCount = 6;
+		descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayouts.data();
+
+		result = m_device->GetHandle().allocateDescriptorSets(&descriptorSetAllocateInfo, cameraDescriptorSets.data());
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+
+		for (size_t cubeFaceIndex = 0; cubeFaceIndex < 6; cubeFaceIndex++)
+		{
+			vk::DescriptorBufferInfo cameraDataDescriptorBufferInfo{};
+			cameraDataDescriptorBufferInfo.buffer = cameraUniformBuffers[cubeFaceIndex];
+			cameraDataDescriptorBufferInfo.offset = 0;
+			cameraDataDescriptorBufferInfo.range = 2 * sizeof(glm::mat4);
+
+			vk::WriteDescriptorSet cameraDataWriteDescriptorSet{};
+			cameraDataWriteDescriptorSet.dstSet = cameraDescriptorSets[cubeFaceIndex];
+			cameraDataWriteDescriptorSet.dstBinding = 0;
+			cameraDataWriteDescriptorSet.dstArrayElement = 0;
+			cameraDataWriteDescriptorSet.descriptorType = vk::DescriptorType::eUniformBuffer;
+			cameraDataWriteDescriptorSet.descriptorCount = 1;
+			cameraDataWriteDescriptorSet.pBufferInfo = &cameraDataDescriptorBufferInfo;
+			cameraDataWriteDescriptorSet.pImageInfo = nullptr;
+			cameraDataWriteDescriptorSet.pTexelBufferView = nullptr;
+
+			std::vector<vk::WriteDescriptorSet> writeDescriptorSets = { cameraDataWriteDescriptorSet };
+			m_device->GetHandle().updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+		}
+
+		vk::DescriptorSet hdrTextureDescriptorSet;
+		descriptorSetAllocateInfo.pNext = nullptr;
+		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+		descriptorSetAllocateInfo.descriptorSetCount = 1;
+		descriptorSetAllocateInfo.pSetLayouts = &imageDescriptorSetLayout;
+		result = m_device->GetHandle().allocateDescriptorSets(&descriptorSetAllocateInfo, &hdrTextureDescriptorSet);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+
+		vk::DescriptorImageInfo descriptorImageInfo{};
+		descriptorImageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		descriptorImageInfo.imageView = hdrTexture->GetImageView();
+		descriptorImageInfo.sampler = hdrTexture->GetSampler();
+
+		vk::WriteDescriptorSet writeDescriptorSet{};
+		writeDescriptorSet.dstSet = hdrTextureDescriptorSet;
+		writeDescriptorSet.dstBinding = 0;
+		writeDescriptorSet.dstArrayElement = 0;
+		writeDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writeDescriptorSet.descriptorCount = 1;
+		writeDescriptorSet.pBufferInfo = nullptr;
+		writeDescriptorSet.pImageInfo = &descriptorImageInfo;
+		writeDescriptorSet.pTexelBufferView = nullptr;
+
+		m_device->GetHandle().updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+		// --------------------------------------------
+		// IRRADIANCE MAP RESOURCES -------------------
+		uint32_t irradianceCubeMapSize = 64;
+
+		Texture::Description irradianceCubeMapDesc = {};
+		irradianceCubeMapDesc.type = Texture::Type::TEXTURE_CUBE_MAP;
+		irradianceCubeMapDesc.width = irradianceCubeMapSize;
+		irradianceCubeMapDesc.height = irradianceCubeMapSize;
+		irradianceCubeMapDesc.format = Texture::Format::RGBA_16_FLOAT;
+		irradianceCubeMapDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		irradianceCubeMapDesc.useAsAttachment = true;
+		irradianceCubeMapDesc.useSampler = true;
+		irradianceCubeMapDesc.sampler.isMipMappingEnabled = false;
+		irradianceCubeMapDesc.sampler.isAnisotropicFilteringEnabled = true;
+		irradianceCubeMapDesc.sampler.maxAnisotropy = 16;
+		irradianceCubeMapDesc.sampler.wrapMode = Texture::WrapMode::CLAMP_TO_EDGE;
+		irradianceCubeMapDesc.sampler.magnificationFilterMode = Texture::FilterMode::LINEAR;
+		irradianceCubeMapDesc.sampler.minificationFilterMode = Texture::FilterMode::LINEAR;
+		m_irradianceCubeMap = std::dynamic_pointer_cast<VulkanTexture>(RenderingAPI::CreateTexture(irradianceCubeMapDesc));
+
+		std::vector<std::shared_ptr<FrameBuffer>> irradianceCubeMapFrameBuffers;
+		for (size_t cubeFaceIndex = 0; cubeFaceIndex < 6; cubeFaceIndex++)
+		{
+			FrameBuffer::Attachment colorAttachment;
+			colorAttachment.texture = m_irradianceCubeMap;
+			colorAttachment.arrayLayer = cubeFaceIndex;
+
+			FrameBuffer::Description frameBufferDesc = {};
+			frameBufferDesc.width = irradianceCubeMapSize;
+			frameBufferDesc.height = irradianceCubeMapSize;
+			frameBufferDesc.colorAttachments = { colorAttachment };
+			frameBufferDesc.colorResolveAttachments = {};
+			frameBufferDesc.depthStencilAttachment = {};
+			std::shared_ptr<FrameBuffer> frameBuffer = RenderingAPI::CreateFrameBuffer(frameBufferDesc);
+			irradianceCubeMapFrameBuffers.push_back(frameBuffer);
+		}
+
+		std::vector<vk::DescriptorSetLayout> irradianceCubeMapDescriptorSetLayouts = { cameraDescriptorSetLayout, imageDescriptorSetLayout };
+		vk::PipelineLayout irradianceCubeMapPipelineLayout = VulkanUtils::CreatePipelineLayout(irradianceCubeMapDescriptorSetLayouts);
+		vk::Pipeline irradianceCubeMapPipeline = VulkanUtils::CreatePipeline(irradianceCubeMapPipelineLayout,
+			std::dynamic_pointer_cast<VulkanRenderPass>(imageBasedLightingRenderPass), irradianceCubeMapShader, vk::FrontFace::eClockwise);
+
+		vk::DescriptorSet environmentMapDescriptorSet;
+		descriptorSetAllocateInfo.pNext = nullptr;
+		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+		descriptorSetAllocateInfo.descriptorSetCount = 1;
+		descriptorSetAllocateInfo.pSetLayouts = &imageDescriptorSetLayout;
+		result = m_device->GetHandle().allocateDescriptorSets(&descriptorSetAllocateInfo, &environmentMapDescriptorSet);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+
+		descriptorImageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		descriptorImageInfo.imageView = m_environmentCubeMap->GetImageView();
+		descriptorImageInfo.sampler = m_environmentCubeMap->GetSampler();
+
+		writeDescriptorSet.dstSet = environmentMapDescriptorSet;
+		writeDescriptorSet.dstBinding = 0;
+		writeDescriptorSet.dstArrayElement = 0;
+		writeDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		writeDescriptorSet.descriptorCount = 1;
+		writeDescriptorSet.pBufferInfo = nullptr;
+		writeDescriptorSet.pImageInfo = &descriptorImageInfo;
+		writeDescriptorSet.pTexelBufferView = nullptr;
+
+		m_device->GetHandle().updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+		// --------------------------------------------
+		// PREFILTER MAP RESOURCES --------------------
+		uint32_t prefilterCubeMapSize = 512;
+		uint32_t maxMipMapLevels = 5;
+
+		Texture::Description prefilterCubeMapDesc = {};
+		prefilterCubeMapDesc.type = Texture::Type::TEXTURE_CUBE_MAP;
+		prefilterCubeMapDesc.width = prefilterCubeMapSize;
+		prefilterCubeMapDesc.height = prefilterCubeMapSize;
+		prefilterCubeMapDesc.format = Texture::Format::RGBA_16_FLOAT;
+		prefilterCubeMapDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		prefilterCubeMapDesc.useAsAttachment = true;
+		prefilterCubeMapDesc.useSampler = true;
+		prefilterCubeMapDesc.sampler.isMipMappingEnabled = true;
+		prefilterCubeMapDesc.sampler.isAnisotropicFilteringEnabled = true;
+		prefilterCubeMapDesc.sampler.maxAnisotropy = 16;
+		prefilterCubeMapDesc.sampler.wrapMode = Texture::WrapMode::CLAMP_TO_EDGE;
+		prefilterCubeMapDesc.sampler.magnificationFilterMode = Texture::FilterMode::LINEAR;
+		prefilterCubeMapDesc.sampler.minificationFilterMode = Texture::FilterMode::LINEAR;
+		prefilterCubeMapDesc.sampler.mipMapFilterMode = Texture::FilterMode::LINEAR;
+		m_prefilterCubeMap = std::dynamic_pointer_cast<VulkanTexture>(RenderingAPI::CreateTexture(prefilterCubeMapDesc));
+
+		std::vector<std::shared_ptr<FrameBuffer>> prefilterCubeMapFrameBuffers;
+		for (size_t cubeFaceIndex = 0; cubeFaceIndex < 6; cubeFaceIndex++)
+		{
+			for (size_t mipMapLevel = 0; mipMapLevel < maxMipMapLevels; mipMapLevel++)
+			{
+				FrameBuffer::Attachment colorAttachment;
+				colorAttachment.texture = m_prefilterCubeMap;
+				colorAttachment.arrayLayer = cubeFaceIndex;
+				colorAttachment.mipMapLevel = mipMapLevel;
+
+				FrameBuffer::Description frameBufferDesc = {};
+				frameBufferDesc.width = prefilterCubeMapSize * std::pow(0.5, mipMapLevel);
+				frameBufferDesc.height = prefilterCubeMapSize * std::pow(0.5, mipMapLevel);
+				frameBufferDesc.colorAttachments = { colorAttachment };
+				frameBufferDesc.colorResolveAttachments = {};
+				frameBufferDesc.depthStencilAttachment = {};
+				std::shared_ptr<FrameBuffer> frameBuffer = RenderingAPI::CreateFrameBuffer(frameBufferDesc);
+				prefilterCubeMapFrameBuffers.push_back(frameBuffer);
+			}
+		}
+
+		vk::DescriptorSetLayoutBinding roughnessLayoutBinding{};
+		roughnessLayoutBinding.binding = 0;
+		roughnessLayoutBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+		roughnessLayoutBinding.descriptorCount = 1;
+		roughnessLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		roughnessLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutCreateInfo roughnessDescriptorSetLayoutCreateInfo{};
+		roughnessDescriptorSetLayoutCreateInfo.bindingCount = 1;
+		roughnessDescriptorSetLayoutCreateInfo.pBindings = &roughnessLayoutBinding;
+
+		vk::DescriptorSetLayout roughnessDescriptorSetLayout;
+		result = m_device->GetHandle().createDescriptorSetLayout(&roughnessDescriptorSetLayoutCreateInfo, nullptr, &roughnessDescriptorSetLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+
+		std::vector<vk::DescriptorSetLayout> prefilterCubeMapDescriptorSetLayouts = { cameraDescriptorSetLayout, roughnessDescriptorSetLayout, imageDescriptorSetLayout };
+		vk::PipelineLayout prefilterCubeMapPipelineLayout = VulkanUtils::CreatePipelineLayout(prefilterCubeMapDescriptorSetLayouts);
+		vk::Pipeline prefilterCubeMapPipeline = VulkanUtils::CreatePipeline(prefilterCubeMapPipelineLayout,
+			std::dynamic_pointer_cast<VulkanRenderPass>(imageBasedLightingRenderPass), prefilterCubeMapShader, vk::FrontFace::eClockwise);
+
+		// uniform buffers
+		bufferSize = sizeof(float);
+		bufferUsageFlags = vk::BufferUsageFlagBits::eUniformBuffer;
+		memoryPropertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
+		std::vector<vk::Buffer> roughnessUniformBuffers;
+		std::vector<vk::DeviceMemory> roughnessUniformBufferMemories;
+		roughnessUniformBuffers.resize(maxMipMapLevels);
+		roughnessUniformBufferMemories.resize(maxMipMapLevels);
+		for (size_t mipMapLevel = 0; mipMapLevel < maxMipMapLevels; mipMapLevel++)
+		{
+			VulkanUtils::CreateBuffer(m_device->GetHandle(), m_device->GetPhysicalDevice(), bufferSize, bufferUsageFlags, memoryPropertyFlags, roughnessUniformBuffers[mipMapLevel], roughnessUniformBufferMemories[mipMapLevel]);
+
+			// update buffer
+			float roughness = (float)mipMapLevel / (float)(maxMipMapLevels - 1);;
+			void* mappedMemory;
+			m_device->GetHandle().mapMemory(roughnessUniformBufferMemories[mipMapLevel], 0, sizeof(float), {}, &mappedMemory);
+			memcpy(mappedMemory, &roughness, sizeof(float));
+			m_device->GetHandle().unmapMemory(roughnessUniformBufferMemories[mipMapLevel]);
+		}
+
+		// create and write descriptor sets
+		std::vector<vk::DescriptorSet> roughnessDescriptorSets;
+		roughnessDescriptorSets.resize(maxMipMapLevels);
+		std::vector<vk::DescriptorSetLayout> roughnessDescriptorSetLayouts(maxMipMapLevels, roughnessDescriptorSetLayout);
+		descriptorSetAllocateInfo.pNext = nullptr;
+		descriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+		descriptorSetAllocateInfo.descriptorSetCount = maxMipMapLevels;
+		descriptorSetAllocateInfo.pSetLayouts = roughnessDescriptorSetLayouts.data();
+
+		result = m_device->GetHandle().allocateDescriptorSets(&descriptorSetAllocateInfo, roughnessDescriptorSets.data());
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+
+		for (size_t mipMapLevel = 0; mipMapLevel < maxMipMapLevels; mipMapLevel++)
+		{
+			vk::DescriptorBufferInfo roughnessDataDescriptorBufferInfo{};
+			roughnessDataDescriptorBufferInfo.buffer = roughnessUniformBuffers[mipMapLevel];
+			roughnessDataDescriptorBufferInfo.offset = 0;
+			roughnessDataDescriptorBufferInfo.range = sizeof(float);
+
+			vk::WriteDescriptorSet roughnessDataWriteDescriptorSet{};
+			roughnessDataWriteDescriptorSet.dstSet = roughnessDescriptorSets[mipMapLevel];
+			roughnessDataWriteDescriptorSet.dstBinding = 0;
+			roughnessDataWriteDescriptorSet.dstArrayElement = 0;
+			roughnessDataWriteDescriptorSet.descriptorType = vk::DescriptorType::eUniformBuffer;
+			roughnessDataWriteDescriptorSet.descriptorCount = 1;
+			roughnessDataWriteDescriptorSet.pBufferInfo = &roughnessDataDescriptorBufferInfo;
+			roughnessDataWriteDescriptorSet.pImageInfo = nullptr;
+			roughnessDataWriteDescriptorSet.pTexelBufferView = nullptr;
+
+			std::vector<vk::WriteDescriptorSet> writeDescriptorSets = { roughnessDataWriteDescriptorSet };
+			m_device->GetHandle().updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+		}
+		// --------------------------------------------
+		// BRDF LUT RESOURCES -------------------------
+		uint32_t brdfLUTSize = 1024;
+
+		Texture::Description brdfLUTDesc = {};
+		brdfLUTDesc.type = Texture::Type::TEXTURE_2D;
+		brdfLUTDesc.width = brdfLUTSize;
+		brdfLUTDesc.height = brdfLUTSize;
+		brdfLUTDesc.format = Texture::Format::RGBA_16_FLOAT;
+		brdfLUTDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		brdfLUTDesc.useAsAttachment = true;
+		brdfLUTDesc.useSampler = true;
+		brdfLUTDesc.sampler.isMipMappingEnabled = false;
+		brdfLUTDesc.sampler.isAnisotropicFilteringEnabled = true;
+		brdfLUTDesc.sampler.maxAnisotropy = 16;
+		brdfLUTDesc.sampler.wrapMode = Texture::WrapMode::CLAMP_TO_EDGE;
+		brdfLUTDesc.sampler.magnificationFilterMode = Texture::FilterMode::LINEAR;
+		brdfLUTDesc.sampler.minificationFilterMode = Texture::FilterMode::LINEAR;
+		m_brdfLUT = std::dynamic_pointer_cast<VulkanTexture>(RenderingAPI::CreateTexture(brdfLUTDesc));
+
+		FrameBuffer::Attachment colorAttachment;
+		colorAttachment.texture = m_brdfLUT;
+
+		FrameBuffer::Description frameBufferDesc = {};
+		frameBufferDesc.width = brdfLUTSize;
+		frameBufferDesc.height = brdfLUTSize;
+		frameBufferDesc.colorAttachments = { colorAttachment };
+		frameBufferDesc.colorResolveAttachments = {};
+		frameBufferDesc.depthStencilAttachment = {};
+		std::shared_ptr<FrameBuffer> brdfLUTFrameBuffer = RenderingAPI::CreateFrameBuffer(frameBufferDesc);
+
+		std::vector<vk::DescriptorSetLayout> brdfLUTDescriptorSetLayouts = {};
+		vk::PipelineLayout brdfLUTPipelineLayout = VulkanUtils::CreatePipelineLayout(brdfLUTDescriptorSetLayouts);
+		vk::Pipeline brdfLUTPipeline = VulkanUtils::CreatePipeline(brdfLUTPipelineLayout,
+			std::dynamic_pointer_cast<VulkanRenderPass>(imageBasedLightingRenderPass), brdfLUTShader);
+		// --------------------------------------------
+
+		m_vkContext->BeginOffscreenFrame();
+
+		vk::CommandBuffer currentCommandBuffer = m_vkContext->GetCurrentCommandBuffer();
+
+		for (size_t cubeFaceIndex = 0; cubeFaceIndex < 6; cubeFaceIndex++)
+		{
+			imageBasedLightingRenderPass->Begin(environmentCubeMapFrameBuffers[cubeFaceIndex]);
+
+			currentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, hdrImageToCubeMapPipeline);
+
+			std::vector<vk::DescriptorSet> descriptorSets =
+			{
+				cameraDescriptorSets[cubeFaceIndex],
+				hdrTextureDescriptorSet
+			};
+			currentCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, hdrImageToCubeMapPipelineLayout, 0,
+				descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+
+			vk::DeviceSize offsets[] = { 0 };
+			currentCommandBuffer.bindVertexBuffers(0, 1, &m_cubeMesh->GetVertexBuffer(), offsets);
+			currentCommandBuffer.bindIndexBuffer(m_cubeMesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
+
+			currentCommandBuffer.drawIndexed(m_cubeMesh->GetIndexCount(), 1, 0, 0, 0);
+
+			imageBasedLightingRenderPass->End();
+		}
+
+		for (size_t cubeFaceIndex = 0; cubeFaceIndex < 6; cubeFaceIndex++)
+		{
+			imageBasedLightingRenderPass->Begin(irradianceCubeMapFrameBuffers[cubeFaceIndex]);
+
+			currentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, irradianceCubeMapPipeline);
+
+			std::vector<vk::DescriptorSet> descriptorSets =
+			{
+				cameraDescriptorSets[cubeFaceIndex],
+				environmentMapDescriptorSet
+			};
+			currentCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, irradianceCubeMapPipelineLayout, 0,
+				descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+
+			vk::DeviceSize offsets[] = { 0 };
+			currentCommandBuffer.bindVertexBuffers(0, 1, &m_cubeMesh->GetVertexBuffer(), offsets);
+			currentCommandBuffer.bindIndexBuffer(m_cubeMesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
+
+			currentCommandBuffer.drawIndexed(m_cubeMesh->GetIndexCount(), 1, 0, 0, 0);
+
+			imageBasedLightingRenderPass->End();
+		}
+
+		for (size_t cubeFaceIndex = 0; cubeFaceIndex < 6; cubeFaceIndex++)
+		{
+			for (size_t mipMapLevel = 0; mipMapLevel < maxMipMapLevels; mipMapLevel++)
+			{
+				imageBasedLightingRenderPass->Begin(prefilterCubeMapFrameBuffers[mipMapLevel + cubeFaceIndex * maxMipMapLevels]);
+
+				currentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, prefilterCubeMapPipeline);
+
+				std::vector<vk::DescriptorSet> descriptorSets =
+				{
+					cameraDescriptorSets[cubeFaceIndex],
+					roughnessDescriptorSets[mipMapLevel],
+					environmentMapDescriptorSet
+				};
+				currentCommandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, prefilterCubeMapPipelineLayout, 0,
+					descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+
+				vk::DeviceSize offsets[] = { 0 };
+				currentCommandBuffer.bindVertexBuffers(0, 1, &m_cubeMesh->GetVertexBuffer(), offsets);
+				currentCommandBuffer.bindIndexBuffer(m_cubeMesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
+
+				currentCommandBuffer.drawIndexed(m_cubeMesh->GetIndexCount(), 1, 0, 0, 0);
+
+				imageBasedLightingRenderPass->End();
+			}
+		}
+
+		imageBasedLightingRenderPass->Begin(brdfLUTFrameBuffer);
+
+		currentCommandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, brdfLUTPipeline);
+
+		vk::DeviceSize offsets[] = { 0 };
+		currentCommandBuffer.bindVertexBuffers(0, 1, &m_quadMesh->GetVertexBuffer(), offsets);
+		currentCommandBuffer.bindIndexBuffer(m_quadMesh->GetIndexBuffer(), 0, vk::IndexType::eUint32);
+
+		currentCommandBuffer.drawIndexed(m_quadMesh->GetIndexCount(), 1, 0, 0, 0);
+
+		imageBasedLightingRenderPass->End();
+
+		m_vkContext->EndOffscreenFrame();
+		m_device->WaitIdle();
+
+		// CLEAN UP
+		for (auto buffer : roughnessUniformBuffers)
+			m_device->GetHandle().destroyBuffer(buffer);
+		for (auto memory : roughnessUniformBufferMemories)
+			m_device->GetHandle().freeMemory(memory);
+
+		for (auto buffer : cameraUniformBuffers)
+			m_device->GetHandle().destroyBuffer(buffer);
+		for (auto memory : cameraUniformBufferMemories)
+			m_device->GetHandle().freeMemory(memory);
+
+		m_device->GetHandle().destroyPipeline(brdfLUTPipeline);
+		m_device->GetHandle().destroyPipelineLayout(brdfLUTPipelineLayout);
+		m_device->GetHandle().destroyPipeline(prefilterCubeMapPipeline);
+		m_device->GetHandle().destroyPipelineLayout(prefilterCubeMapPipelineLayout);
+		m_device->GetHandle().destroyPipeline(irradianceCubeMapPipeline);
+		m_device->GetHandle().destroyPipelineLayout(irradianceCubeMapPipelineLayout);
+		m_device->GetHandle().destroyPipeline(hdrImageToCubeMapPipeline);
+		m_device->GetHandle().destroyPipelineLayout(hdrImageToCubeMapPipelineLayout);
+
+		m_device->GetHandle().destroyDescriptorSetLayout(roughnessDescriptorSetLayout);
+		m_device->GetHandle().destroyDescriptorSetLayout(imageDescriptorSetLayout);
+		m_device->GetHandle().destroyDescriptorSetLayout(cameraDescriptorSetLayout);
+
+		brdfLUTFrameBuffer->Destroy();
+		for (auto frameBuffer : prefilterCubeMapFrameBuffers)
+			frameBuffer->Destroy();
+		for (auto frameBuffer : irradianceCubeMapFrameBuffers)
+			frameBuffer->Destroy();
+		for (auto frameBuffer : environmentCubeMapFrameBuffers)
+			frameBuffer->Destroy();
+
+		imageBasedLightingRenderPass->Destroy();
+
+		hdrTexture->Destroy();
+
+		brdfLUTShader->Destroy();
+		prefilterCubeMapShader->Destroy();
+		irradianceCubeMapShader->Destroy();
+		hdrImageToCubeMapShader->Destroy();
+	}
+
+	void VulkanRenderer::DestroyPBRShaderResources()
+	{
+		m_brdfLUT->Destroy();
+		m_prefilterCubeMap->Destroy();
+		m_irradianceCubeMap->Destroy();
+		m_environmentCubeMap->Destroy();
+	}
+
+	void VulkanRenderer::CreateImageBasedLightingResources()
+	{
+		ShaderCode shaderCode{};
+		shaderCode.vertex = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/environmentCubeMap.vert.spv");
+		shaderCode.fragment = Shader::ReadShaderCodeFromFile("assets/shaders/Vulkan/environmentCubeMap.frag.spv");
+		m_environmentMapShader = RenderingAPI::CreateShader("EnvironmentCubeMap", shaderCode);
+
+		vk::DescriptorSetLayoutBinding environmentMapLayoutBinding{};
+		environmentMapLayoutBinding.binding = 0;
+		environmentMapLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		environmentMapLayoutBinding.descriptorCount = 1;
+		environmentMapLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		environmentMapLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutCreateInfo environmentMapDescriptorSetLayoutCreateInfo{};
+		environmentMapDescriptorSetLayoutCreateInfo.bindingCount = 1;
+		environmentMapDescriptorSetLayoutCreateInfo.pBindings = &environmentMapLayoutBinding;
+
+		vk::Result result = m_device->GetHandle().createDescriptorSetLayout(&environmentMapDescriptorSetLayoutCreateInfo, nullptr, &m_environmentMapDescriptorSetLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+
+		std::vector<vk::DescriptorSetLayout> environmentMapDescriptorSetLayouts = { m_sceneDataDescriptorSetLayout, m_environmentMapDescriptorSetLayout };
+		m_environmentMapPipelineLayout = VulkanUtils::CreatePipelineLayout(environmentMapDescriptorSetLayouts);
+		m_environmentMapPipeline = VulkanUtils::CreatePipeline(m_environmentMapPipelineLayout,
+			std::dynamic_pointer_cast<VulkanRenderPass>(m_mainRenderPass), std::dynamic_pointer_cast<VulkanShader>(m_environmentMapShader), vk::FrontFace::eClockwise);
+
+		vk::DescriptorSetAllocateInfo environmentMapDescriptorSetAllocateInfo = {};
+		environmentMapDescriptorSetAllocateInfo.pNext = nullptr;
+		environmentMapDescriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+		environmentMapDescriptorSetAllocateInfo.descriptorSetCount = 1;
+		environmentMapDescriptorSetAllocateInfo.pSetLayouts = &m_environmentMapDescriptorSetLayout;
+		result = m_device->GetHandle().allocateDescriptorSets(&environmentMapDescriptorSetAllocateInfo, &m_environmentMapDescriptorSet);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+
+		vk::DescriptorImageInfo environmentMapDescriptorImageInfo{};
+		environmentMapDescriptorImageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		environmentMapDescriptorImageInfo.imageView = m_environmentCubeMap->GetImageView();
+		environmentMapDescriptorImageInfo.sampler = m_environmentCubeMap->GetSampler();
+
+		vk::WriteDescriptorSet environmentMapWriteDescriptorSet{};
+		environmentMapWriteDescriptorSet.dstSet = m_environmentMapDescriptorSet;
+		environmentMapWriteDescriptorSet.dstBinding = 0;
+		environmentMapWriteDescriptorSet.dstArrayElement = 0;
+		environmentMapWriteDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		environmentMapWriteDescriptorSet.descriptorCount = 1;
+		environmentMapWriteDescriptorSet.pBufferInfo = nullptr;
+		environmentMapWriteDescriptorSet.pImageInfo = &environmentMapDescriptorImageInfo;
+		environmentMapWriteDescriptorSet.pTexelBufferView = nullptr;
+
+		m_device->GetHandle().updateDescriptorSets(1, &environmentMapWriteDescriptorSet, 0, nullptr);
+
+
+		vk::DescriptorSetLayoutBinding irradianceMapLayoutBinding{};
+		irradianceMapLayoutBinding.binding = 0;
+		irradianceMapLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		irradianceMapLayoutBinding.descriptorCount = 1;
+		irradianceMapLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		irradianceMapLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutBinding prefilterMapLayoutBinding{};
+		prefilterMapLayoutBinding.binding = 1;
+		prefilterMapLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		prefilterMapLayoutBinding.descriptorCount = 1;
+		prefilterMapLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		prefilterMapLayoutBinding.pImmutableSamplers = nullptr;
+
+		vk::DescriptorSetLayoutBinding brdfLUTLayoutBinding{};
+		brdfLUTLayoutBinding.binding = 2;
+		brdfLUTLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		brdfLUTLayoutBinding.descriptorCount = 1;
+		brdfLUTLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		brdfLUTLayoutBinding.pImmutableSamplers = nullptr;
+
+		std::vector< vk::DescriptorSetLayoutBinding> bindings = { irradianceMapLayoutBinding, prefilterMapLayoutBinding, brdfLUTLayoutBinding };
+		vk::DescriptorSetLayoutCreateInfo imageBasedLightingDescriptorSetLayoutCreateInfo{};
+		imageBasedLightingDescriptorSetLayoutCreateInfo.bindingCount = bindings.size();
+		imageBasedLightingDescriptorSetLayoutCreateInfo.pBindings = bindings.data();
+
+		result = m_device->GetHandle().createDescriptorSetLayout(&imageBasedLightingDescriptorSetLayoutCreateInfo, nullptr, &m_imageBasedLightingDescriptorSetLayout);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor set layout!");
+
+		vk::DescriptorSetAllocateInfo imageBasedLightingDescriptorSetAllocateInfo = {};
+		imageBasedLightingDescriptorSetAllocateInfo.pNext = nullptr;
+		imageBasedLightingDescriptorSetAllocateInfo.descriptorPool = m_descriptorPool;
+		imageBasedLightingDescriptorSetAllocateInfo.descriptorSetCount = 1;
+		imageBasedLightingDescriptorSetAllocateInfo.pSetLayouts = &m_imageBasedLightingDescriptorSetLayout;
+		result = m_device->GetHandle().allocateDescriptorSets(&imageBasedLightingDescriptorSetAllocateInfo, &m_imageBasedLightingDescriptorSet);
+		FIREFLY_ASSERT(result == vk::Result::eSuccess, "Unable to allocate Vulkan descriptor sets!");
+
+		vk::DescriptorImageInfo irradianceMapDescriptorImageInfo{};
+		irradianceMapDescriptorImageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		irradianceMapDescriptorImageInfo.imageView = m_irradianceCubeMap->GetImageView();
+		irradianceMapDescriptorImageInfo.sampler = m_irradianceCubeMap->GetSampler();
+
+		vk::WriteDescriptorSet irradianceMapWriteDescriptorSet{};
+		irradianceMapWriteDescriptorSet.dstSet = m_imageBasedLightingDescriptorSet;
+		irradianceMapWriteDescriptorSet.dstBinding = 0;
+		irradianceMapWriteDescriptorSet.dstArrayElement = 0;
+		irradianceMapWriteDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		irradianceMapWriteDescriptorSet.descriptorCount = 1;
+		irradianceMapWriteDescriptorSet.pBufferInfo = nullptr;
+		irradianceMapWriteDescriptorSet.pImageInfo = &irradianceMapDescriptorImageInfo;
+		irradianceMapWriteDescriptorSet.pTexelBufferView = nullptr;
+
+		vk::DescriptorImageInfo prefilterMapDescriptorImageInfo{};
+		prefilterMapDescriptorImageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		prefilterMapDescriptorImageInfo.imageView = m_prefilterCubeMap->GetImageView();
+		prefilterMapDescriptorImageInfo.sampler = m_prefilterCubeMap->GetSampler();
+
+		vk::WriteDescriptorSet prefilterMapWriteDescriptorSet{};
+		prefilterMapWriteDescriptorSet.dstSet = m_imageBasedLightingDescriptorSet;
+		prefilterMapWriteDescriptorSet.dstBinding = 1;
+		prefilterMapWriteDescriptorSet.dstArrayElement = 0;
+		prefilterMapWriteDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		prefilterMapWriteDescriptorSet.descriptorCount = 1;
+		prefilterMapWriteDescriptorSet.pBufferInfo = nullptr;
+		prefilterMapWriteDescriptorSet.pImageInfo = &prefilterMapDescriptorImageInfo;
+		prefilterMapWriteDescriptorSet.pTexelBufferView = nullptr;
+
+		vk::DescriptorImageInfo brdfLUTDescriptorImageInfo{};
+		brdfLUTDescriptorImageInfo.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		brdfLUTDescriptorImageInfo.imageView = m_brdfLUT->GetImageView();
+		brdfLUTDescriptorImageInfo.sampler = m_brdfLUT->GetSampler();
+
+		vk::WriteDescriptorSet brdfLUTWriteDescriptorSet{};
+		brdfLUTWriteDescriptorSet.dstSet = m_imageBasedLightingDescriptorSet;
+		brdfLUTWriteDescriptorSet.dstBinding = 2;
+		brdfLUTWriteDescriptorSet.dstArrayElement = 0;
+		brdfLUTWriteDescriptorSet.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		brdfLUTWriteDescriptorSet.descriptorCount = 1;
+		brdfLUTWriteDescriptorSet.pBufferInfo = nullptr;
+		brdfLUTWriteDescriptorSet.pImageInfo = &brdfLUTDescriptorImageInfo;
+		brdfLUTWriteDescriptorSet.pTexelBufferView = nullptr;
+
+		std::vector<vk::WriteDescriptorSet> writeDescriptorSets = { irradianceMapWriteDescriptorSet, prefilterMapWriteDescriptorSet, brdfLUTWriteDescriptorSet };
+		m_device->GetHandle().updateDescriptorSets(writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+	}
+
+	void VulkanRenderer::DestroyImageBasedLightingResources()
+	{
+		m_device->GetHandle().destroyDescriptorSetLayout(m_imageBasedLightingDescriptorSetLayout);
+
+		m_device->GetHandle().destroyPipeline(m_environmentMapPipeline);
+		m_device->GetHandle().destroyPipelineLayout(m_environmentMapPipelineLayout);
+		m_device->GetHandle().destroyDescriptorSetLayout(m_environmentMapDescriptorSetLayout);
+		m_environmentMapShader->Destroy();
 	}
 }

@@ -24,14 +24,14 @@ namespace Firefly
 			}
 		}
 
-		vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
+		vertex.normal = glm::vec3(0.0f, 0.0f, 1.0f);
 		vertex.tangent = glm::vec3(1.0f, 0.0f, 0.0f);
-		vertex.bitangent = glm::vec3(0.0f, 0.0f, -1.0f);
+		vertex.bitangent = glm::vec3(0.0f, 1.0f, 0.0f);
 		for (size_t y = 0; y < subdivisions + 1; y++)
 		{
 			for (size_t x = 0; x < subdivisions + 1; x++)
 			{
-				vertex.position = glm::vec3(((float)x / (float)subdivisions - 0.5f) * size.x, 0.0f, (0.5f - (float)y / (float)subdivisions) * size.y);
+				vertex.position = glm::vec3(((float)x / (float)subdivisions - 0.5f) * size.x, ((float)y / (float)subdivisions - 0.5f) * size.y, 0.0f);
 				vertex.texCoords = glm::vec2((float)x / (float)subdivisions, (float)y / (float)subdivisions);
 				vertices.push_back(vertex);
 			}
@@ -252,7 +252,7 @@ namespace Firefly
 
 		// top pole
 		vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
-		vertex.position = vertex.normal * size  * 0.5f;
+		vertex.position = vertex.normal * size * 0.5f;
 		vertex.tangent = glm::vec3(1.0f, 0.0f, 0.0f);
 		vertex.bitangent = glm::vec3(0.0f, 0.0f, -1.0f);
 		vertex.texCoords = glm::vec2(0.5f, 1.f);
@@ -265,20 +265,20 @@ namespace Firefly
 			for (float u = 0.0f; u <= 360.0f; u += latitudeIncrement)
 			{
 				vertex.normal = glm::vec3(sinf(DegreeToRad(t)) * sinf(DegreeToRad(u)),
-										  cosf(DegreeToRad(t)),
-										  sinf(DegreeToRad(t)) * cosf(DegreeToRad(u)));
+					cosf(DegreeToRad(t)),
+					sinf(DegreeToRad(t)) * cosf(DegreeToRad(u)));
 				vertex.position = vertex.normal * size * 0.5f;
 				vertex.tangent = glm::vec3(sinf(DegreeToRad(t)) * sinf(DegreeToRad(u + 90.0f)),
-										   0.0f,
-										   sinf(DegreeToRad(t)) * cosf(DegreeToRad(u + 90.0f)));
+					0.0f,
+					sinf(DegreeToRad(t)) * cosf(DegreeToRad(u + 90.0f)));
 				vertex.bitangent = glm::vec3(sinf(DegreeToRad(t - 90.0f)) * sinf(DegreeToRad(u)),
-											 cosf(DegreeToRad(t - 90.0f)),
-											 sinf(DegreeToRad(t - 90.0f)) * cosf(DegreeToRad(u)));
+					cosf(DegreeToRad(t - 90.0f)),
+					sinf(DegreeToRad(t - 90.0f)) * cosf(DegreeToRad(u)));
 				vertex.texCoords = glm::vec2(latitudeIncrement / 360.0f, 1.0f - longitudeIncrement / 180.0f);
 				vertices.push_back(vertex);
 			}
 		}
-		
+
 		// bottom pole
 		vertex.normal = glm::vec3(0.0f, -1.0f, 0.0f);
 		vertex.position = vertex.normal * size * 0.5f;

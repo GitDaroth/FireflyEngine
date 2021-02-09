@@ -21,6 +21,10 @@ layout(set = 2, binding = 3) uniform sampler2D metalnessTextureSampler;
 layout(set = 2, binding = 4) uniform sampler2D occlusionTextureSampler;
 layout(set = 2, binding = 5) uniform sampler2D heightTextureSampler;
 
+layout(set = 4, binding = 0) uniform samplerCube irradianceMap;
+layout(set = 4, binding = 1) uniform samplerCube prefilterMap;
+layout(set = 4, binding = 2) uniform sampler2D brdfLUT;
+
 layout(location = 0) in vec2 fragTexCoords;
 layout(location = 1) in vec3 fragPosition;
 layout(location = 2) in vec3 fragNormal;
@@ -35,6 +39,7 @@ float DistributionGGX(vec3 N, vec3 H, float roughness);
 float GeometrySchlickGGX(float NdotV, float roughness);
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness);
 vec3 FresnelSchlick(float cosTheta, vec3 F0);
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness);
 vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir);
 
 void main()
@@ -43,7 +48,7 @@ void main()
 
 	vec2 texCoords;
 	if(material.hasHeightTexture > 0.0f)
-		texCoords = ParallaxMapping(fragTexCoords, transpose(TBN) * V);
+		texCoords = ParallaxMapping(vec2(fragTexCoords.x, 1.0 - fragTexCoords.y), transpose(TBN) * V);
 	else
 		texCoords = fragTexCoords;
 
@@ -115,7 +120,21 @@ void main()
 		Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 	}
 
-	vec3 ambient = vec3(0.1) * albedo * occlusion;
+	vec3 F = FresnelSchlickRoughness(max(dot(normal, V), 0.0), F0, roughness); 
+
+	vec3 kS = F;
+	vec3 kD = 1.0 - kS;
+
+	vec3 irradiance = texture(irradianceMap, normal).rgb;
+	vec3 diffuse = kD * irradiance * albedo;
+
+	const float MAX_REFLECTION_LOD = 4.0;
+	vec3 R = reflect(-V, normal);
+    vec3 prefilteredColor = textureLod(prefilterMap, R,  roughness * MAX_REFLECTION_LOD).rgb;
+    vec2 brdf  = texture(brdfLUT, vec2(max(dot(normal, V), 0.0), roughness)).rg;
+    vec3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+	vec3 ambient = (diffuse + specular)  * occlusion;
 	vec3 color = ambient + Lo;
 
 	// HDR tonemapping
@@ -166,6 +185,11 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+vec3 FresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(max(1.0 - cosTheta, 0.0), 5.0);
+} 
+
 vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 { 
 	// number of depth layers
@@ -205,5 +229,5 @@ vec2 ParallaxMapping(vec2 texCoords, vec3 viewDir)
 	float t = afterDepth / (afterDepth - beforeDepth);
 	vec2 finalTexCoords = (1.0 - t) * currentTexCoords + t * prevTexCoords;
 
-	return finalTexCoords;  
+	return finalTexCoords;
 } 

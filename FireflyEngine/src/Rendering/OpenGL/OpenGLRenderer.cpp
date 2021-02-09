@@ -36,9 +36,9 @@ namespace Firefly
 	{
 		m_screenTextureShader->Destroy();
 
-		CreatePBRShaderResources();
-		CreateFrameBuffer();
-		CreateRenderPass();
+		DestroyPBRShaderResources();
+		DestroyFrameBuffer();
+		DestroyRenderPass();
 	}
 
 	void OpenGLRenderer::BeginDrawRecording()
@@ -82,7 +82,7 @@ namespace Firefly
 			std::shared_ptr<OpenGLShader> shader = std::dynamic_pointer_cast<OpenGLShader>(material->GetShader());
 
 			material->Bind();
-			
+
 			shader->SetUniform("irradianceMap", 6);
 			m_irradianceCubeMap->Bind(6);
 
@@ -96,7 +96,7 @@ namespace Firefly
 			shader->SetUniform("scene.projectionMatrix", camera->GetProjectionMatrix());
 			shader->SetUniform("scene.viewProjectionMatrix", camera->GetProjectionMatrix() * camera->GetViewMatrix());
 			shader->SetUniform("scene.cameraPosition", glm::vec4(camera->GetPosition(), 1.0f));
-			
+
 			shader->SetUniform("object.modelMatrix", modelMatrix);
 			shader->SetUniform("object.normalMatrix", glm::mat4(glm::transpose(glm::inverse(glm::mat3(modelMatrix)))));
 
@@ -328,18 +328,10 @@ namespace Firefly
 		RenderPass::Description imageBasedLightingRenderPassDesc = {};
 		imageBasedLightingRenderPassDesc.isDepthTestingEnabled = false;
 		imageBasedLightingRenderPassDesc.isMultisamplingEnabled = false;
-		imageBasedLightingRenderPassDesc.colorAttachmentLayouts = { {Texture::Format::RGB_16_FLOAT, Texture::SampleCount::SAMPLE_1} };
+		imageBasedLightingRenderPassDesc.colorAttachmentLayouts = { {Texture::Format::RGBA_16_FLOAT, Texture::SampleCount::SAMPLE_1} };
 		imageBasedLightingRenderPassDesc.colorResolveAttachmentLayouts = {};
 		imageBasedLightingRenderPassDesc.depthStencilAttachmentLayout = {};
 		std::shared_ptr<RenderPass> imageBasedLightingRenderPass = RenderingAPI::CreateRenderPass(imageBasedLightingRenderPassDesc);
-
-		RenderPass::Description brdfLUTRenderPassDesc = {};
-		brdfLUTRenderPassDesc.isDepthTestingEnabled = false;
-		brdfLUTRenderPassDesc.isMultisamplingEnabled = false;
-		brdfLUTRenderPassDesc.colorAttachmentLayouts = { {Texture::Format::RG_16_FLOAT, Texture::SampleCount::SAMPLE_1} };
-		brdfLUTRenderPassDesc.colorResolveAttachmentLayouts = {};
-		brdfLUTRenderPassDesc.depthStencilAttachmentLayout = {};
-		std::shared_ptr<RenderPass> brdfLUTRenderPass = RenderingAPI::CreateRenderPass(brdfLUTRenderPassDesc);
 
 		// RENDER HDR IMAGE TO CUBE MAP
 		uint32_t environmentCubeMapSize = 1024;
@@ -348,7 +340,7 @@ namespace Firefly
 		environmentCubeMapDesc.type = Texture::Type::TEXTURE_CUBE_MAP;
 		environmentCubeMapDesc.width = environmentCubeMapSize;
 		environmentCubeMapDesc.height = environmentCubeMapSize;
-		environmentCubeMapDesc.format = Texture::Format::RGB_16_FLOAT;
+		environmentCubeMapDesc.format = Texture::Format::RGBA_16_FLOAT;
 		environmentCubeMapDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
 		environmentCubeMapDesc.useSampler = true;
 		environmentCubeMapDesc.sampler.isMipMappingEnabled = false;
@@ -412,7 +404,7 @@ namespace Firefly
 		irradianceCubeMapDesc.type = Texture::Type::TEXTURE_CUBE_MAP;
 		irradianceCubeMapDesc.width = irradianceCubeMapSize;
 		irradianceCubeMapDesc.height = irradianceCubeMapSize;
-		irradianceCubeMapDesc.format = Texture::Format::RGB_16_FLOAT;
+		irradianceCubeMapDesc.format = Texture::Format::RGBA_16_FLOAT;
 		irradianceCubeMapDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
 		irradianceCubeMapDesc.useSampler = true;
 		irradianceCubeMapDesc.sampler.isMipMappingEnabled = false;
@@ -466,7 +458,7 @@ namespace Firefly
 		prefilterCubeMapDesc.type = Texture::Type::TEXTURE_CUBE_MAP;
 		prefilterCubeMapDesc.width = prefilterCubeMapSize;
 		prefilterCubeMapDesc.height = prefilterCubeMapSize;
-		prefilterCubeMapDesc.format = Texture::Format::RGB_16_FLOAT;
+		prefilterCubeMapDesc.format = Texture::Format::RGBA_16_FLOAT;
 		prefilterCubeMapDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
 		prefilterCubeMapDesc.useSampler = true;
 		prefilterCubeMapDesc.sampler.isMipMappingEnabled = true;
@@ -530,7 +522,7 @@ namespace Firefly
 		brdfLUTDesc.type = Texture::Type::TEXTURE_2D;
 		brdfLUTDesc.width = brdfLUTSize;
 		brdfLUTDesc.height = brdfLUTSize;
-		brdfLUTDesc.format = Texture::Format::RG_16_FLOAT;
+		brdfLUTDesc.format = Texture::Format::RGBA_16_FLOAT;
 		brdfLUTDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
 		brdfLUTDesc.useSampler = true;
 		brdfLUTDesc.sampler.isMipMappingEnabled = false;
@@ -552,7 +544,7 @@ namespace Firefly
 		frameBufferDesc.depthStencilAttachment = {};
 		std::shared_ptr<FrameBuffer> brdfLUTFrameBuffer = RenderingAPI::CreateFrameBuffer(frameBufferDesc);
 
-		brdfLUTRenderPass->Begin(brdfLUTFrameBuffer);
+		imageBasedLightingRenderPass->Begin(brdfLUTFrameBuffer);
 
 		brdfLUTShader->Bind();
 
@@ -560,7 +552,7 @@ namespace Firefly
 		glBindVertexArray(m_quadVAO);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
-		brdfLUTRenderPass->End();
+		imageBasedLightingRenderPass->End();
 
 		// CLEAN UP
 		brdfLUTFrameBuffer->Destroy();
@@ -571,7 +563,6 @@ namespace Firefly
 		for (auto frameBuffer : environmentCubeMapFrameBuffers)
 			frameBuffer->Destroy();
 
-		brdfLUTRenderPass->Destroy();
 		imageBasedLightingRenderPass->Destroy();
 
 		hdrTexture->Destroy();

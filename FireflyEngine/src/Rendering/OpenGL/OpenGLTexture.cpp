@@ -81,6 +81,9 @@ namespace Firefly
 			if (m_description.sampler.isMipMappingEnabled)
 			{
 				glGenerateMipmap(textureType);
+
+				glTexParameteri(textureType, GL_TEXTURE_BASE_LEVEL, 0);
+				glTexParameteri(textureType, GL_TEXTURE_MAX_LEVEL, m_mipMapLevels - 1);
 				minFilterMode = ConvertToOpenGLMinificationFilterMode(m_description.sampler.minificationFilterMode, m_description.sampler.mipMapFilterMode);
 			}
 

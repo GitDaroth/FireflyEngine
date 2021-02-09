@@ -168,13 +168,13 @@ SandboxApp::SandboxApp()
 
 	Firefly::Entity floor(m_scene);
 	floor.AddComponent<Firefly::TagComponent>("Floor");
-	floor.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 8.f)), glm::vec3(4.f)));
+	floor.AddComponent<Firefly::TransformComponent>(glm::rotate(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 8.f)), glm::vec3(4.f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
 	floor.AddComponent<Firefly::MeshComponent>(floorMesh);
 	floor.AddComponent<Firefly::MaterialComponent>(floorMaterial);
 
 	Firefly::Entity floor2(m_scene);
 	floor2.AddComponent<Firefly::TagComponent>("Floor2");
-	floor2.AddComponent<Firefly::TransformComponent>(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 0.f)), glm::vec3(4.f)));
+	floor2.AddComponent<Firefly::TransformComponent>(glm::rotate(glm::scale(glm::translate(glm::mat4(1), glm::vec3(0.f, -0.5f, 0.f)), glm::vec3(4.f)), -(float)M_PI_2, glm::vec3(1.f, 0.f, 0.f)));
 	floor2.AddComponent<Firefly::MeshComponent>(floorMesh);
 	floor2.AddComponent<Firefly::MaterialComponent>(floor2Material);
 
@@ -186,13 +186,13 @@ SandboxApp::SandboxApp()
 		{
 			std::shared_ptr<Firefly::Material> defaultMaterial = Firefly::RenderingAPI::CreateMaterial(defaultShader);
 			defaultMaterial->SetAlbedo(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));
-			defaultMaterial->SetRoughness((x + 1) / (float)columnCount);
-			defaultMaterial->SetMetalness((y + 1) / (float)rowCount);
+			defaultMaterial->SetRoughness(x / (float)(columnCount - 1));
+			defaultMaterial->SetMetalness(y / (float)(rowCount - 1));
 			Firefly::MaterialRegistry::Instance().Insert("Default" + std::to_string(x) + "-" + std::to_string(y), defaultMaterial);
 
 			Firefly::Entity sphere(m_scene);
 			sphere.AddComponent<Firefly::TagComponent>("Sphere" + std::to_string(x) + "-" + std::to_string(y));
-			sphere.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(x * 1.1f , y * 1.1f, 0.0f) + glm::vec3(-(float)columnCount * 0.5f, 1.0f, -5.f)));
+			sphere.AddComponent<Firefly::TransformComponent>(glm::translate(glm::mat4(1), glm::vec3(x * 1.1f, y * 1.1f, 0.0f) + glm::vec3(-(float)columnCount * 0.5f, 1.0f, -5.f)));
 			sphere.AddComponent<Firefly::MeshComponent>(sphereMesh);
 			sphere.AddComponent<Firefly::MaterialComponent>(defaultMaterial);
 
@@ -217,7 +217,7 @@ void SandboxApp::OnUpdate(float deltaTime)
 	m_cameraController->OnUpdate(deltaTime);
 
 	m_renderer->BeginDrawRecording();
-	for(auto entity : m_scene->GetEntities())
+	for (auto entity : m_scene->GetEntities())
 		m_renderer->RecordDraw(entity);
 	m_renderer->EndDrawRecording();
 	m_renderer->SubmitDraw(m_camera);
@@ -274,7 +274,7 @@ void SandboxApp::OnKeyEvent(std::shared_ptr<Firefly::KeyEvent> event)
 		for (auto entity : entityGroup)
 		{
 			auto material = entity.GetComponent<Firefly::MaterialComponent>().m_material;
-			
+
 			switch (event->GetKeyCode())
 			{
 			case FIREFLY_KEY_1:
@@ -297,9 +297,11 @@ void SandboxApp::OnKeyEvent(std::shared_ptr<Firefly::KeyEvent> event)
 				break;
 			case FIREFLY_KEY_UP:
 				material->SetHeightScale(m_heightScale);
+				material->SetRoughness(std::min(material->GetRoughness() + 0.01f, 1.0f));
 				break;
 			case FIREFLY_KEY_DOWN:
 				material->SetHeightScale(m_heightScale);
+				material->SetRoughness(std::max(material->GetRoughness() - 0.01f, 0.0f));
 				break;
 			default:
 				break;

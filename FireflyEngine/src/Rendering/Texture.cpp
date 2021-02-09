@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Rendering/Texture.h"
 
+#include "Rendering/RenderingAPI.h"
 #include <stb_image.h>
 
 namespace Firefly
@@ -8,18 +9,21 @@ namespace Firefly
 	void Texture::Init(const std::string& path, bool useLinearColorSpace)
 	{
 		int width, height, channels;
+
+#ifdef GFX_API_OPENGL
 		stbi_set_flip_vertically_on_load(1);
+#endif
 
 		void* pixelData = nullptr;
 		if (stbi_is_hdr(path.c_str()))
 		{
-			pixelData = stbi_loadf(path.c_str(), &width, &height, &channels, STBI_rgb);
-			m_description.format = Format::RGB_32_FLOAT;
+			pixelData = stbi_loadf(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
+			m_description.format = Format::RGBA_32_FLOAT;
 		}
 		else
 		{
 			pixelData = stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha);
-			if(useLinearColorSpace)
+			if (useLinearColorSpace)
 				m_description.format = Format::RGBA_8;
 			else
 				m_description.format = Format::RGBA_8_NON_LINEAR;

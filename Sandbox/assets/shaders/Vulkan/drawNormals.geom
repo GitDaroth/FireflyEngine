@@ -13,9 +13,11 @@ void main()
 	for (i = 0; i < gl_in.length(); i++)
 	{
 		gl_Position = mvp[i] * gl_in[i].gl_Position;
+		gl_Position.y = -gl_Position.y;
 		EmitVertex();
 
 		gl_Position = mvp[i] * (gl_in[i].gl_Position + vec4(geomNormal[i] * 0.1, 0.0));
+		gl_Position.y = -gl_Position.y;
 		EmitVertex();
 
 		EndPrimitive();

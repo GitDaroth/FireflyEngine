@@ -1,5 +1,12 @@
 #pragma once
 
+//#define GFX_API_OPENGL
+#define GFX_API_VULKAN
+
+#ifdef GFX_API_VULKAN
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#endif
+
 #include "Window/Window.h"
 #include "Rendering/GraphicsContext.h"
 #include "Rendering/Renderer.h"
@@ -22,7 +29,7 @@ namespace Firefly
 			Vulkan,
 			DirectX12,
 			Metal
-		};  
+		};
 
 		static void Init(std::shared_ptr<Window> window);
 		static void Destroy();

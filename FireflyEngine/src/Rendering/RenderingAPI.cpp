@@ -1,9 +1,6 @@
 #include "pch.h"
 #include "Rendering/RenderingAPI.h"
 
-//#define GFX_API_OPENGL
-#define GFX_API_VULKAN
-
 #ifdef GFX_API_OPENGL
 #include "Rendering/OpenGL/OpenGLContext.h"
 #include "Rendering/OpenGL/OpenGLRenderer.h"
@@ -51,12 +48,12 @@ namespace Firefly
 	{
 		std::shared_ptr<GraphicsContext> context;
 
-		#ifdef GFX_API_OPENGL
-			context = std::make_shared<OpenGLContext>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			context = std::make_shared<VulkanContext>();
-		#endif
+#ifdef GFX_API_OPENGL
+		context = std::make_shared<OpenGLContext>();
+#endif
+#ifdef GFX_API_VULKAN
+		context = std::make_shared<VulkanContext>();
+#endif
 
 		context->Init(window);
 		return context;
@@ -66,12 +63,12 @@ namespace Firefly
 	{
 		std::shared_ptr<Renderer> renderer;
 
-		#ifdef GFX_API_OPENGL
-			renderer = std::make_shared<OpenGLRenderer>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			renderer = std::make_shared<VulkanRenderer>();
-		#endif
+#ifdef GFX_API_OPENGL
+		renderer = std::make_shared<OpenGLRenderer>();
+#endif
+#ifdef GFX_API_VULKAN
+		renderer = std::make_shared<VulkanRenderer>();
+#endif
 
 		renderer->Init();
 		return renderer;
@@ -81,12 +78,12 @@ namespace Firefly
 	{
 		std::shared_ptr<Shader> shader;
 
-		#ifdef GFX_API_OPENGL
-			shader = std::make_shared<OpenGLShader>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			shader = std::make_shared<VulkanShader>();
-		#endif
+#ifdef GFX_API_OPENGL
+		shader = std::make_shared<OpenGLShader>();
+#endif
+#ifdef GFX_API_VULKAN
+		shader = std::make_shared<VulkanShader>();
+#endif
 
 		shader->Init(tag, shaderCode);
 		return shader;
@@ -96,12 +93,12 @@ namespace Firefly
 	{
 		std::shared_ptr<Mesh> mesh;
 
-		#ifdef GFX_API_OPENGL
-			mesh = std::make_shared<OpenGLMesh>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			mesh = std::make_shared<VulkanMesh>();
-		#endif
+#ifdef GFX_API_OPENGL
+		mesh = std::make_shared<OpenGLMesh>();
+#endif
+#ifdef GFX_API_VULKAN
+		mesh = std::make_shared<VulkanMesh>();
+#endif
 
 		mesh->Init(vertices, indices);
 		return mesh;
@@ -111,12 +108,12 @@ namespace Firefly
 	{
 		std::shared_ptr<Mesh> mesh;
 
-		#ifdef GFX_API_OPENGL
-			mesh = std::make_shared<OpenGLMesh>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			mesh = std::make_shared<VulkanMesh>();
-		#endif
+#ifdef GFX_API_OPENGL
+		mesh = std::make_shared<OpenGLMesh>();
+#endif
+#ifdef GFX_API_VULKAN
+		mesh = std::make_shared<VulkanMesh>();
+#endif
 
 		mesh->Init(path, flipTexCoords);
 		return mesh;
@@ -126,12 +123,12 @@ namespace Firefly
 	{
 		std::shared_ptr<Texture> texture;
 
-		#ifdef GFX_API_OPENGL
-			texture = std::make_shared<OpenGLTexture>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			texture = std::make_shared<VulkanTexture>();
-		#endif
+#ifdef GFX_API_OPENGL
+		texture = std::make_shared<OpenGLTexture>();
+#endif
+#ifdef GFX_API_VULKAN
+		texture = std::make_shared<VulkanTexture>();
+#endif
 
 		texture->Init(path, useLinearColorSpace);
 		return texture;
@@ -141,12 +138,12 @@ namespace Firefly
 	{
 		std::shared_ptr<Texture> texture;
 
-		#ifdef GFX_API_OPENGL
-			texture = std::make_shared<OpenGLTexture>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			texture = std::make_shared<VulkanTexture>();
-		#endif
+#ifdef GFX_API_OPENGL
+		texture = std::make_shared<OpenGLTexture>();
+#endif
+#ifdef GFX_API_VULKAN
+		texture = std::make_shared<VulkanTexture>();
+#endif
 
 		texture->Init(description);
 		return texture;
@@ -156,12 +153,12 @@ namespace Firefly
 	{
 		std::shared_ptr<Material> material;
 
-		#ifdef GFX_API_OPENGL
-			material = std::make_shared<OpenGLMaterial>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			material = std::make_shared<VulkanMaterial>();
-		#endif
+#ifdef GFX_API_OPENGL
+		material = std::make_shared<OpenGLMaterial>();
+#endif
+#ifdef GFX_API_VULKAN
+		material = std::make_shared<VulkanMaterial>();
+#endif
 
 		material->Init(shader);
 		return material;
@@ -171,12 +168,12 @@ namespace Firefly
 	{
 		std::shared_ptr<FrameBuffer> frameBuffer;
 
-		#ifdef GFX_API_OPENGL
-			frameBuffer = std::make_shared<OpenGLFrameBuffer>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			frameBuffer = std::make_shared<VulkanFrameBuffer>();
-		#endif
+#ifdef GFX_API_OPENGL
+		frameBuffer = std::make_shared<OpenGLFrameBuffer>();
+#endif
+#ifdef GFX_API_VULKAN
+		frameBuffer = std::make_shared<VulkanFrameBuffer>();
+#endif
 
 		frameBuffer->Init(description);
 		return frameBuffer;
@@ -186,12 +183,12 @@ namespace Firefly
 	{
 		std::shared_ptr<RenderPass> renderPass;
 
-		#ifdef GFX_API_OPENGL
-			renderPass = std::make_shared<OpenGLRenderPass>();
-		#endif
-		#ifdef GFX_API_VULKAN
-			renderPass = std::make_shared<VulkanRenderPass>();
-		#endif
+#ifdef GFX_API_OPENGL
+		renderPass = std::make_shared<OpenGLRenderPass>();
+#endif
+#ifdef GFX_API_VULKAN
+		renderPass = std::make_shared<VulkanRenderPass>();
+#endif
 
 		renderPass->Init(description);
 		return renderPass;

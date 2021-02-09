@@ -121,6 +121,12 @@ namespace Firefly
 			m_device.destroyBuffer(stagingBuffer);
 			m_device.freeMemory(stagingBufferMemory);
 		}
+		else
+		{
+			vk::ImageLayout oldLayout = vk::ImageLayout::eUndefined;
+			vk::ImageLayout newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+			TransitionImageLayout(m_image, oldLayout, newLayout, m_format, m_mipMapLevels, m_arrayLayers);
+		}
 	}
 
 	void VulkanTexture::DestroyImage()
@@ -183,7 +189,7 @@ namespace Firefly
 		samplerCreateInfo.magFilter = ConvertToVulkanFilterMode(m_description.sampler.magnificationFilterMode);
 		samplerCreateInfo.mipmapMode = ConvertToVulkanMipMapFilterMode(m_description.sampler.mipMapFilterMode);
 		samplerCreateInfo.minLod = 0.0f;
-		samplerCreateInfo.maxLod = static_cast<float>(m_mipMapLevels);
+		samplerCreateInfo.maxLod = static_cast<float>(m_mipMapLevels - 1);
 		samplerCreateInfo.mipLodBias = 0.0f;
 
 		vk::Result result = m_device.createSampler(&samplerCreateInfo, nullptr, &m_sampler);

@@ -6,6 +6,7 @@
 #include "Rendering/Mesh.h"
 #include "Rendering/Material.h"
 #include "Rendering/Vulkan/VulkanTexture.h"
+#include "Rendering/Vulkan/VulkanMesh.h"
 #include <unordered_map>
 
 namespace Firefly
@@ -53,7 +54,13 @@ namespace Firefly
 
 		void CreateScreenTexturePassResources();
 		void DestroyScreenTexturePassResources();
-		
+
+		void CreatePBRShaderResources();
+		void DestroyPBRShaderResources();
+
+		void CreateImageBasedLightingResources();
+		void DestroyImageBasedLightingResources();
+
 		std::shared_ptr<VulkanContext> m_vkContext;
 		std::shared_ptr<VulkanDevice> m_device;
 
@@ -74,7 +81,8 @@ namespace Firefly
 		vk::DescriptorSetLayout m_screenTextureDescriptorSetLayout;
 		std::vector<vk::DescriptorSet> m_screenTextureDescriptorSets;
 		std::shared_ptr<Shader> m_screenTextureShader;
-		std::shared_ptr<Mesh> m_quadMesh;
+		std::shared_ptr<VulkanMesh> m_quadMesh;
+		std::shared_ptr<VulkanMesh> m_cubeMesh;
 
 		vk::DescriptorPool m_descriptorPool;
 
@@ -104,5 +112,18 @@ namespace Firefly
 		std::vector<Entity> m_entities;
 		std::vector<std::shared_ptr<Material>> m_materials;
 		std::vector<size_t> m_entityMaterialIndices;
+
+		std::shared_ptr<VulkanTexture> m_environmentCubeMap;
+		std::shared_ptr<VulkanTexture> m_irradianceCubeMap;
+		std::shared_ptr<VulkanTexture> m_prefilterCubeMap;
+		std::shared_ptr<VulkanTexture> m_brdfLUT;
+
+		std::shared_ptr<Shader> m_environmentMapShader;
+		vk::PipelineLayout m_environmentMapPipelineLayout;
+		vk::Pipeline m_environmentMapPipeline;
+		vk::DescriptorSetLayout m_environmentMapDescriptorSetLayout;
+		vk::DescriptorSet m_environmentMapDescriptorSet;
+		vk::DescriptorSetLayout m_imageBasedLightingDescriptorSetLayout;
+		vk::DescriptorSet m_imageBasedLightingDescriptorSet;
 	};
 }

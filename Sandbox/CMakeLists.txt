@@ -27,6 +27,16 @@ set(openGLShaders
 set(vulkanShaders 
 	assets/shaders/Vulkan/pbr.vert
 	assets/shaders/Vulkan/pbr.frag
+	assets/shaders/Vulkan/hdrImageToCubeMap.vert
+	assets/shaders/Vulkan/hdrImageToCubeMap.frag
+	assets/shaders/Vulkan/irradianceCubeMap.vert
+	assets/shaders/Vulkan/irradianceCubeMap.frag
+	assets/shaders/Vulkan/environmentCubeMap.vert
+	assets/shaders/Vulkan/environmentCubeMap.frag
+	assets/shaders/Vulkan/prefilterCubeMap.vert
+	assets/shaders/Vulkan/prefilterCubeMap.frag
+	assets/shaders/Vulkan/brdfLUT.vert
+	assets/shaders/Vulkan/brdfLUT.frag
 	assets/shaders/Vulkan/screenTexture.vert
 	assets/shaders/Vulkan/screenTexture.frag
 	assets/shaders/Vulkan/drawNormals.vert
