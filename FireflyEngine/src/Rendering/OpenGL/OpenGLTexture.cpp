@@ -104,6 +104,9 @@ namespace Firefly
 			glTextureParameteri(m_texture, GL_TEXTURE_MIN_FILTER, minFilterMode);
 			glTextureParameteri(m_texture, GL_TEXTURE_MAG_FILTER, maxFilterMode);
 		}
+
+		if (wasPixelDataInitiallyEmpty)
+			free(pixelData);
 	}
 
 	GLenum OpenGLTexture::ConvertToOpenGLBaseFormat(Format format)

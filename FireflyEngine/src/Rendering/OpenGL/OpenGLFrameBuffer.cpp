@@ -17,13 +17,15 @@ namespace Firefly
 		if (m_description.colorResolveAttachments.size() == 0)
 			return;
 
-		glBindFramebuffer(GL_READ_FRAMEBUFFER, m_frameBuffer);
-		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, m_resolveFrameBuffer);
 		for (size_t i = 0; i < m_description.colorAttachments.size(); i++)
 		{
-			glReadBuffer(GL_COLOR_ATTACHMENT0 + i);
-			glDrawBuffer(GL_COLOR_ATTACHMENT0 + i);
-			glBlitFramebuffer(0, 0, m_description.width, m_description.height, 0, 0, m_description.width, m_description.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			glNamedFramebufferReadBuffer(m_frameBuffer, GL_COLOR_ATTACHMENT0 + i);
+			glNamedFramebufferDrawBuffer(m_resolveFrameBuffer, GL_COLOR_ATTACHMENT0 + i);
+
+			glBlitNamedFramebuffer(m_frameBuffer, m_resolveFrameBuffer,
+				0, 0, m_description.width, m_description.height,
+				0, 0, m_description.width, m_description.height,
+				GL_COLOR_BUFFER_BIT, GL_NEAREST);
 		}
 	}
 
@@ -34,8 +36,7 @@ namespace Firefly
 
 	void OpenGLFrameBuffer::OnInit()
 	{
-		glGenFramebuffers(1, &m_frameBuffer);
-		glBindFramebuffer(GL_FRAMEBUFFER, m_frameBuffer);
+		glCreateFramebuffers(1, &m_frameBuffer);
 
 		for (size_t i = 0; i < m_description.colorAttachments.size(); i++)
 		{
@@ -43,19 +44,9 @@ namespace Firefly
 			std::shared_ptr<OpenGLTexture> texture = std::dynamic_pointer_cast<OpenGLTexture>(colorAttachment.texture);
 
 			if (texture->GetType() == Texture::Type::TEXTURE_2D)
-			{
-				GLenum texTarget = GL_NONE;
-				if (texture->GetSampleCount() == Texture::SampleCount::SAMPLE_1)
-					texTarget = GL_TEXTURE_2D;
-				else
-					texTarget = GL_TEXTURE_2D_MULTISAMPLE;
-
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texTarget, texture->GetHandle(), colorAttachment.mipMapLevel);
-			}
+				glNamedFramebufferTexture(m_frameBuffer, GL_COLOR_ATTACHMENT0 + i, texture->GetHandle(), colorAttachment.mipMapLevel);
 			else if (texture->GetType() == Texture::Type::TEXTURE_CUBE_MAP)
-			{
-				glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texture->GetHandle(), colorAttachment.mipMapLevel, colorAttachment.arrayLayer);
-			}
+				glNamedFramebufferTextureLayer(m_frameBuffer, GL_COLOR_ATTACHMENT0 + i, texture->GetHandle(), colorAttachment.mipMapLevel, colorAttachment.arrayLayer);
 		}
 
 		if (HasDepthStencilAttachment())
@@ -71,40 +62,27 @@ namespace Firefly
 			else if (depthStencilTexture->HasDepthStencilFormat())
 				attachment = GL_DEPTH_STENCIL_ATTACHMENT;
 
-			GLenum texTarget = GL_NONE;
-			if (depthStencilTexture->GetSampleCount() == Texture::SampleCount::SAMPLE_1)
-				texTarget = GL_TEXTURE_2D;
-			else
-				texTarget = GL_TEXTURE_2D_MULTISAMPLE;
-
-			glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, texTarget, depthStencilTexture->GetHandle(), m_description.depthStencilAttachment.mipMapLevel);
+			glNamedFramebufferTexture(m_frameBuffer, attachment, depthStencilTexture->GetHandle(), m_description.depthStencilAttachment.mipMapLevel);
 		}
 
-		FIREFLY_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "OpenGL framebuffer for color attachments and depth stencil attachment is not complete!");
+		FIREFLY_ASSERT(glCheckNamedFramebufferStatus(m_frameBuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "OpenGL framebuffer for color attachments and depth stencil attachment is not complete!");
 
 		if (m_description.colorResolveAttachments.size() > 0)
 		{
-			glGenFramebuffers(1, &m_resolveFrameBuffer);
-			glBindFramebuffer(GL_FRAMEBUFFER, m_resolveFrameBuffer);
+			glCreateFramebuffers(1, &m_resolveFrameBuffer);
 
 			for (size_t i = 0; i < m_description.colorResolveAttachments.size(); i++)
 			{
 				Attachment colorResolveAttachment = m_description.colorResolveAttachments[i];
 				std::shared_ptr<OpenGLTexture> texture = std::dynamic_pointer_cast<OpenGLTexture>(colorResolveAttachment.texture);
 
-				GLenum texTarget = GL_NONE;
 				if (texture->GetType() == Texture::Type::TEXTURE_2D)
-				{
-					GLenum texTarget = GL_TEXTURE_2D;
-					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texTarget, texture->GetHandle(), colorResolveAttachment.mipMapLevel);
-				}
+					glNamedFramebufferTexture(m_resolveFrameBuffer, GL_COLOR_ATTACHMENT0 + i, texture->GetHandle(), colorResolveAttachment.mipMapLevel);
 				else if (texture->GetType() == Texture::Type::TEXTURE_CUBE_MAP)
-				{
-					glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texture->GetHandle(), colorResolveAttachment.mipMapLevel, colorResolveAttachment.arrayLayer);
-				}
+					glNamedFramebufferTextureLayer(m_resolveFrameBuffer, GL_COLOR_ATTACHMENT0 + i, texture->GetHandle(), colorResolveAttachment.mipMapLevel, colorResolveAttachment.arrayLayer);
 			}
 
-			FIREFLY_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "OpenGL Framebuffer for resolve color attachments is not complete!");
+			FIREFLY_ASSERT(glCheckNamedFramebufferStatus(m_resolveFrameBuffer, GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "OpenGL Framebuffer for resolve color attachments is not complete!");
 		}
 	}
 }

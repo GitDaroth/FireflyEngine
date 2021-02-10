@@ -56,7 +56,10 @@ namespace Firefly
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		GLbitfield clearBitMask = GL_COLOR_BUFFER_BIT;
 		if (m_currentFrameBuffer->HasDepthStencilAttachment() && m_description.isDepthTestingEnabled)
+		{
+			glClearDepth(1.0f);
 			clearBitMask |= GL_DEPTH_BUFFER_BIT;
+		}
 		glClear(clearBitMask);
 	}
 
