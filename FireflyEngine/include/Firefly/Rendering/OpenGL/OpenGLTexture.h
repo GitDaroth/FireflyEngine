@@ -20,6 +20,11 @@ namespace Firefly
 		virtual void OnInit(void* pixelData) override;
 
 	private:
+		void CreateTexture(void* pixelData);
+		void DestroyTexture();
+		void CreateSampler();
+		void DestroySampler();
+
 		static GLenum ConvertToOpenGLBaseFormat(Format format);
 		static GLenum ConvertToOpenGLInternalFormat(Format format);
 		static GLenum GetOpenGLPixelDataType(Format format);
@@ -29,5 +34,6 @@ namespace Firefly
 		static GLenum ConvertToOpenGLFilterMode(FilterMode filterMode);
 
 		uint32_t m_texture;
+		uint32_t m_sampler;
 	};
 }

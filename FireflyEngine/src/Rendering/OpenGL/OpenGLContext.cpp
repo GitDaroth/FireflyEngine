@@ -25,8 +25,6 @@ namespace Firefly
 		glFrontFace(GL_CCW);
 		glCullFace(GL_BACK);
 
-		glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
-
 		glfwSwapInterval(1); // 1: vsync, 0: unlimited
 
 		PrintGpuInfo();

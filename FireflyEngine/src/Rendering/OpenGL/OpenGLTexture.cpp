@@ -5,18 +5,22 @@ namespace Firefly
 {
 	OpenGLTexture::OpenGLTexture() :
 		Texture(),
-		m_texture(0)
+		m_texture(0),
+		m_sampler(0)
 	{
 	}
 
 	void OpenGLTexture::Destroy()
 	{
-		glDeleteTextures(1, &m_texture);
+		if (m_description.useSampler)
+			DestroySampler();
+		DestroyTexture();
 	}
 
 	void OpenGLTexture::Bind(GLuint slot)
 	{
 		glBindTextureUnit(slot, m_texture);
+		glBindSampler(slot, m_sampler);
 	}
 
 	uint32_t OpenGLTexture::GetHandle() const
@@ -25,6 +29,13 @@ namespace Firefly
 	}
 
 	void OpenGLTexture::OnInit(void* pixelData)
+	{
+		CreateTexture(pixelData);
+		if (m_description.useSampler)
+			CreateSampler();
+	}
+
+	void OpenGLTexture::CreateTexture(void* pixelData)
 	{
 		bool wasPixelDataInitiallyEmpty = pixelData == nullptr;
 
@@ -67,46 +78,66 @@ namespace Firefly
 			break;
 		}
 
-		if (m_description.useSampler)
-		{
-			if (m_description.sampler.isAnisotropicFilteringEnabled)
-			{
-				GLfloat maxAnisotropy;
-				glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAnisotropy);
+		glTextureParameteri(m_texture, GL_TEXTURE_BASE_LEVEL, 0);
+		glTextureParameteri(m_texture, GL_TEXTURE_MAX_LEVEL, m_mipMapLevels - 1);
 
-				if (m_description.sampler.maxAnisotropy > maxAnisotropy)
-				{
-					Logger::Warn("OpenGL", "Max. anisotropy ({0}) is bigger than the device limit ({1}).", m_description.sampler.maxAnisotropy, maxAnisotropy);
-					m_description.sampler.maxAnisotropy = maxAnisotropy;
-				}
-				glTextureParameterf(m_texture, GL_TEXTURE_MAX_ANISOTROPY, m_description.sampler.maxAnisotropy);
-			}
-
-			GLenum wrapMode = ConvertToOpenGLWrapMode(m_description.sampler.wrapMode);
-			GLenum minFilterMode = ConvertToOpenGLFilterMode(m_description.sampler.minificationFilterMode);
-			GLenum maxFilterMode = ConvertToOpenGLFilterMode(m_description.sampler.magnificationFilterMode);
-
-			if (m_description.sampler.isMipMappingEnabled)
-			{
-				glGenerateTextureMipmap(m_texture);
-
-				glTextureParameteri(m_texture, GL_TEXTURE_BASE_LEVEL, 0);
-				glTextureParameteri(m_texture, GL_TEXTURE_MAX_LEVEL, m_mipMapLevels - 1);
-				glTextureParameterf(m_texture, GL_TEXTURE_MIN_LOD, 0.0f);
-				glTextureParameterf(m_texture, GL_TEXTURE_MAX_LOD, (float)(m_mipMapLevels - 1));
-				glTextureParameterf(m_texture, GL_TEXTURE_LOD_BIAS, 0.0f);
-				minFilterMode = ConvertToOpenGLMinificationFilterMode(m_description.sampler.minificationFilterMode, m_description.sampler.mipMapFilterMode);
-			}
-
-			glTextureParameteri(m_texture, GL_TEXTURE_WRAP_S, wrapMode);
-			glTextureParameteri(m_texture, GL_TEXTURE_WRAP_T, wrapMode);
-			glTextureParameteri(m_texture, GL_TEXTURE_WRAP_R, wrapMode);
-			glTextureParameteri(m_texture, GL_TEXTURE_MIN_FILTER, minFilterMode);
-			glTextureParameteri(m_texture, GL_TEXTURE_MAG_FILTER, maxFilterMode);
-		}
+		if (m_description.useSampler && m_description.sampler.isMipMappingEnabled)
+			glGenerateTextureMipmap(m_texture);
 
 		if (wasPixelDataInitiallyEmpty)
 			free(pixelData);
+	}
+
+	void OpenGLTexture::DestroyTexture()
+	{
+		glDeleteTextures(1, &m_texture);
+	}
+
+	void OpenGLTexture::CreateSampler()
+	{
+		glCreateSamplers(1, &m_sampler);
+
+		float maxAnisotropy = 1.0f;
+		if (m_description.sampler.isAnisotropicFilteringEnabled)
+		{
+			GLfloat maxAnisotropyLimit;
+			glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxAnisotropyLimit);
+
+			if (m_description.sampler.maxAnisotropy > maxAnisotropyLimit)
+			{
+				Logger::Warn("OpenGL", "Max. anisotropy ({0}) is bigger than the device limit ({1}).", m_description.sampler.maxAnisotropy, maxAnisotropyLimit);
+				m_description.sampler.maxAnisotropy = maxAnisotropyLimit;
+			}
+			maxAnisotropy = m_description.sampler.maxAnisotropy;
+		}
+
+		std::vector<float> borderColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		GLenum wrapMode = ConvertToOpenGLWrapMode(m_description.sampler.wrapMode);
+		GLenum minFilterMode = ConvertToOpenGLFilterMode(m_description.sampler.minificationFilterMode);
+		GLenum maxFilterMode = ConvertToOpenGLFilterMode(m_description.sampler.magnificationFilterMode);
+		if (m_description.sampler.isMipMappingEnabled)
+			minFilterMode = ConvertToOpenGLMinificationFilterMode(m_description.sampler.minificationFilterMode, m_description.sampler.mipMapFilterMode);
+
+		glSamplerParameterf(m_sampler, GL_TEXTURE_MIN_LOD, 0.0f);
+		glSamplerParameterf(m_sampler, GL_TEXTURE_MAX_LOD, (float)(m_mipMapLevels - 1));
+		glSamplerParameterf(m_sampler, GL_TEXTURE_LOD_BIAS, 0.0f);
+		glSamplerParameteri(m_sampler, GL_TEXTURE_WRAP_S, wrapMode);
+		glSamplerParameteri(m_sampler, GL_TEXTURE_WRAP_T, wrapMode);
+		glSamplerParameteri(m_sampler, GL_TEXTURE_WRAP_R, wrapMode);
+		glSamplerParameterf(m_sampler, GL_TEXTURE_MAX_ANISOTROPY, maxAnisotropy);
+		glSamplerParameteri(m_sampler, GL_TEXTURE_MIN_FILTER, minFilterMode);
+		glSamplerParameteri(m_sampler, GL_TEXTURE_MAG_FILTER, maxFilterMode);
+		glSamplerParameteri(m_sampler, GL_TEXTURE_CUBE_MAP_SEAMLESS, GL_FALSE);
+		glSamplerParameterfv(m_sampler, GL_TEXTURE_BORDER_COLOR, borderColor.data());
+		glSamplerParameteri(m_sampler, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+		glSamplerParameteri(m_sampler, GL_TEXTURE_COMPARE_FUNC, GL_ALWAYS);
+		if (m_description.type == Texture::Type::TEXTURE_CUBE_MAP)
+			glSamplerParameteri(m_sampler, GL_TEXTURE_CUBE_MAP_SEAMLESS, GL_TRUE);
+	}
+
+	void OpenGLTexture::DestroySampler()
+	{
+		glDeleteSamplers(1, &m_sampler);
 	}
 
 	GLenum OpenGLTexture::ConvertToOpenGLBaseFormat(Format format)
