@@ -26,27 +26,37 @@ namespace Firefly
 
 	void OpenGLMesh::OnInit(std::vector<Vertex> vertices, std::vector<uint32_t> indices)
 	{
-		glGenVertexArrays(1, &m_vertexArray);
-		glBindVertexArray(m_vertexArray);
+		glCreateBuffers(1, &m_vertexBuffer);
+		glNamedBufferData(m_vertexBuffer, sizeof(Mesh::Vertex) * vertices.size(), (float*)vertices.data(), GL_STATIC_DRAW);
 
-		glGenBuffers(1, &m_vertexBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, m_vertexBuffer);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(Mesh::Vertex) * vertices.size(), (float*)vertices.data(), GL_STATIC_DRAW);
+		glCreateBuffers(1, &m_indexBuffer);
+		glNamedBufferData(m_indexBuffer, sizeof(uint32_t) * indices.size(), indices.data(), GL_STATIC_DRAW);
 
-		glGenBuffers(1, &m_indexBuffer);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_indexBuffer);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(uint32_t) * indices.size(), indices.data(), GL_STATIC_DRAW);
-
+		size_t bindingIndex = 0;
+		size_t attributeIndex = 0;
 		GLsizei stride = sizeof(Mesh::Vertex);
-		glEnableVertexAttribArray(0); 
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(Mesh::Vertex, position));
-		glEnableVertexAttribArray(1);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(Mesh::Vertex, normal));
-		glEnableVertexAttribArray(2);
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(Mesh::Vertex, tangent));
-		glEnableVertexAttribArray(3);
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(Mesh::Vertex, bitangent));
-		glEnableVertexAttribArray(4);
-		glVertexAttribPointer(4, 2, GL_FLOAT, GL_FALSE, stride, (void*)offsetof(Mesh::Vertex, texCoords));
+		glCreateVertexArrays(1, &m_vertexArray);
+		glVertexArrayVertexBuffer(m_vertexArray, bindingIndex, m_vertexBuffer, 0, stride);
+		glVertexArrayElementBuffer(m_vertexArray, m_indexBuffer);
+
+		glEnableVertexArrayAttrib(m_vertexArray, attributeIndex);
+		glVertexArrayAttribFormat(m_vertexArray, attributeIndex, 3, GL_FLOAT, GL_FALSE, offsetof(Mesh::Vertex, position));
+		glVertexArrayAttribBinding(m_vertexArray, attributeIndex, bindingIndex);
+		attributeIndex++;
+		glEnableVertexArrayAttrib(m_vertexArray, attributeIndex);
+		glVertexArrayAttribFormat(m_vertexArray, attributeIndex, 3, GL_FLOAT, GL_FALSE, offsetof(Mesh::Vertex, normal));
+		glVertexArrayAttribBinding(m_vertexArray, attributeIndex, bindingIndex);
+		attributeIndex++;
+		glEnableVertexArrayAttrib(m_vertexArray, attributeIndex);
+		glVertexArrayAttribFormat(m_vertexArray, attributeIndex, 3, GL_FLOAT, GL_FALSE, offsetof(Mesh::Vertex, tangent));
+		glVertexArrayAttribBinding(m_vertexArray, attributeIndex, bindingIndex);
+		attributeIndex++;
+		glEnableVertexArrayAttrib(m_vertexArray, attributeIndex);
+		glVertexArrayAttribFormat(m_vertexArray, attributeIndex, 3, GL_FLOAT, GL_FALSE, offsetof(Mesh::Vertex, bitangent));
+		glVertexArrayAttribBinding(m_vertexArray, attributeIndex, bindingIndex);
+		attributeIndex++;
+		glEnableVertexArrayAttrib(m_vertexArray, attributeIndex);
+		glVertexArrayAttribFormat(m_vertexArray, attributeIndex, 2, GL_FLOAT, GL_FALSE, offsetof(Mesh::Vertex, texCoords));
+		glVertexArrayAttribBinding(m_vertexArray, attributeIndex, bindingIndex);
 	}
 }
