@@ -1,7 +1,7 @@
 #pragma once
 
-//#define GFX_API_OPENGL
-#define GFX_API_VULKAN
+#define GFX_API_OPENGL
+//#define GFX_API_VULKAN
 
 #ifdef GFX_API_VULKAN
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE

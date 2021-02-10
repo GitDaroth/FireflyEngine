@@ -26,35 +26,43 @@ namespace Firefly
 
 	void OpenGLTexture::OnInit(void* pixelData)
 	{
+		bool wasPixelDataInitiallyEmpty = pixelData == nullptr;
+
 		GLenum baseFormat = ConvertToOpenGLBaseFormat(m_description.format);
 		GLenum internalFormat = ConvertToOpenGLInternalFormat(m_description.format);
 		GLenum pixelDataType = GetOpenGLPixelDataType(m_description.format);
 		GLsizei sampleCount = ConvertToSampleCountNumber(m_description.sampleCount);
 		GLenum textureType = ConvertToOpenGLTextureType(m_description.type, sampleCount);
+		size_t textureSize = m_description.width * m_description.height * GetBytePerPixel(m_description.format);
 
-		glGenTextures(1, &m_texture);
-		glBindTexture(textureType, m_texture);
+		glCreateTextures(textureType, 1, &m_texture);
 
 		switch (textureType)
 		{
 		case GL_TEXTURE_2D:
-			glTexImage2D(textureType, 0, internalFormat, m_description.width, m_description.height, 0, baseFormat, pixelDataType, pixelData);
+			if (wasPixelDataInitiallyEmpty)
+				pixelData = malloc(textureSize);
+
+			glTextureStorage2D(m_texture, m_mipMapLevels, internalFormat, m_description.width, m_description.height);
+			glTextureSubImage2D(m_texture, 0, 0, 0, m_description.width, m_description.height, baseFormat, pixelDataType, pixelData);
 			break;
 		case GL_TEXTURE_2D_MULTISAMPLE:
-			glTexImage2DMultisample(textureType, sampleCount, internalFormat, m_description.width, m_description.height, GL_TRUE);
+			if (wasPixelDataInitiallyEmpty)
+				pixelData = malloc(textureSize);
+
+			glTextureStorage2DMultisample(m_texture, sampleCount, internalFormat, m_description.width, m_description.height, GL_TRUE);
+			glTextureSubImage2D(m_texture, 0, 0, 0, m_description.width, m_description.height, baseFormat, pixelDataType, pixelData);
 			break;
 		case GL_TEXTURE_CUBE_MAP:
-			uint32_t textureSize = m_description.width * m_description.height * GetBytePerPixel(m_description.format);
+			if (wasPixelDataInitiallyEmpty)
+				pixelData = malloc(textureSize * 6);
+
+			glTextureStorage2D(m_texture, m_mipMapLevels, internalFormat, m_description.width, m_description.height);
 			for (size_t i = 0; i < 6; i++)
 			{
-				void* offsetPixelData = nullptr;
-				if (pixelData)
-				{
-					uint32_t offset = i * textureSize;
-					offsetPixelData = (reinterpret_cast<unsigned char*>(pixelData) + offset);
-				}
-
-				glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, internalFormat, m_description.width, m_description.height, 0, baseFormat, pixelDataType, offsetPixelData);
+				uint32_t offset = i * textureSize;
+				void* offsetPixelData = (reinterpret_cast<unsigned char*>(pixelData) + offset);
+				glTextureSubImage3D(m_texture, 0, 0, 0, i, m_description.width, m_description.height, 1, baseFormat, pixelDataType, offsetPixelData);
 			}
 			break;
 		}
@@ -71,7 +79,7 @@ namespace Firefly
 					Logger::Warn("OpenGL", "Max. anisotropy ({0}) is bigger than the device limit ({1}).", m_description.sampler.maxAnisotropy, maxAnisotropy);
 					m_description.sampler.maxAnisotropy = maxAnisotropy;
 				}
-				glTexParameterf(textureType, GL_TEXTURE_MAX_ANISOTROPY, m_description.sampler.maxAnisotropy);
+				glTextureParameterf(m_texture, GL_TEXTURE_MAX_ANISOTROPY, m_description.sampler.maxAnisotropy);
 			}
 
 			GLenum wrapMode = ConvertToOpenGLWrapMode(m_description.sampler.wrapMode);
@@ -80,18 +88,21 @@ namespace Firefly
 
 			if (m_description.sampler.isMipMappingEnabled)
 			{
-				glGenerateMipmap(textureType);
+				glGenerateTextureMipmap(m_texture);
 
-				glTexParameteri(textureType, GL_TEXTURE_BASE_LEVEL, 0);
-				glTexParameteri(textureType, GL_TEXTURE_MAX_LEVEL, m_mipMapLevels - 1);
+				glTextureParameteri(m_texture, GL_TEXTURE_BASE_LEVEL, 0);
+				glTextureParameteri(m_texture, GL_TEXTURE_MAX_LEVEL, m_mipMapLevels - 1);
+				glTextureParameterf(m_texture, GL_TEXTURE_MIN_LOD, 0.0f);
+				glTextureParameterf(m_texture, GL_TEXTURE_MAX_LOD, (float)(m_mipMapLevels - 1));
+				glTextureParameterf(m_texture, GL_TEXTURE_LOD_BIAS, 0.0f);
 				minFilterMode = ConvertToOpenGLMinificationFilterMode(m_description.sampler.minificationFilterMode, m_description.sampler.mipMapFilterMode);
 			}
 
-			glTexParameteri(textureType, GL_TEXTURE_WRAP_S, wrapMode);
-			glTexParameteri(textureType, GL_TEXTURE_WRAP_T, wrapMode);
-			glTexParameteri(textureType, GL_TEXTURE_WRAP_R, wrapMode);
-			glTexParameteri(textureType, GL_TEXTURE_MIN_FILTER, minFilterMode);
-			glTexParameteri(textureType, GL_TEXTURE_MAG_FILTER, maxFilterMode);
+			glTextureParameteri(m_texture, GL_TEXTURE_WRAP_S, wrapMode);
+			glTextureParameteri(m_texture, GL_TEXTURE_WRAP_T, wrapMode);
+			glTextureParameteri(m_texture, GL_TEXTURE_WRAP_R, wrapMode);
+			glTextureParameteri(m_texture, GL_TEXTURE_MIN_FILTER, minFilterMode);
+			glTextureParameteri(m_texture, GL_TEXTURE_MAG_FILTER, maxFilterMode);
 		}
 	}
 

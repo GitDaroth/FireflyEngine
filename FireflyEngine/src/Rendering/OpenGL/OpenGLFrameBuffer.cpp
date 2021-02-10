@@ -42,20 +42,20 @@ namespace Firefly
 			Attachment colorAttachment = m_description.colorAttachments[i];
 			std::shared_ptr<OpenGLTexture> texture = std::dynamic_pointer_cast<OpenGLTexture>(colorAttachment.texture);
 
-			GLenum texTarget = GL_NONE;
 			if (texture->GetType() == Texture::Type::TEXTURE_2D)
 			{
+				GLenum texTarget = GL_NONE;
 				if (texture->GetSampleCount() == Texture::SampleCount::SAMPLE_1)
 					texTarget = GL_TEXTURE_2D;
 				else
 					texTarget = GL_TEXTURE_2D_MULTISAMPLE;
+
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texTarget, texture->GetHandle(), colorAttachment.mipMapLevel);
 			}
 			else if (texture->GetType() == Texture::Type::TEXTURE_CUBE_MAP)
 			{
-				texTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X + colorAttachment.arrayLayer;
+				glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texture->GetHandle(), colorAttachment.mipMapLevel, colorAttachment.arrayLayer);
 			}
-
-			glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texTarget, texture->GetHandle(), colorAttachment.mipMapLevel);
 		}
 
 		if (HasDepthStencilAttachment())
@@ -94,11 +94,14 @@ namespace Firefly
 
 				GLenum texTarget = GL_NONE;
 				if (texture->GetType() == Texture::Type::TEXTURE_2D)
-					texTarget = GL_TEXTURE_2D;
+				{
+					GLenum texTarget = GL_TEXTURE_2D;
+					glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texTarget, texture->GetHandle(), colorResolveAttachment.mipMapLevel);
+				}
 				else if (texture->GetType() == Texture::Type::TEXTURE_CUBE_MAP)
-					texTarget = GL_TEXTURE_CUBE_MAP_POSITIVE_X + colorResolveAttachment.arrayLayer;
-
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texTarget, texture->GetHandle(), colorResolveAttachment.mipMapLevel);
+				{
+					glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, texture->GetHandle(), colorResolveAttachment.mipMapLevel, colorResolveAttachment.arrayLayer);
+				}
 			}
 
 			FIREFLY_ASSERT(glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE, "OpenGL Framebuffer for resolve color attachments is not complete!");

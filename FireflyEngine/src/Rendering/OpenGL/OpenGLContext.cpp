@@ -18,7 +18,7 @@ namespace Firefly
 
 #ifndef NDEBUG
 		glEnable(GL_DEBUG_OUTPUT);
-		glDebugMessageCallback(DebugMessengerCallback, 0);
+		glDebugMessageCallback(DebugMessengerCallback, nullptr);
 #endif
 
 		glEnable(GL_CULL_FACE);
@@ -48,8 +48,8 @@ namespace Firefly
 	}
 
 	void GLAPIENTRY OpenGLContext::DebugMessengerCallback(
-		GLenum source, GLenum type, GLuint id, 
-		GLenum severity, GLsizei length, 
+		GLenum source, GLenum type, GLuint id,
+		GLenum severity, GLsizei length,
 		const GLchar* message, const void* userParam)
 	{
 		std::string messageTypeLabel = "unknown";
