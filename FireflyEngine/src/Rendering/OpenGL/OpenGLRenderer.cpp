@@ -165,6 +165,7 @@ namespace Firefly
 		colorTextureDesc.height = m_windowHeight;
 		colorTextureDesc.format = Texture::Format::RGBA_8;
 		colorTextureDesc.sampleCount = m_msaaSampleCount;
+		colorTextureDesc.useAsAttachment = true;
 		colorTextureDesc.useSampler = false;
 		m_colorTexture = std::dynamic_pointer_cast<OpenGLTexture>(RenderingAPI::CreateTexture(colorTextureDesc));
 
@@ -174,6 +175,7 @@ namespace Firefly
 		colorResolveTextureDesc.height = m_windowHeight;
 		colorResolveTextureDesc.format = Texture::Format::RGBA_8;
 		colorResolveTextureDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		colorResolveTextureDesc.useAsAttachment = true;
 		colorResolveTextureDesc.useSampler = true;
 		colorResolveTextureDesc.sampler.isMipMappingEnabled = false;
 		colorResolveTextureDesc.sampler.isAnisotropicFilteringEnabled = false;
@@ -188,6 +190,7 @@ namespace Firefly
 		depthTextureDesc.height = m_windowHeight;
 		depthTextureDesc.format = Texture::Format::DEPTH_32_FLOAT;
 		depthTextureDesc.sampleCount = m_msaaSampleCount;
+		depthTextureDesc.useAsAttachment = true;
 		depthTextureDesc.useSampler = false;
 		m_depthTexture = std::dynamic_pointer_cast<OpenGLTexture>(RenderingAPI::CreateTexture(depthTextureDesc));
 
@@ -342,6 +345,7 @@ namespace Firefly
 		environmentCubeMapDesc.height = environmentCubeMapSize;
 		environmentCubeMapDesc.format = Texture::Format::RGBA_16_FLOAT;
 		environmentCubeMapDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		environmentCubeMapDesc.useAsAttachment = true;
 		environmentCubeMapDesc.useSampler = true;
 		environmentCubeMapDesc.sampler.isMipMappingEnabled = false;
 		environmentCubeMapDesc.sampler.isAnisotropicFilteringEnabled = true;
@@ -406,6 +410,7 @@ namespace Firefly
 		irradianceCubeMapDesc.height = irradianceCubeMapSize;
 		irradianceCubeMapDesc.format = Texture::Format::RGBA_16_FLOAT;
 		irradianceCubeMapDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		irradianceCubeMapDesc.useAsAttachment = true;
 		irradianceCubeMapDesc.useSampler = true;
 		irradianceCubeMapDesc.sampler.isMipMappingEnabled = false;
 		irradianceCubeMapDesc.sampler.isAnisotropicFilteringEnabled = true;
@@ -460,6 +465,7 @@ namespace Firefly
 		prefilterCubeMapDesc.height = prefilterCubeMapSize;
 		prefilterCubeMapDesc.format = Texture::Format::RGBA_16_FLOAT;
 		prefilterCubeMapDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		prefilterCubeMapDesc.useAsAttachment = true;
 		prefilterCubeMapDesc.useSampler = true;
 		prefilterCubeMapDesc.sampler.isMipMappingEnabled = true;
 		prefilterCubeMapDesc.sampler.isAnisotropicFilteringEnabled = true;
@@ -524,6 +530,7 @@ namespace Firefly
 		brdfLUTDesc.height = brdfLUTSize;
 		brdfLUTDesc.format = Texture::Format::RGBA_16_FLOAT;
 		brdfLUTDesc.sampleCount = Texture::SampleCount::SAMPLE_1;
+		brdfLUTDesc.useAsAttachment = true;
 		brdfLUTDesc.useSampler = true;
 		brdfLUTDesc.sampler.isMipMappingEnabled = false;
 		brdfLUTDesc.sampler.isAnisotropicFilteringEnabled = true;

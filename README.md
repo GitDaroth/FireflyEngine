@@ -2,9 +2,9 @@
 
 The FireflyEngine is an ambitious project of developing a game engine from scratch for learning purposes. This early-stage engine is currently solely developed by me. The rendering is done optionally with Vulkan or OpenGL.
 
-![scene1](/showcase/scene1.gif)
-![scene1_close](/showcase/scene1_close.gif)
-![scene2](/showcase/scene2.gif)
+![pistol_1](/showcase/pistol_1.gif)
+![pistol_2](/showcase/pistol_2.gif)
+![roughness_vs_metalness](/showcase/roughness_vs_metalness.gif)
 
 **Engine Features:**
 - simple graphics API abstraction layer for OpenGL and Vulkan
@@ -12,7 +12,9 @@ The FireflyEngine is an ambitious project of developing a game engine from scrat
 - input (mouse, keyboard, gamepad) and window events with [GLFW](https://github.com/glfw/glfw)
 - normal mapping
 - parallax mapping
+- cubemaps
 - basic real-time PBR shader and material
+- image based lighting (IBL) for PBR
 - texture loading with mipmaps and anisotropic filtering
 - anti-aliasing (MSAA)
 - mesh loading with [assimp](https://github.com/assimp/assimp)
@@ -25,16 +27,13 @@ The FireflyEngine is an ambitious project of developing a game engine from scrat
 - deferred rendering pass
 - scenegraph
 - batch rendering
-- screen-space ambient occlusion (SSAO)
-- cubemaps
-- image based lighting (IBL) for PBR
 - shadow mapping
 - skeletal animation
-- multithreaded command recoring with Vulkan
+- multithreaded command recording with Vulkan
 - scripting
 - editor
 - support for DirectX12
-- rigid body physics integration
+- rigid body physics integration with [NVIDIA PhysX](https://github.com/NVIDIAGameWorks/PhysX)
 - cross-platfrom support (Windows, Linux, Mac)
 
 ## Build Instructions
