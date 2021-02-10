@@ -16,6 +16,9 @@ namespace Firefly
 		virtual void OnInit() override;
 
 	private:
+		static uint32_t CreateTextureViewFromAttachment(Attachment attachment);
+
+		std::vector<uint32_t> m_textureViewAttachments;
 		uint32_t m_frameBuffer;
 		uint32_t m_resolveFrameBuffer;
 	};

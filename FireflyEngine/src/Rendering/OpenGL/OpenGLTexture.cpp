@@ -6,7 +6,13 @@ namespace Firefly
 	OpenGLTexture::OpenGLTexture() :
 		Texture(),
 		m_texture(0),
-		m_sampler(0)
+		m_textureView(0),
+		m_sampler(0),
+		m_baseFormat(GL_NONE),
+		m_internalFormat(GL_NONE),
+		m_pixelDataType(GL_NONE),
+		m_textureType(GL_NONE),
+		m_sampleCount(1)
 	{
 	}
 
@@ -14,23 +20,32 @@ namespace Firefly
 	{
 		if (m_description.useSampler)
 			DestroySampler();
+		DestroyTextureView();
 		DestroyTexture();
 	}
 
 	void OpenGLTexture::Bind(GLuint slot)
 	{
-		glBindTextureUnit(slot, m_texture);
-		glBindSampler(slot, m_sampler);
+		glBindTextureUnit(slot, m_textureView);
+		if (m_description.useSampler)
+			glBindSampler(slot, m_sampler);
 	}
 
 	uint32_t OpenGLTexture::GetHandle() const
 	{
-		return m_texture;
+		return m_textureView;
 	}
 
 	void OpenGLTexture::OnInit(void* pixelData)
 	{
+		m_baseFormat = ConvertToOpenGLBaseFormat(m_description.format);
+		m_internalFormat = ConvertToOpenGLInternalFormat(m_description.format);
+		m_pixelDataType = GetOpenGLPixelDataType(m_description.format);
+		m_sampleCount = ConvertToSampleCountNumber(m_description.sampleCount);
+		m_textureType = ConvertToOpenGLTextureType(m_description.type, m_sampleCount);
+
 		CreateTexture(pixelData);
+		CreateTextureView();
 		if (m_description.useSampler)
 			CreateSampler();
 	}
@@ -38,42 +53,28 @@ namespace Firefly
 	void OpenGLTexture::CreateTexture(void* pixelData)
 	{
 		bool wasPixelDataInitiallyEmpty = pixelData == nullptr;
+		if (wasPixelDataInitiallyEmpty)
+			pixelData = malloc(GetTextureByteSize(m_description.width, m_description.height, m_description.type, m_description.format));
 
-		GLenum baseFormat = ConvertToOpenGLBaseFormat(m_description.format);
-		GLenum internalFormat = ConvertToOpenGLInternalFormat(m_description.format);
-		GLenum pixelDataType = GetOpenGLPixelDataType(m_description.format);
-		GLsizei sampleCount = ConvertToSampleCountNumber(m_description.sampleCount);
-		GLenum textureType = ConvertToOpenGLTextureType(m_description.type, sampleCount);
-		size_t textureSize = m_description.width * m_description.height * GetBytePerPixel(m_description.format);
+		glCreateTextures(m_textureType, 1, &m_texture);
 
-		glCreateTextures(textureType, 1, &m_texture);
-
-		switch (textureType)
+		switch (m_textureType)
 		{
 		case GL_TEXTURE_2D:
-			if (wasPixelDataInitiallyEmpty)
-				pixelData = malloc(textureSize);
-
-			glTextureStorage2D(m_texture, m_mipMapLevels, internalFormat, m_description.width, m_description.height);
-			glTextureSubImage2D(m_texture, 0, 0, 0, m_description.width, m_description.height, baseFormat, pixelDataType, pixelData);
+			glTextureStorage2D(m_texture, m_mipMapLevels, m_internalFormat, m_description.width, m_description.height);
+			glTextureSubImage2D(m_texture, 0, 0, 0, m_description.width, m_description.height, m_baseFormat, m_pixelDataType, pixelData);
 			break;
 		case GL_TEXTURE_2D_MULTISAMPLE:
-			if (wasPixelDataInitiallyEmpty)
-				pixelData = malloc(textureSize);
-
-			glTextureStorage2DMultisample(m_texture, sampleCount, internalFormat, m_description.width, m_description.height, GL_TRUE);
-			glTextureSubImage2D(m_texture, 0, 0, 0, m_description.width, m_description.height, baseFormat, pixelDataType, pixelData);
+			glTextureStorage2DMultisample(m_texture, m_sampleCount, m_internalFormat, m_description.width, m_description.height, GL_TRUE);
+			glTextureSubImage2D(m_texture, 0, 0, 0, m_description.width, m_description.height, m_baseFormat, m_pixelDataType, pixelData);
 			break;
 		case GL_TEXTURE_CUBE_MAP:
-			if (wasPixelDataInitiallyEmpty)
-				pixelData = malloc(textureSize * 6);
-
-			glTextureStorage2D(m_texture, m_mipMapLevels, internalFormat, m_description.width, m_description.height);
+			glTextureStorage2D(m_texture, m_mipMapLevels, m_internalFormat, m_description.width, m_description.height);
 			for (size_t i = 0; i < 6; i++)
 			{
-				uint32_t offset = i * textureSize;
+				uint32_t offset = i * m_description.width * m_description.height * GetBytePerPixel(m_description.format);
 				void* offsetPixelData = (reinterpret_cast<unsigned char*>(pixelData) + offset);
-				glTextureSubImage3D(m_texture, 0, 0, 0, i, m_description.width, m_description.height, 1, baseFormat, pixelDataType, offsetPixelData);
+				glTextureSubImage3D(m_texture, 0, 0, 0, i, m_description.width, m_description.height, 1, m_baseFormat, m_pixelDataType, offsetPixelData);
 			}
 			break;
 		}
@@ -91,6 +92,17 @@ namespace Firefly
 	void OpenGLTexture::DestroyTexture()
 	{
 		glDeleteTextures(1, &m_texture);
+	}
+
+	void OpenGLTexture::CreateTextureView()
+	{
+		glGenTextures(1, &m_textureView);
+		glTextureView(m_textureView, m_textureType, m_texture, m_internalFormat, 0, m_mipMapLevels, 0, m_arrayLayers);
+	}
+
+	void OpenGLTexture::DestroyTextureView()
+	{
+		glDeleteTextures(1, &m_textureView);
 	}
 
 	void OpenGLTexture::CreateSampler()
@@ -311,5 +323,13 @@ namespace Firefly
 		case FilterMode::LINEAR:
 			return GL_LINEAR;
 		}
+	}
+
+	size_t OpenGLTexture::GetTextureByteSize(uint32_t width, uint32_t height, Type type, Format format)
+	{
+		size_t textureSize = width * height * GetBytePerPixel(format);
+		if (type == Texture::Type::TEXTURE_CUBE_MAP)
+			textureSize *= 6;
+		return textureSize;
 	}
 }
