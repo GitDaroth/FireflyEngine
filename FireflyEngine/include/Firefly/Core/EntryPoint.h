@@ -1,5 +1,5 @@
 #pragma once
 
-#ifdef FIREFLY_WINDOWS
-	int main(int argc, char** argv);
+#ifdef FIREFLY_OS_WINDOWS
+int main(int argc, char** argv);
 #endif

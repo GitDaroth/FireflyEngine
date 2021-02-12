@@ -175,9 +175,9 @@ namespace Firefly
 	void VulkanContext::CreateInstance()
 	{
 		std::string appName = "Sandbox";
-		uint32_t appVersion = VK_MAKE_VERSION(1, 0, 0);
-		std::string engineName = ENGINE_NAME;
-		uint32_t engineVersion = VK_MAKE_VERSION(1, 0, 0);
+		uint32_t appVersion = VK_MAKE_VERSION(0, 0, 0);
+		std::string engineName = FIREFLY_ENGINE_NAME;
+		uint32_t engineVersion = VK_MAKE_VERSION(FIREFLY_ENGINE_VERSION_MAJOR, FIREFLY_ENGINE_VERSION_MINOR, FIREFLY_ENGINE_VERSION_PATCH);
 		uint32_t apiVersion = VK_API_VERSION_1_2;
 
 		vk::ApplicationInfo applicationInfo{};

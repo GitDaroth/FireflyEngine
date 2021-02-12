@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Engine.h"
+#include "Core/Logger.h"
 #include "Core/Application.h"
 #include "Core/ResourceRegistry.h"
 

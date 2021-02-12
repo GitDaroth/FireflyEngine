@@ -11,6 +11,9 @@ namespace Firefly
 			return;
 
 		Logger::Init();
+		Logger::Info(FIREFLY_ENGINE_NAME, "Version: {0}.{1}.{2}",
+			FIREFLY_ENGINE_VERSION_MAJOR, FIREFLY_ENGINE_VERSION_MINOR, FIREFLY_ENGINE_VERSION_PATCH);
+
 		m_application = Firefly::InstantiateApplication();
 
 		m_isInitialized = true;

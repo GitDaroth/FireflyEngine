@@ -170,12 +170,20 @@ target_link_libraries(FireflyEngine
 		assimp
 		spirv_reflect)
 
-target_include_directories(FireflyEngine PRIVATE "include/Firefly" INTERFACE "include" "include/Firefly")
+target_include_directories(FireflyEngine PUBLIC "include/Firefly" "${CMAKE_CURRENT_BINARY_DIR}" INTERFACE "include")
 target_precompile_headers(FireflyEngine PRIVATE "include/Firefly/pch.h")
 
 target_compile_features(FireflyEngine PUBLIC cxx_std_17)
-
 target_compile_definitions(FireflyEngine PUBLIC GLFW_INCLUDE_NONE "$<$<CONFIG:DEBUG>:DEBUG>")
+
+set(FIREFLY_ENGINE_NAME "Firefly Engine")
+
 if(WIN32)
-    target_compile_definitions(FireflyEngine PUBLIC FIREFLY_WINDOWS)
+	set(FIREFLY_OS_WINDOWS ON)
 endif()
+
+configure_file(
+	"${CMAKE_CURRENT_SOURCE_DIR}/EngineConfig.h.template"
+	"${CMAKE_CURRENT_BINARY_DIR}/EngineConfig.h"
+	@ONLY
+)

@@ -7,7 +7,6 @@ namespace Firefly
 		m_title(title),
 		m_context(nullptr)
 	{
-		Logger::Info("Firefly Engine", "Creating a window: {0} ({1}x{2})", title, width, height);
 	}
 
 	Window::~Window()
