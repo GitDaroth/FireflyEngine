@@ -5,17 +5,17 @@
 
 namespace Firefly
 {
-	class OpenGLRenderPass : public RenderPass
-	{
-	public:
-		virtual void Destroy() override;
+    class OpenGLRenderPass : public RenderPass
+    {
+    public:
+        virtual void Destroy() override;
 
-	protected:
-		virtual void OnInit() override;
-		virtual void OnBegin() override;
-		virtual void OnEnd() override;
+    protected:
+        virtual void OnInit() override;
+        virtual void OnBegin() override;
+        virtual void OnEnd() override;
 
-	private:
-		GLenum ConvertToOpenGLDepthFunction(CompareOperation compareOperation);
-	};
+    private:
+        GLenum ConvertToOpenGLDepthFunction(CompareOperation compareOperation);
+    };
 }

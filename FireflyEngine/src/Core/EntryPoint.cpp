@@ -5,12 +5,12 @@
 #ifdef FIREFLY_OS_WINDOWS
 int main(int argc, char** argv)
 {
-	Firefly::Engine engine;
+    Firefly::Engine engine;
 
-	engine.Init();
-	engine.Run();
-	engine.Shutdown();
+    engine.Init();
+    engine.Run();
+    engine.Shutdown();
 
-	return 0;
+    return 0;
 }
 #endif

@@ -7,26 +7,26 @@ struct SpvReflectTypeDescription;
 
 namespace Firefly
 {
-	class VulkanShader : public Shader
-	{
-	public:
-		VulkanShader();
+    class VulkanShader : public Shader
+    {
+    public:
+        VulkanShader();
 
-		virtual void Destroy() override;
+        virtual void Destroy() override;
 
-		std::vector<vk::PipelineShaderStageCreateInfo> GetShaderStageCreateInfos() const;
+        std::vector<vk::PipelineShaderStageCreateInfo> GetShaderStageCreateInfos() const;
 
-	protected:
-		virtual void OnInit(const ShaderCode& shaderCode) override;
+    protected:
+        virtual void OnInit(const ShaderCode& shaderCode) override;
 
-	private:
-		vk::PipelineShaderStageCreateInfo CreateShaderStage(const std::vector<char>& shaderCode, vk::ShaderStageFlagBits shaderStage);
+    private:
+        vk::PipelineShaderStageCreateInfo CreateShaderStage(const std::vector<char>& shaderCode, vk::ShaderStageFlagBits shaderStage);
 
-		void PrintShaderReflection(const std::vector<char>& shaderCode);
-		std::string GetDataTypeName(const SpvReflectTypeDescription& typeDescription);
+        void PrintShaderReflection(const std::vector<char>& shaderCode);
+        std::string GetDataTypeName(const SpvReflectTypeDescription& typeDescription);
 
-		vk::Device m_device;
-		std::vector<vk::PipelineShaderStageCreateInfo> m_shaderStageCreateInfos;
-		std::vector<vk::ShaderModule> m_shaderModules;
-	};
+        vk::Device m_device;
+        std::vector<vk::PipelineShaderStageCreateInfo> m_shaderStageCreateInfos;
+        std::vector<vk::ShaderModule> m_shaderModules;
+    };
 }

@@ -15,9 +15,9 @@ vec2 SampleSphericalMap(vec3 v)
 }
 
 void main()
-{		
+{
     vec2 uv = SampleSphericalMap(normalize(worldPos));
     vec3 color = texture(hdrTexture, uv).rgb;
-    
+
     fragColor = vec4(color, 1.0);
 }

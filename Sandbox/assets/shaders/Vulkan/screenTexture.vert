@@ -16,4 +16,4 @@ void main()
     // Adjust for Vulkan texture and clip space coordinate systems
     TexCoords.y = 1.0 - TexCoords.y;
     gl_Position.y = -gl_Position.y;
-}  
+}

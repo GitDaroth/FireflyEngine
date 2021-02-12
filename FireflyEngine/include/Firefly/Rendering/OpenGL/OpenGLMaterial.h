@@ -4,19 +4,19 @@
 
 namespace Firefly
 {
-	class OpenGLMaterial : public Material
-	{
-	public:
-		OpenGLMaterial();
+    class OpenGLMaterial : public Material
+    {
+    public:
+        OpenGLMaterial();
 
-		virtual void Destroy() override;
+        virtual void Destroy() override;
 
-		void Bind();
+        void Bind();
 
-	protected:
-		virtual void OnInit() override;
-		virtual void OnSetTexture(std::shared_ptr<Texture> texture, TextureUsage usage) override;
+    protected:
+        virtual void OnInit() override;
+        virtual void OnSetTexture(std::shared_ptr<Texture> texture, TextureUsage usage) override;
 
-	private:
-	};
+    private:
+    };
 }

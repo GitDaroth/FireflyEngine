@@ -2,5 +2,5 @@
 
 Firefly::Application* Firefly::InstantiateApplication()
 {
-	return new SandboxApp();
+    return new SandboxApp();
 }

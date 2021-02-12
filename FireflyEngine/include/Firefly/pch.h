@@ -17,6 +17,6 @@
 
 #include "Core/Logger.h"
 
-#ifdef FIREFLY_WINDOWS
-	#include <Windows.h>
+#ifdef FIREFLY_OS_WINDOWS
+#include <Windows.h>
 #endif

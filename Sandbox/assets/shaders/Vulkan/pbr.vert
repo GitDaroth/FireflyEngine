@@ -1,7 +1,7 @@
 #version 450
 
 layout(set = 0, binding = 0) uniform SceneData
-{   
+{
     mat4 viewMatrix;
     mat4 projectionMatrix;
     mat4 viewProjectionMatrix;
@@ -9,7 +9,7 @@ layout(set = 0, binding = 0) uniform SceneData
 } scene;
 
 layout(set = 3, binding = 0) uniform ObjectData
-{   
+{
     mat4 modelMatrix;
     mat4 normalMatrix;
 } object;
@@ -32,14 +32,14 @@ void main()
     gl_Position = scene.viewProjectionMatrix * vec4(worldPosition, 1.0);
 
     vec3 N = normalize(mat3(object.normalMatrix) * inNormal);
-	vec3 T = normalize(mat3(object.normalMatrix) * inTangent);
-	vec3 B = normalize(mat3(object.normalMatrix) * inBitangent);
-	TBN = mat3(T, B, N);
+    vec3 T = normalize(mat3(object.normalMatrix) * inTangent);
+    vec3 B = normalize(mat3(object.normalMatrix) * inBitangent);
+    TBN = mat3(T, B, N);
 
     fragTexCoords = inTexCoords;
     fragNormal = N;
-	fragPosition = worldPosition;
-	cameraPosition = scene.cameraPosition.xyz;
+    fragPosition = worldPosition;
+    cameraPosition = scene.cameraPosition.xyz;
 
     // Adjust for Vulkan texture and clip space coordinate systems
     fragTexCoords.y = 1.0 - fragTexCoords.y;

@@ -5,13 +5,13 @@
 
 namespace Firefly
 {
-	struct MaterialComponent
-	{
-		std::shared_ptr<Material> m_material;
+    struct MaterialComponent
+    {
+        std::shared_ptr<Material> m_material;
 
-		MaterialComponent() = default;
-		MaterialComponent(const MaterialComponent& other) = default;
-		MaterialComponent(std::shared_ptr<Material> material) :
-			m_material(material) {}
-	};
+        MaterialComponent() = default;
+        MaterialComponent(const MaterialComponent& other) = default;
+        MaterialComponent(std::shared_ptr<Material> material) :
+            m_material(material) {}
+    };
 }

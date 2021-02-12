@@ -35,12 +35,12 @@ void main()
     gl_Position = scene.viewProjectionMatrix * vec4(worldPosition, 1.0);
 
     vec3 N = normalize(mat3(object.normalMatrix) * inNormal); 
-	vec3 T = normalize(mat3(object.normalMatrix) * inTangent);
-	vec3 B = normalize(mat3(object.normalMatrix) * inBitangent);
-	TBN = mat3(T, B, N);
+    vec3 T = normalize(mat3(object.normalMatrix) * inTangent);
+    vec3 B = normalize(mat3(object.normalMatrix) * inBitangent);
+    TBN = mat3(T, B, N);
 
     fragTexCoords = inTexCoords;
     fragNormal = N;
-	fragPosition = worldPosition;
-	cameraPosition = scene.cameraPosition.xyz;
+    fragPosition = worldPosition;
+    cameraPosition = scene.cameraPosition.xyz;
 }

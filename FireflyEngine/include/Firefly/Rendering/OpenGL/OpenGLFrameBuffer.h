@@ -4,22 +4,22 @@
 
 namespace Firefly
 {
-	class OpenGLFrameBuffer : public FrameBuffer
-	{
-	public:
-		virtual void Destroy() override;
-		virtual void Resolve() override;
+    class OpenGLFrameBuffer : public FrameBuffer
+    {
+    public:
+        virtual void Destroy() override;
+        virtual void Resolve() override;
 
-		void Bind();
+        void Bind();
 
-	protected:
-		virtual void OnInit() override;
+    protected:
+        virtual void OnInit() override;
 
-	private:
-		static uint32_t CreateTextureViewFromAttachment(Attachment attachment);
+    private:
+        static uint32_t CreateTextureViewFromAttachment(Attachment attachment);
 
-		std::vector<uint32_t> m_textureViewAttachments;
-		uint32_t m_frameBuffer;
-		uint32_t m_resolveFrameBuffer;
-	};
+        std::vector<uint32_t> m_textureViewAttachments;
+        uint32_t m_frameBuffer;
+        uint32_t m_resolveFrameBuffer;
+    };
 }

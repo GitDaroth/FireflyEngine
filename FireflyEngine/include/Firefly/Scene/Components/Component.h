@@ -4,8 +4,8 @@
 
 namespace Firefly
 {
-	struct Component
-	{
-		std::string m_label;
-	};
+    struct Component
+    {
+        std::string m_label;
+    };
 }

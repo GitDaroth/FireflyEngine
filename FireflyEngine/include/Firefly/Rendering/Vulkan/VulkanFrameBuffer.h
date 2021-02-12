@@ -5,27 +5,27 @@
 
 namespace Firefly
 {
-	class VulkanFrameBuffer : public FrameBuffer
-	{
-	public:
-		virtual void Destroy() override;
-		virtual void Resolve() override;
+    class VulkanFrameBuffer : public FrameBuffer
+    {
+    public:
+        virtual void Destroy() override;
+        virtual void Resolve() override;
 
-		vk::Framebuffer GetHandle();
+        vk::Framebuffer GetHandle();
 
-	protected:
-		virtual void OnInit() override;
+    protected:
+        virtual void OnInit() override;
 
-	private:
-		void CreateCompatibilityRenderPass();
-		vk::ImageView CreateImageViewFromAttachment(FrameBuffer::Attachment attachment);
-		vk::AttachmentDescription CreateAttachmentDescription(FrameBuffer::Attachment attachment);
-		vk::AttachmentReference CreateAttachmentReference(FrameBuffer::Attachment attachment, size_t index);
+    private:
+        void CreateCompatibilityRenderPass();
+        vk::ImageView CreateImageViewFromAttachment(FrameBuffer::Attachment attachment);
+        vk::AttachmentDescription CreateAttachmentDescription(FrameBuffer::Attachment attachment);
+        vk::AttachmentReference CreateAttachmentReference(FrameBuffer::Attachment attachment, size_t index);
 
-		vk::Device m_device;
+        vk::Device m_device;
 
-		std::vector<vk::ImageView> m_imageViewAttachments;
-		vk::RenderPass m_compatibilityRenderPass;
-		vk::Framebuffer m_frameBuffer;
-	};
+        std::vector<vk::ImageView> m_imageViewAttachments;
+        vk::RenderPass m_compatibilityRenderPass;
+        vk::Framebuffer m_frameBuffer;
+    };
 }
