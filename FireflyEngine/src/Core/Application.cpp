@@ -51,14 +51,7 @@ namespace Firefly
             OnWindowEvent(windowEvent);
 
             if (auto closeEvent = windowEvent->AsType<WindowCloseEvent>())
-            {
                 RequestShutdown();
-            }
-            else if (auto resizeEvent = windowEvent->AsType<WindowResizeEvent>())
-            {
-                int width = resizeEvent->GetWidth();
-                int height = resizeEvent->GetHeight();
-            }
         }
         else if (auto keyEvent = event->AsType<KeyEvent>())
         {

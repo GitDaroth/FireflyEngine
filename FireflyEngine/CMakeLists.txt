@@ -30,7 +30,8 @@ set(coreFiles
     src/Core/Application.cpp
     include/Firefly/Core/Logger.h
     src/Core/Logger.cpp
-    include/Firefly/Core/ResourceRegistry.h)
+    include/Firefly/Core/ResourceRegistry.h
+    include/Firefly/Core/EnumFlags.h)
 
 set(windowFiles
     include/Firefly/Window/Window.h
@@ -39,6 +40,8 @@ set(windowFiles
     src/Window/WindowsWindow.cpp)
 
 set(renderingFiles
+    include/Firefly/Rendering/Buffer.h
+    src/Rendering/Buffer.cpp
     include/Firefly/Rendering/Material.h
     src/Rendering/Material.cpp
     include/Firefly/Rendering/Mesh.h
@@ -60,6 +63,8 @@ set(renderingFiles
     src/Rendering/RenderPass.cpp)
 
 set(renderingOpenGLFiles
+    include/Firefly/Rendering/OpenGL/OpenGLBuffer.h
+    src/Rendering/OpenGL/OpenGLBuffer.cpp
     include/Firefly/Rendering/OpenGL/OpenGLContext.h
     src/Rendering/OpenGL/OpenGLContext.cpp
     include/Firefly/Rendering/OpenGL/OpenGLShader.h
@@ -78,6 +83,8 @@ set(renderingOpenGLFiles
     src/Rendering/OpenGL/OpenGLRenderPass.cpp)
 
 set(renderingVulkanFiles
+    include/Firefly/Rendering/Vulkan/VulkanBuffer.h
+    src/Rendering/Vulkan/VulkanBuffer.cpp
     include/Firefly/Rendering/Vulkan/VulkanContext.h
     src/Rendering/Vulkan/VulkanContext.cpp
     include/Firefly/Rendering/Vulkan/VulkanDevice.h

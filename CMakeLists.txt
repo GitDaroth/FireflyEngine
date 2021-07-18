@@ -19,3 +19,5 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_subdirectory(FireflyEngine)
 add_subdirectory(Sandbox)
+
+set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT Sandbox)
